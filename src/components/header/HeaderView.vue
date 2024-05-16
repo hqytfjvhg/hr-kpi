@@ -1,0 +1,324 @@
+<template>
+  <div class="headerUser">
+    <el-breadcrumb separator="/">
+      <el-breadcrumb-item v-for="item in this.getBreadList()" :key="item" :to="item.path">
+        {{ item.info }}
+      </el-breadcrumb-item>
+    </el-breadcrumb>
+
+    <div class="header-right">
+      <!-- <el-icon
+        :size="20"
+        class="bellIcon"
+        v-if="$store.state.role != 'ROOT'"
+        @click="$router.push({ name: 'aboutInfo' })"
+      >
+        <BellFilled />
+      </el-icon>
+      <div class="redPoint" v-if="$store.state.role != 'ROOT'">{{ $store.state.number2 }}</div> -->
+      <!-- <el-dropdown trigger="click">
+        <img src="@/assets/cn-en.svg" alt="" style="height: 2.5vh" />
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item @click="changLangType('cn')" :disabled="$store.state.langType == 'cn' ? true : false"
+              >简体中文</el-dropdown-item
+            >
+            <el-dropdown-item @click="changLangType('en')" :disabled="$store.state.langType == 'en' ? true : false"
+              >English</el-dropdown-item
+            >
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown> -->
+      <!-- <el-select v-model="langType" @change="changLangType">
+        <el-option value="en" label="English"></el-option>
+        <el-option value="cn" label="中文简体"></el-option>
+      </el-select> -->
+
+      <el-badge
+        :value="$store.state.number2"
+        v-if="$store.state.role != 'ROOT'"
+        @click="$router.push({ name: 'aboutInfo' })"
+      >
+        <el-icon :size="20">
+          <BellFilled />
+        </el-icon>
+      </el-badge>
+      <el-dropdown>
+        <a class="el-dropdown-link" @click.prevent>
+          <el-avatar style="font-size: 0.5rem">{{ $store.state.name }}</el-avatar>
+        </a>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item @click="$router.push({ name: 'aboutInfo' })" v-if="$store.state.role != 'ROOT'">
+              待办事项
+            </el-dropdown-item>
+            <el-dropdown-item @click="dialogTableVisible = true" v-if="$store.state.role != 'ROOT'">
+              修改密码
+            </el-dropdown-item>
+            <el-dropdown-item @click.prevent="doLogout">退出登录</el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
+    </div>
+  </div>
+  <Dialog v-if="dialogTableVisible" v-model:dialogTableVisible="dialogTableVisible" :form="form" :title="title" />
+</template>
+
+<script>
+import { ElMessageBox, ElMessage } from "element-plus";
+import { BellFilled } from "@element-plus/icons-vue";
+import store from "@/store";
+import { logout } from "@/api/logout/index";
+import { deptList } from "@/api/register/index";
+import Dialog from "@/views/login/ChangePass";
+import i18n from "@/language";
+// import { useI18n } from "vue-i18n";
+
+export default {
+  // setup() {
+  //   const { locale } = useI18n();
+
+  //   const changLangType = (lang) => {
+  //     store.commit("changeLangType", lang);
+  //     locale.value = lang;
+  //     i18n.global.locale.value = lang;
+  //     console.log(locale);
+  //     console.log(localStorage.getItem("langType"));
+  //   };
+  //   return { changLangType };
+  // },
+  data() {
+    return {
+      number: null,
+      sumnumber: null,
+      dialogTableVisible: false, //判断是否需要修改密码
+      form: { username: store.state.userInfo.username }, //修改密码的用户信息
+      title: "密码修改",
+      langType: store.state.langType ? store.state.langType : "",
+      // activeIndex: 1,
+      // isRouterAlive: true,
+      // openTab: [
+      //   {
+      //     title: "首页",
+      //     name: "/home", //路由
+      //     closable: false, //首页不可关闭
+      //     componentName: "index", //组件名称用于keepalive缓存
+      //   },
+      // ],
+    };
+  },
+  components: {
+    BellFilled,
+    Dialog,
+  },
+  async mounted() {
+    let nowDate = new Date();
+    let yearOptions = [];
+    for (let i = 2021; i <= nowDate.getFullYear(); i++) {
+      yearOptions.push(i);
+    }
+    store.commit("saveYearOptions", yearOptions);
+    // this.callBPageMethod();
+    await deptList()
+      .then((res) => {
+        if (res.data.code == 0) {
+          store.commit("deptList", res.data.data);
+          // console.log("部门列表", store.state.deptList);
+          store.commit("saveDeptOptions", res.data.data);
+        }
+      })
+      .catch(() => {
+        ElMessage.error("请求失败");
+      });
+
+    // if (store.state.role !== "ROOT") {
+    // await getEventNumber()
+    //   .then((res) => {
+    //     if (res.data.code == 0) {
+    //       // console.log(res.data.data);
+    //       this.number = res.data.data.uncompletedEventNumber;
+    //     }
+    //     store.commit("changeNumber", this.number);
+    //     // store.commit("changeValueResult", res.data.data.result);
+    //     // console.log(this.number);
+    //   })
+    //   .catch(() => {
+    //     ElMessage.error("请求失败");
+    //   });
+    // selectPerformanceInfo().then((res) => {
+    //   if (res.data.code == 0) {
+    //     this.sumnumber = res.data.data.uncompletedEventNumber;
+    //   }
+    //   store.commit("changeNumber2", this.sumnumber);
+    //   // console.log(this.sumnumber);
+    // });
+    // }
+  },
+  // watch: {
+  //   $route(to) {
+  //     console.log(to);
+  //     //当路由更新进行tab切换
+  //     var flag = false;
+  //     // 当前页面菜单已打开,直接切换过去
+  //     if (this.openTab) {
+  //       for (let i = 0; i < this.openTab.length; i++) {
+  //         if (to.path == this.openTab[i].name || to.path.includes(this.openTab[i].name)) {
+  //           //openTab中已存在？
+  //           this.activeIndex = this.openTab[i].name;
+  //           flag = true;
+  //           break;
+  //         }
+  //       }
+  //     }
+
+  //     // 打开新的页面tab
+  //     if (!flag) {
+  //       let obj = {
+  //         title: to.meta.info,
+  //         name: to.path,
+  //         closable: true,
+  //         componentName: to.matched[1].components.default.name, //路由只缓存到第1层，更深层的视图不考虑
+  //       };
+  //       this.activeIndex = to.path;
+  //       this.openTab.push(obj);
+  //     }
+  //   },
+  // },
+  methods: {
+    //切换语言
+    changLangType(type) {
+      store.commit("changeLangType", type);
+      this.$i18n.locale = type;
+      console.log(i18n.global.t("home"));
+    },
+    //退出登录
+    doLogout() {
+      ElMessageBox.confirm("确定退出系统吗？", "提示", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+      })
+        .then(() => {
+          localStorage.removeItem("userId");
+          localStorage.removeItem("token");
+          localStorage.clear();
+          window.location.reload();
+          logout();
+        })
+        .catch(() => {
+          ElMessage({
+            type: "info",
+            message: "取消退出",
+          });
+        });
+    },
+    getBreadList() {
+      let currentPath = this.$route.path;
+      let routes = this.$router.options.routes[3].children;
+      // console.log(currentPath, routes);
+      return this.breadListSearch(routes, currentPath);
+    },
+    breadListSearch(routes, currentPath, breadList) {
+      breadList = breadList || [];
+      breadList = [...breadList];
+      for (let i = routes.length - 1; i >= 0; i--) {
+        if (routes[i].path === currentPath) {
+          // console.log(routes[i]);
+          if (routes[i].meta && routes[i].meta.info)
+            breadList.push({ path: routes[i].path, info: routes[i].meta.info });
+          // console.log(breadList);
+          return breadList;
+        } else {
+          if (routes[i].children != undefined) {
+            const index = routes[i].children.filter((item) => item.path === currentPath);
+            // console.log(index);
+            if (index.meta && index.meta.info) {
+              breadList.push({ path: index.path, info: index.meta.info });
+              // console.log(breadList);
+              return breadList;
+            }
+          }
+
+          // if (routes[i].children != undefined && currentPath.indexOf(routes[i].children.path) === 0) {
+          //   breadList.push({ path: routes[i].path, info: routes[i].meta.info });
+          //   return this.breadListSearch(routes[i].children, currentPath, breadList);
+          // }
+        }
+      }
+    },
+  },
+  // removeTab(target) {
+  //   // 删除的是当前选中的页面
+  //   if (this.activeIndex === target) {
+  //     this.openTab.forEach((item, index) => {
+  //       if (item.name == target) {
+  //         let nextTab = item[index + 1] || item[index - 1];
+  //         if (nextTab) {
+  //           this.activeIndex = nextTab.name;
+  //         }
+  //       }
+  //     });
+  //   }
+  //   var i = 0;
+  //   this.openTab.forEach((item, index) => {
+  //     if (item.name == target) {
+  //       return (i = index);
+  //     }
+  //   });
+  //   this.openTab.splice(i, 1);
+
+  //   // 更新路由
+  //   this.$router.push({ path: this.openTab[this.openTab.length - 1].name });
+  // },
+
+  // clickTab(tab) {
+  //   this.activeIndex = tab.paneName;
+  //   this.$router.push({ path: this.activeIndex });
+  // },
+};
+</script>
+<style scoped lang="scss">
+.example-showcase .el-dropdown-link {
+  cursor: pointer;
+  color: var(--el-color-primary);
+  display: flex;
+  align-items: center;
+}
+.headerUser {
+  width: 100vw;
+  height: 3.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  .bellIcon {
+    height: 3.75rem;
+    padding-right: 1rem;
+    position: relative;
+  }
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  width: 80px;
+  justify-content: space-between;
+  .redPoint {
+    width: 1rem;
+    height: 1.1rem;
+    background-color: red;
+    border-radius: 50%;
+    z-index: 1;
+    position: absolute;
+    margin-top: 0.6rem;
+    margin-left: 0.6rem;
+    font-size: 13px;
+    color: aliceblue;
+  }
+}
+.demo-tabs > .el-tabs__content {
+  padding: 32px;
+  color: #6b778c;
+  font-size: 32px;
+  font-weight: 600;
+}
+</style>

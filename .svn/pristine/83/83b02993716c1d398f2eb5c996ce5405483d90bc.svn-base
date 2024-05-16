@@ -1,0 +1,1322 @@
+<template>
+  <el-tabs type="border-card" v-model="activeName" class="demo-tabs">
+    <!-- 事件 -->
+    <el-tab-pane name="event">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 20px; overflow: hidden">
+        <div style="display: flex">
+          <el-tooltip content="下载文件的第一张工作表数据为空" placement="bottom" effect="light">
+            <el-button @click="downloadExcel">下载空模板</el-button>
+          </el-tooltip>
+          <el-tooltip
+            content="下载文件的第一张工作表数据仅是上一个月的数据，若有新员工/新指标添加的话请手动新增数据。"
+            placement="bottom"
+            effect="light"
+          >
+            <el-button @click="downloadLastMonthExcel">下载上个月模板</el-button>
+          </el-tooltip>
+        </div>
+        <div>
+          <el-tooltip content="新增事件" placement="top" effect="light">
+            <el-button circle type="success" @click="isModel = true">
+              <el-icon><Plus /></el-icon>
+            </el-button>
+          </el-tooltip>
+          <el-tooltip content="刷新事件列表" placement="top" effect="light">
+            <el-button circle type="primary" @click="getEventList">
+              <el-icon><Refresh /></el-icon>
+            </el-button>
+          </el-tooltip>
+
+          <el-tooltip content="删除事件" placement="top" effect="light">
+            <el-button circle type="danger" @click="deleteEvent()">
+              <el-icon><Delete /></el-icon>
+            </el-button>
+          </el-tooltip>
+          <el-tooltip
+            content="查看参与人对比名单"
+            placement="top"
+            effect="light"
+            v-if="surplusNameList.length > 0 || surplusUserSselectName.length > 0"
+          >
+            <el-button circle type="info" @click="isPublish = true">
+              <el-icon><calendar /></el-icon>
+            </el-button>
+          </el-tooltip>
+          <el-tooltip content="发布事件" placement="top" effect="light">
+            <el-button circle type="warning" @click="createEvent">
+              <el-icon><Position /></el-icon>
+            </el-button>
+          </el-tooltip>
+        </div>
+      </div>
+
+      <template #label>
+        <span class="custom-tabs-label">
+          <el-icon><calendar /></el-icon>
+          <span>事件</span>
+        </span>
+      </template>
+      <el-table
+        border
+        stripe
+        class="table-style"
+        :data="eventTableData"
+        @expand-change="selectModel"
+        height="70vh"
+        style="width: 100%"
+        ref="selectTable"
+        @select="selectCur"
+      >
+        <el-table-column type="selection" width="55" :selectable="selectEnable" />
+        <el-table-column type="expand" label="详情" width="55">
+          <template #default="scope">
+            <div style="display: flex; margin-left: 110px">
+              <div style="width: 50%; padding: 10px">
+                <el-card shadow="hover">
+                  <template #header>
+                    <div class="card-header">
+                      <span>价值观设置</span>
+                    </div>
+                  </template>
+
+                  <el-table
+                    v-if="selectModelList[scope.row.eventId]"
+                    :data="selectModelList[scope.row.eventId].list"
+                    :header-cell-style="{ 'text-align': 'center' }"
+                    :cell-style="{ 'text-align': 'center' }"
+                  >
+                    <el-table-column label="模板名称" prop="templateName"></el-table-column>
+                    <el-table-column label="操作">
+                      <template #default="scope">
+                        <el-button
+                          type="primary"
+                          size="small"
+                          round
+                          plain
+                          @click="approvalSetting(scope.row)"
+                          v-if="scope.row.currentTimePublishState == false"
+                        >
+                          设置
+                        </el-button>
+                        <el-tooltip
+                          placement="top"
+                          content="该事件本月已发布过，不可重复设置参数。"
+                          v-if="scope.row.currentTimePublishState == true"
+                        >
+                          <!-- <template #reference> -->
+                          <el-button type="info" size="small" round plain>设置</el-button>
+                          <!-- </template> -->
+                        </el-tooltip>
+                      </template>
+                    </el-table-column>
+                    <el-table-column label="状态">
+                      <template #default="scope">
+                        <el-tag v-if="scope.row.completeSetup == true">已完成设置</el-tag>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                </el-card>
+              </div>
+              <div style="width: 50%; padding: 10px">
+                <el-card shadow="hover">
+                  <template #header>
+                    <div class="card-header">
+                      <span>业绩设置</span>
+                    </div>
+                  </template>
+                  <div style="display: flex; justify-content: space-around">
+                    <el-tooltip
+                      content="该事件本月已发布过，不可重复上传文件"
+                      placement="top"
+                      v-if="scope.row.currentTimePublishState == true"
+                    >
+                      <el-button type="info">上传文件</el-button>
+                    </el-tooltip>
+                    <el-upload
+                      v-else
+                      v-model="scope.row"
+                      class="upload-demo"
+                      action="#"
+                      accept=".xlsx,.xls"
+                      :on-preview="handlePreview"
+                      :on-remove="handleRemove"
+                      :before-upload="beforeUpload"
+                      :before-remove="beforeRemove"
+                      :limit="1"
+                      :on-exceed="handleExceed"
+                      :on-change="loadFile"
+                      :http-request="uploadHttpRequest"
+                    >
+                      <el-button type="primary" @click="getScopeRow(scope.row)">上传文件</el-button>
+                      <!-- <template #tip>
+          <div class="el-upload__tip">只能上传Excel文件，后缀是xlsx/xls。</div>
+        </template> -->
+                    </el-upload>
+                    <el-button
+                      @click="changeData(scope.row)"
+                      v-if="targetListData[scope.row.eventId] && targetListData[scope.row.eventId].length > 0"
+                    >
+                      预览
+                    </el-button>
+                  </div>
+                  <el-table :data="targetName[scope.row.eventId]" v-if="targetName[scope.row.eventId]">
+                    <el-table-column label="业绩名称" prop="name"></el-table-column>
+                    <el-table-column label="操作">
+                      <el-button type="primary" size="small" round plain @click="targetApproval()">
+                        设置审批流程
+                      </el-button>
+                    </el-table-column>
+                  </el-table>
+                </el-card>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
+        <!-- <el-table-column label="ID" prop="eventId" width="55"></el-table-column> -->
+        <el-table-column label="事件名称" prop="eventName"></el-table-column>
+        <!-- <el-table-column label="描述" prop="description"></el-table-column> -->
+        <el-table-column label="是否使用">
+          <template #default="scope">
+            <span v-if="!scope.row.state" style="color: #67c23a">未使用</span>
+            <span v-else style="color: #f56c6c">使用中</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="状态">
+          <template #default="scope">
+            <span v-if="scope.row.currentTimePublishState" style="color: #67c23a">本月已发布</span>
+            <span v-else style="color: #f56c6c">本月未设置</span>
+          </template>
+        </el-table-column>
+      </el-table>
+      <!-- <div style="margin-top: 20px">
+        <el-button @click="createEvent">发布</el-button>
+        <el-button @click="getEventList">刷新</el-button>
+        <el-button @click="deleteEvent">删除</el-button>
+        <el-button @click="isModel = true">新增事件</el-button>
+      </div> -->
+    </el-tab-pane>
+    <!-- 选择模板创建事件 -->
+    <el-dialog v-model="isModel" title="选择模板" width="60%">
+      <el-table
+        border
+        stripe
+        :data="modelTableData"
+        @selection-change="handleSelectionChange"
+        @expand-change="selectValue"
+        style="height: 25rem"
+        ref="multipleModel"
+      >
+        <el-table-column type="selection" width="55" />
+        <!-- <el-table-column type="expand" width="55">
+          <template #default="scope">
+            <el-table
+              v-if="selectValueList[scope.row.templateId]"
+              :data="selectValueList[scope.row.templateId].list"
+              height="15rem"
+            >
+              <el-table-column label="价值观名称" prop="valueDescription"></el-table-column>
+            </el-table>
+          </template>
+        </el-table-column> -->
+
+        <el-table-column label="模板名称" prop="templateName"></el-table-column>
+        <el-table-column label="是否使用">
+          <template #default="scope">
+            <span v-if="scope.row.useState == 0" style="color: #67c23a">未使用</span>
+            <span v-if="scope.row.useState == 1" style="color: #f56c6c">使用中</span>
+          </template>
+        </el-table-column>
+      </el-table>
+      <div style="margin-top: 1rem; text-align: right">
+        <el-button type="info" plain @click="isModel = false">取消</el-button>
+        <el-button type="success" plain @click="sureCreateAction">确定</el-button>
+      </div>
+    </el-dialog>
+  </el-tabs>
+  <ApprovalView
+    v-if="dialogApproval"
+    v-model:dialogApproval="dialogApproval"
+    :modelData="modelData"
+    @approvalData="approvalData"
+  />
+  <!-- 创建事件的窗口 -->
+  <el-dialog v-model="dialogVisible" title="事件名称">
+    <el-input v-model="valueTitle" style="width: 25rem"></el-input>
+    <div style="margin-top: 20px; text-align: right">
+      <el-button @click="dialogVisible = false">取消</el-button>
+      <el-button @click="create">确定</el-button>
+    </div>
+  </el-dialog>
+
+  <!-- 预览文件的弹窗 -->
+  <el-dialog v-model="isExcelShow" title="预览文件" :eventId="eventId">
+    <el-table
+      border
+      height="40vh"
+      v-if="targetListData[eventId] && targetListData[eventId][0]"
+      :data="targetListData[eventId][0]"
+    >
+      <el-table-column label="姓名">
+        <template #default="scope">
+          <span>{{ scope.row[0] }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="所属部门">
+        <template #default="scope">
+          <span>{{ scope.row["deptName"] }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="指标名称">
+        <template #default="scope">
+          <span>{{ scope.row[1] }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="指标应达成率">
+        <template #default="scope">
+          <span>{{ scope.row[2] }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="权重">
+        <template #default="scope">
+          <span>{{ scope.row["weight"] }}</span>
+        </template>
+      </el-table-column>
+    </el-table>
+    <div style="margin-top: 20px; text-align: right">
+      <el-button @click="isExcelShow = false">确定</el-button>
+    </div>
+  </el-dialog>
+  <!-- 业绩设置参数的弹窗 -->
+  <el-dialog v-model="isTargetShow" title="业绩审批流程">
+    <el-table :data="deptNameList">
+      <el-table-column label="部门名称" prop="deptName"></el-table-column>
+      <el-table-column label="选择审批流程">
+        <template #default="scope">
+          <el-select v-model="scope.row.performanceFlowId" placeholder="请选择审批流程" size="small">
+            <el-option
+              v-for="item in transformed"
+              :key="item"
+              :label="item.performancename"
+              :value="item.performanceFlowId"
+            />
+          </el-select>
+        </template>
+      </el-table-column>
+      <el-table-column label="业绩审批流程" width="200px">
+        <template #default="scope">
+          <div v-for="item in transformed" :key="item">
+            <span v-for="(value, key, index) in item" :key="index">
+              <span v-if="item.performanceFlowId === scope.row.performanceFlowId && key.startsWith('name')">
+                {{ value }}
+                -->
+              </span>
+            </span>
+          </div>
+        </template>
+      </el-table-column>
+    </el-table>
+    <div style="margin-top: 20px; text-align: right">
+      <el-button @click="selectPerformance">确定</el-button>
+    </div>
+  </el-dialog>
+  <!-- 参与人对比名单 -->
+  <el-dialog v-model="isPublish" title="参与人数据不匹配" @close="handleClose" style="width: 700px">
+    <div
+      style="margin-bottom: 10px; font-size: 12px; color: red"
+      v-if="nameList.length > 0 || userSelectName.length > 0"
+    >
+      请重新选择价值观参与人或修改excel文件,价值观考核参与人与业绩考核参与人必须一致，否则发布失败。
+    </div>
+    <div
+      style="display: flex; justify-content: space-between; width: 600px"
+      v-if="nameList.length > 0 && userSelectName.length > 0"
+    >
+      <el-table :data="nameList" border>
+        <el-table-column prop="name" label="未参与价值观考核人员" width="200"></el-table-column>
+      </el-table>
+      <div style="width: 100px"></div>
+      <el-table :data="userSelectName">
+        <el-table-column prop="name" label="未参与业绩考核人员" width="200"></el-table-column>
+      </el-table>
+    </div>
+    <div style="margin: 10px 0; font-size: 12px; color: #e6a23c">
+      以下人员未参与本次事件任务考核，请确认名单，人员不影响本次发布。
+    </div>
+    <div style="display: flex; justify-content: space-between; width: 600px">
+      <el-table :data="surplusNameList" height="40vh" border>
+        <el-table-column prop="name" label="未参与价值观考核剩余人员" width="200"></el-table-column>
+      </el-table>
+      <div style="width: 100px"></div>
+      <el-table :data="surplusUserSselectName" height="40vh">
+        <el-table-column prop="name" label="未参与业绩考核剩余人员" width="200"></el-table-column>
+      </el-table>
+    </div>
+
+    <div style="margin-top: 20px; text-align: right">
+      <el-button @click="handelClose">确定</el-button>
+    </div>
+  </el-dialog>
+  <!-- 权重不为100的人 -->
+  <el-dialog v-model="isWeightEqual" title="权重总和数据不匹配名单">
+    <div style="margin-bottom: 10px; font-size: 12px; color: red">
+      单个人员配置的权重之和必须为100%，请修改Excel文件重新上传。
+    </div>
+    <el-table :data="weightData">
+      <el-table-column label="姓名" prop="0"></el-table-column>
+      <el-table-column label="权重" prop="weight"></el-table-column>
+    </el-table>
+    <div style="margin-top: 10px; text-align: right">
+      <el-button @click="isWeightEqual = false">确定</el-button>
+    </div>
+  </el-dialog>
+</template>
+
+<script>
+import { getEvent, createEvent, deleteEvent, getEventDetil, releaseEvent, getModel } from "@/api/values/index";
+import ApprovalView from "../values/ApprovalView.vue";
+import { ElMessage, ElMessageBox, ElTooltip } from "element-plus";
+import { deptList } from "@/api/register/index";
+import { getPerformanceFlow, downloadExcel, downloadLastMonthExcel } from "@/api/performance/index";
+// import store from "@/store";
+import { Calendar, Refresh, Delete, Plus, Position } from "@element-plus/icons-vue";
+// import axios from "axios";
+import XLSX from "xlsx";
+
+export default {
+  components: {
+    Calendar,
+    ApprovalView,
+    Refresh,
+    Delete,
+    Plus,
+    Position,
+    ElTooltip,
+  },
+  data() {
+    return {
+      multipleSelection: [], //每个页面多选的数据
+      userSelection: [], //参与人的数据
+      multipleSelectionTarget: [], //业绩多选的数据
+      title: "",
+      dialogVisible: false, //控制创建事件
+      dialogApproval: false, //控制审批设置按钮
+      // userApproval: false, //控制某人的审批流程的弹窗
+      isTargetShow: false, //控制业绩设置参数弹窗
+      // performanceApproval: false, //控制业绩审批进度的弹窗
+
+      isModel: false, //控制选择模板的弹窗
+      isExcelShow: false, //控制excel文件预览的弹窗
+      isPublish: false, //发布前的参与人对比的弹窗
+
+      valueTitle: "", //价值观标题
+      activeName: "event",
+
+      eventTableData: [], //表格展示的内容
+      // eventHistoryTableData: [],
+
+      deptOptions: [], //部门下拉选择的数据
+      userListData: [], //返回未参与过事件的人
+      userSelectName: [], //价值观选择参与的人的名字,用来和业绩参与人做对比
+      nameList: [], //业绩excel文档的参与人
+      name: "", //查询的姓名
+      deptName: "", //查询的部门名字
+
+      selectActionList: {}, //展开的详情
+      selectValueList: {},
+      selectModelList: {},
+
+      otherModelData: [], //查询当前用户参与的模板
+      valueDetil: {}, //价值观所有详情
+      modelDetil: {},
+      eventDetil: {},
+      modelData: {}, //向设置弹窗传当前模板信息
+      eventReleaseData: {}, //事件发布的数据
+      tempList: [], //审批返回的测试数据
+      // joinUserList: [], //发布历史某事件参与的人
+      // targetJoinUserList: [], //业绩参与的人
+      // year: "", //查询历史某人的年
+      // month: "", //月
+
+      // activities: [], //价值观审批时间线的数据
+      // currentName: "", //发布历史价值观当前人的进度的名字
+      // performanceActivities: [], //业绩审批时间线
+      // currentPerformanceName: "", //业绩当前人进度的名字
+
+      uploadFile: "", //excel文件的数据
+      targetListData: [], //excel文件处理好的数据，可直接在表中展示
+      targetName: [], //模板下面详情的业绩设置
+      transformed: [], //业绩审批弹窗的审批流程
+      scope: { row: null },
+      eventId: 0,
+      deptNameList: [], //业绩审批的部门
+
+      excelDataAllUser: [], //文件上传中工作表2的所有员工
+      surplusNameList: [], //业绩剩余的人
+      surplusUserSselectName: [], //价值观剩余的人
+
+      isWeightEqual: false, //控制权重的弹窗
+      weightData: [],
+    };
+  },
+  mounted() {
+    // console.log(process.env.NODE_ENV);
+    this.getModelList();
+    this.getEventList();
+    this.getEventDetil();
+    deptList()
+      .then((res) => {
+        if (res.data.code == 0) {
+          this.deptOptions = res.data.data;
+        }
+      })
+      .catch(() => {
+        ElMessage.error("请求失败");
+      });
+  },
+  methods: {
+    getModelList() {
+      getModel()
+        .then((res) => {
+          if (res.data && res.data.code == 0) {
+            // console.log(res, 11111111);
+            // this.getModelDetil();
+            this.modelTableData = res.data.data;
+            this.modelTableData.sort(function (a, b) {
+              return b.templateId - a.templateId;
+            });
+            // console.log(res.data.data);
+          }
+        })
+        .catch((err) => {
+          console.log(err, 22222);
+        });
+    },
+    // getModelDetil() {
+    //   getModelDetil()
+    //     .then((res) => {
+    //       if (res.data.code == 0) {
+    //         this.modelDetil = res.data.data;
+    //       }
+    //     })
+    //     .catch(() => {
+    //       ElMessage.error("请求失败");
+    //     });
+    // },
+    //查询模板里的价值观详情
+    // selectValue(row) {
+    //   // console.log(this.modelDetil, row);
+    //   if (this.modelDetil) {
+    //     const tableData = this.modelDetil.filter((item) => item.templateid == row.templateId);
+    //     // console.log(tableData);
+    //     let result = tableData.reduce((acc, curr) => {
+    //       if (!acc[curr.templateid]) {
+    //         acc[curr.templateid] = {
+    //           list: [],
+    //         };
+    //       }
+    //       acc[curr.templateid].list.push({ valueId: curr.valueId, valueDescription: curr.valueDescription });
+    //       return acc;
+    //     }, {});
+    //     //每点击一次将新的数据存入对象中，确保每一次的数据不会替换
+    //     for (let key in result) {
+    //       this.selectValueList[key] = result[key];
+    //     }
+    //   }
+
+    // console.log(this.selectValueList);
+    // console.log(result);
+    // },
+    getEventList() {
+      getEvent()
+        .then((res) => {
+          if (res.data.code == 0) {
+            this.getEventDetil();
+            this.eventTableData = res.data.data;
+            this.eventTableData.sort(function (a, b) {
+              return b.eventId - a.eventId;
+            });
+            this.multipleSelection = [];
+            // console.log(res.data.data);
+          }
+        })
+        .catch(() => {
+          ElMessage.error("请求失败");
+        });
+    },
+    // getEventHistory() {
+    //   getEventHistory()
+    //     .then((res) => {
+    //       if (res.data.code == 0) {
+    //         // console.log(res.data.data);
+    //         this.eventHistoryTableData = res.data.data;
+    //       } else {
+    //         ElMessage.error(res.data.message);
+    //       }
+    //     })
+    //     .catch(() => {
+    //       ElMessage.error("请求失败");
+    //     });
+    // },
+
+    getEventDetil() {
+      getEventDetil()
+        .then((res) => {
+          if (res.data.code == 0) {
+            this.eventDetil = res.data.data;
+          }
+        })
+        .catch(() => {
+          ElMessage.error("请求失败");
+        });
+    },
+    toggleSelection() {
+      // this.$refs.multipleAction.clearSelection();
+      console.log("已清除多选");
+      // this.$refs.multipleValue.clearSelection();
+      this.$refs.multipleModel.clearSelection();
+    },
+    //多选的结果
+    handleSelectionChange(val) {
+      this.multipleSelection = val;
+      console.log(this.multipleSelection);
+    },
+    handleSelectionTarget(val) {
+      this.multipleSelectionTarget = val;
+      console.log(this.multipleSelectionTarget);
+    },
+    //val是选中的所有行，row是当前行，多选变单选
+    selectCur(val, row) {
+      // console.log(val, "val");
+      // console.log(row, "row");
+      this.$refs.selectTable.clearSelection();
+      this.$refs.selectTable.toggleRowSelection(row, true);
+      this.multipleSelection = row;
+      console.log(this.multipleSelection);
+      console.log(this.multipleSelection.eventId);
+    },
+
+    async create() {
+      //创建事件
+      if (this.activeName == "event") {
+        if (this.valueTitle !== null && this.valueTitle.split(" ").join("").length !== 0) {
+          // 选中的所有模板id
+          const modelId = this.multipleSelection.map((item) => {
+            return item.templateId;
+          });
+          // 向后端返回的参数
+          const modelList = {
+            tempIdList: modelId,
+            eventName: this.valueTitle,
+            // templateUserDataList: templateUserDataList,
+            // userIdList: userIdList,
+          };
+          await createEvent(modelList);
+          this.toggleSelection();
+          this.valueTitle = "";
+          this.dialogVisible = false;
+          this.isModel = false;
+          console.log(this.isModel);
+          // this.activeName = "history";
+          this.getEventList();
+        } else {
+          ElMessage.error("请输入事件标题");
+        }
+      }
+    },
+    deleteEvent() {
+      if (this.multipleSelection.eventId != null) {
+        ElMessageBox.confirm("确定删除此事件吗?", "提示", {
+          confirmButtonText: "确认",
+          cancelButtonText: "取消",
+          type: "warning",
+        })
+          .then(() => {
+            console.log(this.multipleSelection);
+
+            const eventId = [this.multipleSelection].map((item) => {
+              return item.eventId;
+            });
+
+            const eventIds = { eventIds: eventId };
+            console.log(eventId);
+            deleteEvent(eventIds).then(() => {
+              this.getEventList();
+            });
+          })
+          .catch(() => {
+            ElMessage.info("取消删除");
+          });
+      } else {
+        ElMessage.error("请选择需要删除的事件");
+      }
+    },
+    //查询事件下的模板
+    selectModel(row) {
+      if (row.eventId) {
+        const tableData = this.eventDetil.filter((item) => item.eventId == row.eventId);
+        // 展开的内容
+        let result = tableData.reduce((acc, curr) => {
+          if (!acc[curr.eventId]) {
+            acc[curr.eventId] = {
+              list: [],
+            };
+          }
+          acc[curr.eventId].list.push({
+            eventId: curr.eventId,
+            templateId: curr.templateId,
+            templateName: curr.templateName,
+            currentTimePublishState: curr.currentTimePublishState,
+          });
+          return acc;
+        }, {});
+        //每点击一次将新的数据存入对象中，确保每一次的数据不会替换
+        for (let key in result) {
+          this.selectModelList[key] = result[key];
+        }
+      } else {
+        ElMessage.error("暂无数据");
+      }
+    },
+    //打开审批设置的弹窗
+    approvalSetting(row) {
+      console.log(row);
+      if (!row.state) {
+        this.dialogApproval = true;
+        this.modelData = row;
+      }
+      console.log(this.dialogApproval);
+      console.log(row.eventId.toString() + row.templateId + "$");
+    },
+    //设置参数传回的数据
+    approvalData(val) {
+      // console.log(val);
+      // if (!this.tempList.includes(val)) {
+      //   this.tempList.push(val);
+      // }
+      let index = this.tempList.findIndex((item) => item.templateId === val.templateId);
+      if (index !== -1) {
+        this.tempList[index] = val;
+      } else {
+        this.tempList.push(val);
+      }
+      console.log(this.tempList);
+
+      this.tempList.map((item) => {
+        // console.log(item.templateId);
+        // console.log(this.selectModelList[this.modelData.eventId].list);
+        const data = this.selectModelList[this.modelData.eventId].list.filter(
+          (item1) => item1.templateId == item.templateId,
+        );
+        // console.log(data);
+        if (data[0]) {
+          data[0].completeSetup = true;
+        }
+      });
+
+      // if (this.selectModelList[this.modelData.eventId].list.every((item) => item.completeSetup == true)) {
+      //   const data = this.eventTableData.filter((item) => item.eventId == this.modelData.eventId);
+
+      //   data[0].isCanUpload = true;
+      //   // console.log(data[0]);
+      //   // console.log(this.eventTableData);
+      // }
+
+      //模板和审批流程对应的数据
+      const tempDataList = this.tempList.map((item) => {
+        return {
+          hrFlowId: item.hrFlowId,
+          deptFlowId: item.deptFlowId,
+          templateId: item.templateId,
+          templateName: item.templateName,
+          userIdList: item.userIdList,
+          deptFlowIsCustom: item.deptFlowIsCustom,
+          hrFlowIsCustom: item.hrFlowIsCustom,
+          userSequenceInHrFlowList: item.hrFlowIsCustom ? item.userSequenceInHrFlowList : [],
+          userSequenceInDeptFlowList: item.deptFlowIsCustom ? item.userSequenceInDeptFlowList : [],
+        };
+      });
+      // console.log(tempDataList);
+      // 参与事件的所有用户id
+      const userIdList = [];
+      this.tempList.map((item) => {
+        if (item.userIdList.length > 0) {
+          item.userIdList.map((id) => {
+            userIdList.push(id);
+          });
+        } else {
+          ElMessage.error("参与人为空");
+        }
+      });
+      console.log(userIdList);
+      //参与事件所有人的名字
+      // this.userSelectName = this.tempList[0].userSelectName;
+      // console.log(this.userSelectName);
+
+      // 模板对应的审批流程
+      const flowList = this.tempList.map((item) => {
+        return {
+          hrFlowId: item.hrFlowId,
+          deptFlowId: item.deptFlowId,
+          templateId: item.templateId,
+        };
+      });
+      // console.log(flowList);
+      //发布事件审批人拼接的数据
+      let deptFlow = "";
+      this.tempList.map((item) => {
+        deptFlow += item.deptList.deptUserName1 + "," + item.deptList.deptUserName2 + "_,_";
+      });
+      // console.log(deptFlow);
+      let hrFlow = "";
+      this.tempList.map((item) => {
+        hrFlow += item.hrList.hrUserName1 + "," + item.hrList.hrUserName2 + "_,_";
+      });
+      let templateName = "";
+      this.tempList.map((item) => {
+        templateName += item.templateName;
+      });
+      const eventHistoryPo = {
+        deptFlow: deptFlow.slice(0, -3),
+        hrFlow: hrFlow.slice(0, -3),
+        useTemplateName: templateName,
+      };
+      // console.log(eventHistoryPo);
+
+      const data = {
+        templateUserDataList: tempDataList,
+        flowToTemplateList: flowList,
+        userIdList: userIdList,
+        eventHistoryPo: eventHistoryPo,
+      };
+      this.eventReleaseData = data;
+      console.log(this.eventReleaseData);
+      // this.eventReleaseData = val;
+    },
+
+    //事件多选框禁用
+    selectEnable(row) {
+      // console.log(row);
+      if (!row.currentTimePublishState) {
+        return true;
+      }
+    },
+    sureCreateAction() {
+      if (this.multipleSelection.length > 0) {
+        this.dialogVisible = true;
+      } else {
+        if (this.activeName == "event") {
+          ElMessage.error("请选择模板");
+        }
+      }
+    },
+    //下载excel模板
+    downloadExcel() {
+      downloadExcel();
+    },
+    downloadLastMonthExcel() {
+      downloadLastMonthExcel();
+    },
+    //获取业绩设置当前行的数据
+    getScopeRow(row) {
+      // console.log(row);
+      this.scope.row = row;
+      this.eventId = row.eventId;
+      // console.log(this.scope.row);
+    },
+    changeData(row) {
+      this.isExcelShow = true;
+      this.eventId = row.eventId;
+    },
+    //excel
+    uploadHttpRequest(data) {
+      console.log(data);
+    },
+    loadFile(file) {
+      console.log(file);
+
+      // console.log(this.scope.row);
+
+      if (file) {
+        this.uploadFile = file.raw;
+        const reader = new FileReader();
+        reader.readAsBinaryString(this.uploadFile);
+
+        reader.onload = (ev) => {
+          try {
+            const f = ev.target.result;
+            const workbook = XLSX.read(f, { type: "binary" });
+            const wsname = workbook.SheetNames[0];
+            this.targetName[this.scope.row.eventId] = [{ name: wsname }];
+
+            let excelData = [];
+            for (let i = 0; i < workbook.SheetNames.length; i++) {
+              const worksheet = workbook.Sheets[workbook.SheetNames[i]];
+              // 将sheet转换为json数组
+              const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+              excelData.push(jsonData);
+            }
+            // console.log(excelData[1]);
+            this.excelDataAllUser = excelData[1].map((item) => {
+              return { name: item[1], userId: item[0] };
+            });
+            this.excelDataAllUser.splice(0, 1);
+            console.log(this.excelDataAllUser);
+
+            let useridList = excelData[0].map((item) => {
+              //userid
+              const idList = excelData[1].find((item1) => item1[1] == item[0]);
+              //指标id
+              const targetidList = excelData[2].find((item1) => item1[1] == item[1]);
+
+              if (item[2] == undefined) {
+                ElMessageBox.alert("姓名为：" + item[0] + "的指标应达成率存在空值,该行数据将被移除。", "警告", {
+                  confirmButtonText: "确定",
+                  type: "warning",
+                });
+              } else {
+                return Object.assign(
+                  {},
+                  item,
+                  { userId: idList ? idList[0] : null },
+                  { deptId: idList ? idList[2] : null },
+                  { deptName: idList ? idList[3] : null },
+                  { targetId: targetidList ? targetidList[0] : null },
+                  { deliverableRate: item[2] },
+                  { weight: item[3] },
+                );
+              }
+            });
+
+            //指标应达成率是空的话，item都是undefined
+            useridList.map((item, index) => {
+              // console.log(item);
+              if (item == undefined) {
+                useridList.splice(index, 1);
+              }
+            });
+            useridList.splice(0, 1);
+
+            console.log(useridList);
+            // console.log(useridListWeight);
+
+            // weightNotEqualToOneHundred.forEach((item) => {
+            //   ElMessageBox.alert("姓名为：" + item[0] + "的权重总和不为100%，请检查", "警告", {
+            //     confirmButtonText: "确定",
+            //     type: "warning",
+            //   });
+            //   console.log(`userId: ${item.userId}, name: ${item[0]}, weight: ${item.weight}`);
+            // });
+
+            //业绩参与的人
+            useridList.map((item) => {
+              // this.nameList.push(item[0]);
+              // console.log(this.nameList);
+
+              if (item[0] !== undefined && item[1] !== undefined) {
+                return true;
+              } else {
+                ElMessageBox.alert("姓名为：" + item[0] + "的数据存在错误,该行数据将被移除。", "警告", {
+                  confirmButtonText: "确定",
+                  type: "warning",
+                });
+                console.log("chucuol");
+              }
+            });
+
+            if (!this.targetListData[this.eventId]) {
+              this.targetListData[this.eventId] = [];
+            }
+            this.targetListData[this.eventId].push(useridList);
+            // this.targetListData[this.eventId] = { ...useridList };
+
+            // console.log(this.targetListData);
+            let uniqueDeptNames = this.targetListData[this.eventId][0].map((item) => ({ deptName: item.deptName }));
+            console.log(uniqueDeptNames);
+            this.deptNameList = [...new Set(uniqueDeptNames.map((item) => item.deptName))].map((deptName) => ({
+              deptName,
+            }));
+            console.log(this.deptNameList);
+
+            //权重值
+            // const useridListWeight = [...useridList];
+            const _ = require("lodash");
+
+            let useridListWeight = _.cloneDeep(useridList);
+
+            let result = useridListWeight.reduce((acc, item) => {
+              let tempItem = acc.find((user) => user.userId === item.userId);
+              if (tempItem) {
+                tempItem.weight += item.weight;
+              } else {
+                acc.push(item);
+              }
+              return acc;
+            }, []);
+            // console.log(result);
+            let weightNotEqualToOneHundred = result.filter((item) => item.weight !== 100);
+            // console.log(weightNotEqualToOneHundred);
+            // console.log(this.targetListData);
+            if (weightNotEqualToOneHundred.length > 0) {
+              this.isWeightEqual = true;
+              this.weightData = weightNotEqualToOneHundred;
+            } else {
+              this.weightData = weightNotEqualToOneHundred;
+            }
+            console.log(this.weightData);
+          } catch (e) {
+            console.log(e);
+            ElMessage.error("文件数据存在错误");
+          }
+        };
+      }
+    },
+    //删除excel文件清空数据
+    handleRemove(file) {
+      console.log(file);
+      this.uploadFile = "";
+      this.targetListData = [];
+      this.nameList = [];
+      console.log(this.targetListData);
+    },
+    //业绩弹窗的审批流程
+    targetApproval() {
+      this.isTargetShow = true;
+
+      getPerformanceFlow()
+        .then((res) => {
+          if (res.data && res.data.code == 0) {
+            let targetList = [];
+            Object.values(res.data.data).map((item) => {
+              targetList.push(item);
+            });
+            const transformed = {};
+            targetList.forEach((item) => {
+              item.map((item1) => {
+                const { performanceFlowId, performancename, useState, name, sequence } = item1;
+                if (!transformed[performancename]) {
+                  transformed[performancename] = {
+                    performanceFlowId,
+                    performancename,
+                    useState,
+                  };
+                }
+
+                transformed[performancename]["name" + sequence] = name;
+              });
+              console.log(transformed);
+            });
+            this.transformed = Object.values(transformed);
+            this.transformed = [...this.transformed];
+          }
+        })
+        .catch(() => {
+          ElMessage.error("请求失败");
+        });
+    },
+    //判断excel表中设置的部门是否全部设置了审批流程
+    selectPerformance() {
+      const deptNameList = [...new Set(this.targetListData[this.eventId][0].map((item) => item.deptName))];
+      console.log(deptNameList);
+      deptNameList.map((item) => {
+        this.deptNameList.find((item1) => {
+          if (item1.deptName == item) {
+            // return item1.performanceFlowId
+            if (!item1.performanceFlowId) {
+              ElMessage.error(item1.deptName + "未设置审批流程");
+              this.isTargetShow = true;
+            } else {
+              this.isTargetShow = false;
+            }
+          }
+        });
+      });
+    },
+    handelClose() {
+      this.isPublish = false;
+    },
+    //发布事件
+    async createEvent() {
+      // console.log(this.$store.state.approvalData);
+      // console.log(this.multipleSelection.eventId);
+      console.log("发布事件的数据", this.eventReleaseData);
+      // console.log(this.selectModelList[this.multipleSelection.eventId]);
+      // console.log(this.eventReleaseData.templateUserDataList);
+
+      if (this.multipleSelection.eventId == undefined) {
+        ElMessage.error("请选择事件");
+        //整个页面刷新，导致数据丢失，但是存在store中的数据存在
+      } else {
+        const performanceId = this.deptNameList.map((item) => {
+          return item.performanceFlowId;
+        });
+        // console.log(performanceId);
+        console.log(this.targetListData[this.eventId]);
+        if (JSON.stringify(this.eventReleaseData) == "{}") {
+          ElMessage.error("请设置价值观模板参数");
+        } else if (this.targetListData[this.eventId] == undefined) {
+          ElMessage.error("请上传Excel文件");
+        } else if (performanceId.every((item) => item === undefined)) {
+          ElMessage.error("请设置业绩模板参数");
+        } else if (JSON.stringify(this.eventReleaseData) !== "{}" && this.targetListData[this.eventId].length > 0) {
+          console.log("excel解析的数据", this.targetListData[this.eventId][0]);
+          console.log(this.deptNameList);
+
+          //业绩参与的人
+          const nameList = this.targetListData[this.eventId][0].map((item) => {
+            return {
+              name: item[0],
+            };
+          });
+          console.log("业绩参与到人", nameList);
+          console.log(Object.values(this.$store.state.userList.filter((item) => item[this.modelData.eventId])[0]));
+          //价值观参与的人
+          const valueSelectName = Object.values(
+            this.$store.state.userList.filter((item) => item[this.modelData.eventId])[0],
+          );
+          const userSelectName = valueSelectName[0]
+            .filter((item) => item.state == true)
+            .map((item) => {
+              return { name: item.name };
+            });
+          console.log("价值观参与的人", userSelectName);
+
+          //业绩剩余的人
+          console.log(this.excelDataAllUser);
+          // console.log(this.excelDataAllUser.filter((item) => !nameList.map((item) => item.name).includes(item.name)));
+          const surplusNameList = this.excelDataAllUser.filter(
+            (item) => !nameList.map((item) => item.name).includes(item.name),
+          );
+          // console.log(surplusNameList);
+          this.surplusNameList = surplusNameList;
+          this.surplusNameList.sort(function (a, b) {
+            a.userId - b.userId;
+          });
+          //价值观剩余的人
+          const surplusUserSselectName = valueSelectName[0]
+            .filter((item) => item.state == false)
+            .map((item) => {
+              return { name: item.name, userId: item.userId };
+            });
+          // console.log(surplusUserSselectName);
+          this.surplusUserSselectName = surplusUserSselectName;
+          this.surplusUserSselectName.sort(function (a, b) {
+            a.userId - b.userId;
+          });
+
+          //业绩列表的数据
+          // const userToPerformancePoList = this.targetListData[this.eventId][0].map((item) => {
+          //   const matchingItem1 = this.deptOptions.find((item1) => item1.deptId == item.deptId);
+          //   console.log(matchingItem1);
+          //   return {
+          //     userId: item.userId,
+          //     targetId: item.targetId,
+          //     deliverableRate: item.deliverableRate,
+          //     performanceFlowId: matchingItem1 ? matchingItem1.performanceFlowId : null,
+          //   };
+          // });
+          const userToPerformancePoList = this.targetListData[this.eventId][0].map((item) => {
+            const matchingItem1 = this.deptNameList.find((item1) => item1.deptName == item.deptName);
+            console.log(matchingItem1);
+            return {
+              weight: item.weight,
+              userId: item.userId,
+              targetId: item.targetId,
+              deliverableRate: item.deliverableRate,
+              performanceFlowId: matchingItem1 ? matchingItem1.performanceFlowId : null,
+            };
+          });
+          console.log(userToPerformancePoList);
+          //指标列表
+          let useTargetIdList = [];
+          this.targetListData[this.eventId][0].map((item) => {
+            useTargetIdList.push(item.targetId);
+          });
+          // console.log(useTargetIdList);
+          //流程列表
+          let usePerformanceFlowIdList = [];
+          userToPerformancePoList.map((item) => {
+            usePerformanceFlowIdList.push(item.performanceFlowId);
+          });
+          // console.log(usePerformanceFlowIdList);
+
+          //长度不匹配
+          if (
+            this.selectModelList[this.multipleSelection.eventId] == undefined ||
+            this.selectModelList[this.multipleSelection.eventId].list.length !=
+              this.eventReleaseData.templateUserDataList.length
+          ) {
+            //store中存的数据是否完整
+            const filteredData = this.eventReleaseData.templateUserDataList.filter((item1) => {
+              return this.selectModelList[this.multipleSelection.eventId].list
+                .map((item) => {
+                  return item.templateId == item1.templateId;
+                })
+                .includes(true);
+            });
+
+            console.log(filteredData);
+            if (filteredData.length != this.selectModelList[this.multipleSelection.eventId].list.length) {
+              ElMessage.error("价值观模板参数未设置完全");
+            } else if (this.weightData.length > 0) {
+              ElMessage.error("上传Excel文件权重数据存在错误，请更新Excel文件");
+            } else {
+              ElMessageBox.confirm("是否确认发布", "警告", {
+                confirmButtonText: "确认",
+                cancelButtonText: "取消",
+                type: "warning",
+              })
+                .then(() => {
+                  // console.log(11111);
+                  const userIdList = [];
+                  filteredData.map((item) => {
+                    if (item.userIdList.length > 0) {
+                      item.userIdList.map((id) => {
+                        userIdList.push(id);
+                      });
+                    }
+                  });
+                  const data = {
+                    templateUserDataList: filteredData,
+                    eventId: this.multipleSelection.eventId,
+                    eventHistoryPo: { eventName: this.multipleSelection.eventName },
+                    userIdList: userIdList,
+                    usePerformanceFlowIdList: usePerformanceFlowIdList,
+                    useTargetIdList: useTargetIdList,
+                    userToPerformancePoList: userToPerformancePoList,
+                  };
+                  console.log(data);
+
+                  this.userSelectName = userSelectName
+                    .map((item) => item.name)
+                    .filter((item) => !nameList.map((item) => item.name).includes(item));
+                  this.nameList = nameList
+                    .map((item) => item.name)
+                    .filter((item) => !userSelectName.map((item) => item.name).includes(item));
+
+                  if (
+                    this.userSelectName.length > 0 ||
+                    this.nameList.length > 0 ||
+                    this.surplusNameList.length > 0 ||
+                    this.surplusUserSselectName.length > 0
+                  ) {
+                    this.isPublish = true;
+                    console.log("价值观", this.userSelectName);
+                    console.log("业绩", this.nameList);
+                  } else {
+                    releaseEvent(data, this);
+                  }
+                  if (this.userSelectName.length == 0 && this.nameList.length == 0 && this.isPublish == false) {
+                    releaseEvent(data, this);
+                  }
+                })
+                .catch(() => {});
+
+              //长度匹配直接发布
+            }
+          } else {
+            console.log(this.weightData);
+            if (this.weightData.length > 0) {
+              ElMessage.error("上传Excel文件权重数据存在错误，请更新Excel文件");
+            } else if (this.weightData.length == 0) {
+              this.isPublish = true;
+
+              ElMessageBox.confirm("是否确认发布", "警告", {
+                confirmButtonText: "确认",
+                cancelButtonText: "取消",
+                type: "warning",
+              }).then(() => {
+                this.eventReleaseData.eventId = this.multipleSelection.eventId;
+                this.eventReleaseData.eventHistoryPo.eventName = this.multipleSelection.eventName;
+                this.eventReleaseData.usePerformanceFlowIdList = usePerformanceFlowIdList;
+                this.eventReleaseData.useTargetIdList = useTargetIdList;
+                this.eventReleaseData.userToPerformancePoList = userToPerformancePoList;
+
+                this.userSelectName = userSelectName
+                  .map((item) => item.name)
+                  .filter((item) => !nameList.map((item) => item.name).includes(item));
+                this.nameList = nameList
+                  .map((item) => item.name)
+                  .filter((item) => !userSelectName.map((item) => item.name).includes(item));
+
+                if (this.userSelectName.length == 0 || this.nameList.length == 0) {
+                  releaseEvent(this.eventReleaseData, this);
+                }
+              });
+            }
+
+            // console.log(this.eventReleaseData);
+          }
+        }
+      }
+    },
+  },
+};
+</script>
+<style>
+.demo-tabs {
+  height: 95%;
+  border-radius: 10px;
+}
+.demo-tabs > .el-tabs__content {
+  color: #6b778c;
+}
+.demo-tabs .custom-tabs-label .el-icon {
+  vertical-align: middle;
+}
+.demo-tabs .custom-tabs-label span {
+  vertical-align: middle;
+  margin-left: 4px;
+}
+.el-tabs {
+  height: 100%;
+  --el-tabs-header-height: 55px;
+  .el-tabs__item {
+    font-size: 1rem;
+  }
+}
+.el-tabs--border-card {
+  border: 0;
+}
+.titleForm {
+  display: flex;
+  justify-content: space-around;
+}
+.el-table--border th.el-table__cell {
+  font-size: 14px;
+}
+/* .el-table__header-wrapper th {
+  text-align: center;
+} */
+.el-table .el-table__cell {
+  /* text-align: center; */
+  font-size: 12px;
+  font-weight: normal;
+  color: #606260;
+}
+/* 表格宽度自适应 */
+.el-table {
+  width: 100%;
+  .el-table__header-wrapper table,
+  .el-table__body-wrapper table {
+    width: 100% !important;
+  }
+  .el-table__body,
+  .el-table__footer,
+  .el-table__header {
+    table-layout: auto;
+  }
+}
+
+.table-style {
+  .el-table-column--selection.is-leaf .el-checkbox {
+    display: none;
+  }
+}
+/* ---el-table滚动条公共样式--- */
+/* .el-scrollbar .el-scrollbar__bar.is-vertical .el-scrollbar__thumb {
+  height: 45px !important;
+} */
+.el-upload-list__item {
+  width: 120%;
+}
+</style>

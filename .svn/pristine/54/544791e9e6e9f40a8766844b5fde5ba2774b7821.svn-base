@@ -1,0 +1,165 @@
+<template>
+  <div class="kpiTable">
+    <div class="kpiTableTitle">查询部门业绩</div>
+    <el-form :rules="rules">
+      <el-form-item label="年份" prop="year">
+        <el-select clearable placeholder="请选择年份" v-model="year">
+          <el-option v-for="item in yearOptions" :key="item" :label="item" :value="item" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="月份" prop="month">
+        <el-select clearable placeholder="请选择月份" v-model="month">
+          <el-option v-for="item in monthOptions" :key="item.monthId" :label="item.month" :value="item.monthId" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="部门" prop="deptId">
+        <el-select clearable placeholder="请选择部门" v-model="deptId">
+          <el-option v-for="item in deptOptions" :key="item.deptId" :label="item.deptName" :value="item.deptId" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="姓名"><el-input placeholder="请输入查询的姓名" v-model="name"></el-input></el-form-item>
+      <el-button @click="getKpiDept">查询</el-button>
+    </el-form>
+
+    <el-table :data="tableData" height="70vh" border>
+      <el-table-column label="序号" type="index" width="80"></el-table-column>
+      <el-table-column label="姓名" prop="name"></el-table-column>
+      <el-table-column label="价值观分值" prop="valueScore"></el-table-column>
+      <el-table-column label="业绩指标分值" prop="targetScore"></el-table-column>
+      <el-table-column label="kpi总分" prop="totalScore"></el-table-column>
+      <el-table-column label="kpi奖金系数(%)" prop="kpi"></el-table-column>
+      <el-table-column label="状态">
+        <template #default="scope">
+          <span
+            v-if="scope.row.valueFlowComplete == true && scope.row.targetFlowComplete == true"
+            style="color: #67c23a"
+          >
+            已完成审批
+          </span>
+          <span
+            v-if="scope.row.valueFlowComplete == true && scope.row.targetFlowComplete == false"
+            style="color: #e6a23c"
+          >
+            业绩正在审批中
+          </span>
+
+          <span
+            v-if="scope.row.valueFlowComplete == false && scope.row.targetFlowComplete == true"
+            style="color: #e6a23c"
+          >
+            价值观正在审批中
+          </span>
+          <span
+            v-if="scope.row.valueFlowComplete == false && scope.row.targetFlowComplete == false"
+            style="color: #f56c6c"
+          >
+            价值观和业绩都未完成审批
+          </span>
+        </template>
+      </el-table-column>
+    </el-table>
+  </div>
+</template>
+
+<script>
+import { deptList } from "@/api/register/index";
+import { ElMessage } from "element-plus";
+import { getKpiList } from "@/api/kpi/index";
+export default {
+  data() {
+    return {
+      year: "",
+      month: "",
+      deptId: null,
+      name: "",
+      deptOptions: [],
+      yearOptions: [],
+      tableData: [],
+      rules: {
+        year: [{ required: true, message: "请选择年份", trigger: "blur" }],
+        month: [{ required: true, message: "请选择月份", trigger: "blur" }],
+      },
+      monthOptions: [
+        { monthId: 1, month: "一月" },
+        { monthId: 2, month: "二月" },
+        { monthId: 3, month: "三月" },
+        { monthId: 4, month: "四月" },
+        { monthId: 5, month: "五月" },
+        { monthId: 6, month: "六月" },
+        { monthId: 7, month: "七月" },
+        { monthId: 8, month: "八月" },
+        { monthId: 9, month: "九月" },
+        { monthId: 10, month: "十月" },
+        { monthId: 11, month: "十一月" },
+        { monthId: 12, month: "十二月" },
+      ],
+    };
+  },
+  created() {
+    this.nowtime();
+    deptList()
+      .then((res) => {
+        if (res.data.code == 0) {
+          this.deptOptions = res.data.data;
+        }
+      })
+      .catch(() => {
+        ElMessage.error("请求失败");
+      });
+  },
+  methods: {
+    //获取当前时间
+    nowtime() {
+      let nowDate = new Date();
+      this.year = nowDate.getFullYear();
+      this.month = nowDate.getMonth() + 1;
+      for (let i = 2021; i <= this.year; i++) {
+        this.yearOptions.push(i);
+      }
+    },
+    getKpiDept() {
+      const data = { year: this.year, month: this.month, deptId: this.deptId, name: this.name };
+      getKpiList(data)
+        .then((res) => {
+          if (res.data.code == 0) {
+            this.tableData = res.data.data;
+            console.log(this.tableData);
+          }
+        })
+        .catch((e) => {
+          console.log(e);
+        });
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.kpiTable {
+  padding: 1rem;
+  background-color: #fff;
+  height: 96%;
+  border-radius: 10px;
+}
+.kpiTableTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  padding: 1rem;
+}
+.el-form {
+  display: flex;
+  justify-content: space-around;
+}
+.el-table .el-table__cell {
+  text-align: center;
+  font-size: 12px;
+}
+.el-table .el-table__cell {
+  text-align: center;
+}
+.el-table th.el-table__cell {
+  font-size: 14px;
+}
+</style>

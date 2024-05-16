@@ -1,0 +1,159 @@
+<template>
+  <div class="loglist">
+    <el-form class="titleForm">
+      <el-form-item label="起始时间">
+        <el-date-picker v-model="startTime" type="date" placeholder="请选择" />
+      </el-form-item>
+      <el-form-item label="结束时间">
+        <el-date-picker v-model="endTime" type="date" placeholder="请选择" />
+      </el-form-item>
+      <el-form-item label="类型">
+        <el-select clearable placeholder="请选择" v-model="type">
+          <el-option v-for="item in typeOptions" :key="item" :label="item" :value="item"></el-option>
+        </el-select>
+      </el-form-item>
+      <el-button @click="getLogList" type="primary">{{ $t("inquire") }}</el-button>
+    </el-form>
+
+    <el-table :data="logList.list" border :height="tableHeight">
+      <el-table-column label="序号" type="index" width="80"></el-table-column>
+      <el-table-column label="操作人" prop="operator"></el-table-column>
+      <el-table-column label="操作模块" prop="model"></el-table-column>
+      <el-table-column label="操作类型" prop="type">
+        <template #default="scope">
+          <span v-if="scope.row.type == '新增'" style="color: #409eff">{{ $t("add") }}</span>
+          <span v-if="scope.row.type == '删除'" style="color: #f56c6c">{{ $t("delete") }}</span>
+          <span v-if="scope.row.type == '修改'" style="color: #e6a23c">修改</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="详细描述" prop="description"></el-table-column>
+      <el-table-column label="操作时间" prop="operationTime"></el-table-column>
+    </el-table>
+    <div class="demo-pagination-block">
+      <el-pagination
+        v-model:current-page="currentPage"
+        v-model:page-size="length"
+        :page-sizes="[15, 30, 45, 50]"
+        :disabled="disabled"
+        background
+        layout="total,sizes, prev, pager, next"
+        :total="total"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+      />
+    </div>
+  </div>
+</template>
+
+<script>
+import { getLogList } from "@/api/log/index";
+import { ElMessage } from "element-plus";
+export default {
+  name: "SearchLog",
+  data() {
+    return {
+      typeOptions: ["新增", "删除", "修改"],
+      startTime: null,
+      endTime: null,
+      type: "",
+      length: 15,
+      currentPage: 1,
+      logList: [],
+      total: 100,
+      tableHeight: null,
+    };
+  },
+  created() {
+    this.getLogList();
+  },
+  mounted() {
+    this.$nextTick(() => {
+      // 根据浏览器高度设置初始高度
+      this.tableHeight = window.innerHeight - 240;
+      // 监听浏览器高度变化，改变表格高度
+      window.onresize = () => {
+        this.tableHeight = window.innerHeight - 240;
+      };
+    });
+  },
+  methods: {
+    async getLogList() {
+      let start;
+      let end;
+      let date;
+      if (this.startTime != null) {
+        date = new Date(this.startTime);
+        let year = date.getFullYear();
+        let month = date.getMonth() + 1; // 月份是从 0 开始的，所以需要加 1
+        let day = date.getDate();
+
+        start = `${year}-${month < 10 ? "0" + month : month}-${day < 10 ? "0" + day : day}`;
+      } else {
+        start = null;
+      }
+
+      if (this.endTime != null) {
+        date = new Date(this.endTime);
+        date.setDate(date.getDate() + 1);
+        let year = date.getFullYear();
+        let month = date.getMonth() + 1; // 月份是从 0 开始的，所以需要加 1
+        let day = date.getDate();
+
+        end = `${year}-${month < 10 ? "0" + month : month}-${day < 10 ? "0" + day : day}`;
+      } else {
+        end = null;
+      }
+
+      if ((this.startTime != null && this.endTime == null) || (this.startTime == null && this.endTime != null)) {
+        ElMessage.info("查询条件无效");
+      } else {
+        const logData = {
+          startDate: start,
+          endDate: end,
+          length: this.length,
+          page: this.currentPage,
+          type: this.type,
+        };
+        await getLogList(logData)
+          .then((res) => {
+            if (res.data && res.data.code == 0) {
+              this.logList = res.data.data;
+              this.total = res.data.data.totalCount;
+            }
+          })
+          .catch((err) => {
+            console.log(err);
+          });
+      }
+    },
+    handleSizeChange(newSize) {
+      this.length = newSize;
+      this.getLogList();
+    },
+    handleCurrentChange(newPage) {
+      this.currentPage = newPage;
+      this.getLogList();
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.loglist {
+  padding: 17px 17px 15px 17px;
+  background-color: #fff;
+  height: 95%;
+  border-radius: 10px;
+  .loglist-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left;
+    padding: 1rem;
+  }
+}
+.titleForm {
+  display: flex;
+  justify-content: space-between;
+}
+</style>

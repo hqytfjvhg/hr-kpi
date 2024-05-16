@@ -1,0 +1,220 @@
+<template>
+  <div class="recruit-canvas" v-if="isShowSign">
+    <div class="text-box">请在横屏方向进行签名</div>
+    <div class="canvas-box" ref="canvasRef">
+      <canvas ref="canvasMapRef" id="canvas-map" width="100" height="100" />
+    </div>
+
+    <slot name="default" :signatrue="canvasNode">
+      <div class="btn-box flex-row">
+        <el-button @click="clearHandle" type="info">清除画布</el-button>
+        <el-button @click="confirmHandle" type="warning">提交到系统</el-button>
+      </div>
+    </slot>
+  </div>
+  <div v-else class="canvas_header">签名已完成，请关闭此页面</div>
+</template>
+<script>
+import SignaturePad from "signature_pad";
+import { rotateBase64Img, uploadSign } from "@/utils/sign";
+// import { saveSignature, saveSignature2 } from "@/api/visualization/index";
+
+export default {
+  data() {
+    return {
+      canvasNode: "",
+      isShowSign: true,
+    };
+  },
+  created() {
+    this.$nextTick(() => {
+      this.initalHandle();
+      window.addEventListener("resize", this.initalHandle, false);
+    });
+  },
+  methods: {
+    initalHandle() {
+      const _canvasBox = this.$refs.canvasRef;
+      const _canvas = this.$refs.canvasMapRef;
+      if (!_canvasBox || !_canvas) {
+        console.warn("DOM节点初始化失败");
+        return false;
+      }
+
+      _canvas.width = _canvasBox.clientWidth;
+      _canvas.height = _canvasBox.clientHeight;
+      const computedOpt = Object.assign(
+        {},
+        {
+          dotSize: 5,
+          minWidth: 5,
+          maxWidth: 7,
+          penColor: "rgb(0, 0, 0)",
+        },
+      );
+
+      this.clearHandle();
+      this.canvasNode = new SignaturePad(_canvas, computedOpt);
+    },
+
+    clearHandle() {
+      const hasNode = this.canvasNode;
+      if (hasNode) {
+        hasNode.clear();
+        this.$emit("cancelEvent", hasNode);
+      }
+    },
+
+    async confirmHandle() {
+      // 重新初始化画布
+      const canvasNode = this.canvasNode;
+      if (!canvasNode) {
+        this.initalHandle();
+      }
+
+      // 是否签字
+      if (canvasNode.isEmpty()) {
+        console.warn("您还没有签名");
+        this.$emit("confirmEvent", canvasNode);
+        return false;
+      }
+
+      // 图像旋转二次处理
+      const _boxWidth = window.innerWidth;
+      const _boxHeight = window.innerHeight;
+      // let _signImg = null;
+      const _signImg = canvasNode.toDataURL("image/png", 0.6) || null;
+      if (_boxWidth < _boxHeight) {
+        await rotateBase64Img(_signImg, -90, (imgUrlRes) => {
+          // this.$emit("confirmEvent", imgUrlRes);
+
+          uploadSign(
+            imgUrlRes,
+            this.$route.query.month ? this.$route.query.month : null,
+            this.$route.query.time ? this.$route.query.time : null,
+            this,
+          );
+          // console.log(imgUrlRes);
+        });
+      } else {
+        uploadSign(
+          _signImg,
+          this.$route.query.month ? this.$route.query.month : null,
+          this.$route.query.time ? this.$route.query.time : null,
+          this,
+        );
+
+        // this.$emit("confirmEvent", _signImg);
+        // _signImg = canvasNode.toDataURL("image/png", 0.6);
+      }
+
+      // let image = this.canvas.toDataURL("image/png");
+      // var bytes = window.atob(_signImg.split(",")[1]);
+
+      // var array = [];
+      // for (var i = 0; i < bytes.length; i++) {
+      //   array.push(bytes.charCodeAt(i));
+      // }
+      // var blob = new Blob([new Uint8Array(array)], { type: "image/jpeg" });
+      // var formData = new FormData();
+      // formData.append("file", blob, ".jpeg");
+      // if (this.$route.query.month) {
+      //   formData.append("month", this.$route.query.month);
+      //   saveSignature(formData, this);
+      // } else if (this.$route.query.time) {
+      //   formData.append("time", this.$route.query.time);
+      //   saveSignature2(formData, this);
+      // }
+    },
+  },
+  beforeUnmount() {
+    window.removeEventListener("resize", this.initalHandle, false);
+  },
+};
+</script>
+<style scoped lang="scss">
+.recruit-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+
+  .canvas-box,
+  .btn-box,
+  .text-box {
+    position: absolute;
+    top: 50%;
+    z-index: 100;
+  }
+
+  .canvas-box {
+    left: 20%;
+    width: 67vw;
+    height: 80vh;
+    overflow: hidden;
+    transform: translateY(-50%);
+    background-color: #fff;
+    border: 1px dashed #d4d4d4;
+
+    #canvas-map {
+      width: 100%;
+      height: 100%;
+    }
+  }
+  .text-box {
+    background-color: #ffbc0124;
+    color: #e6a23c;
+    right: -105% !important;
+    height: 30px;
+    line-height: 30px;
+  }
+  .btn-box,
+  .text-box {
+    left: -15%;
+    z-index: 1000;
+    text-align: center;
+    transform: rotate(90deg);
+    -o-transform: rotate(90deg);
+    -ms-transform: rotate(90deg);
+    -moz-transform: rotate(90deg);
+    -webkit-transform: rotate(90deg);
+  }
+}
+.canvas_header {
+  width: 100%;
+  text-align: center;
+  line-height: 50px;
+  font-weight: 800;
+  font-size: 20px;
+}
+
+@media screen and (orientation: portrait) {
+  /*竖屏 css*/
+}
+
+@media screen and (orientation: landscape) {
+  /*横屏 css*/
+  .recruit-canvas {
+    .canvas-box {
+      top: 12%;
+      left: 10%;
+      width: 80vw;
+      height: 70vh;
+      transform: translateY(0);
+    }
+
+    .btn-box {
+      width: 60%;
+      top: 86%;
+      left: 20%;
+      transform: rotate(0);
+    }
+    .text-box {
+      width: 130%;
+      top: 1%;
+      transform: rotate(0);
+    }
+  }
+}
+</style>

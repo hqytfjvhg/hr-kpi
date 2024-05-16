@@ -1,0 +1,131 @@
+import { createStore } from "vuex";
+// import { getToken, saveToken } from "@/utils/storage";
+
+export default createStore({
+  state: {
+    registerIdentifyUuid: "",
+    userId: localStorage.getItem("userid") ? localStorage.getItem("userid") : "",
+    name: localStorage.getItem("name") ? localStorage.getItem("name") : "",
+    token: localStorage.getItem("token") ? localStorage.getItem("token") : "",
+    role: localStorage.getItem("role") ? localStorage.getItem("role") : "",
+    number: localStorage.getItem("number") ? localStorage.getItem("number") : "",
+    number2: localStorage.getItem("number2") ? localStorage.getItem("number2") : "",
+    currentUserId: localStorage.getItem("currentUserId") ? localStorage.getItem("currentUserId") : "",
+    currentState: localStorage.getItem("currentState") ? localStorage.getItem("currentState") : "",
+    // todoList: (JSON.stringify(undefined) && JSON.parse(localStorage.getItem("todoList"))) || [], //json.parse无法解析undefi
+    approvalData: [],
+    currentName: localStorage.getItem("currentName") ? localStorage.getItem("currentName") : "",
+    // userSelectName: [],
+    userList: [],
+    // selectUser: [], //某一模板存着选中的人名，用于备份做对比
+  },
+  getters: {},
+  mutations: {
+    changeUuid(state, payload) {
+      state.registerIdentifyUuid = payload;
+      // console.log(state.registerIdentifyUuid);
+    },
+    changeUserId(state, payload) {
+      state.userId = payload;
+      localStorage.setItem("userid", payload);
+    },
+    changeToken(state, payload) {
+      state.token = payload;
+      localStorage.setItem("token", payload);
+      // saveToken(payload);
+    },
+    changeRole(state, payload) {
+      state.role = payload;
+      localStorage.setItem("role", payload);
+      // console.log(payload);
+    },
+    changeName(state, payload) {
+      state.name = payload;
+      localStorage.setItem("name", payload);
+      // console.log(payload);
+    },
+    changeNumber(state, payload) {
+      state.number = payload;
+      localStorage.setItem("number", payload);
+      // console.log(payload);
+    },
+    changeNumber2(state, payload) {
+      if (payload != undefined) {
+        state.number2 = payload + state.number;
+        localStorage.setItem("number2", payload);
+      } else {
+        state.number2 = state.number;
+        localStorage.setItem("number2", state.number);
+      }
+
+      // console.log(state.number2);
+    },
+    currentUserId(state, payload) {
+      state.currentUserId = payload;
+      // console.log(payload);
+      localStorage.setItem("currentUserId", payload); //领导评分，当前的用户id
+    },
+    currentDeptFlow(state, payload) {
+      state.currentState = payload;
+      localStorage.setItem("currentState", payload);
+    },
+    changeApprovalData(state, payload) {
+      let index = state.approvalData.findIndex((item) => {
+        // console.log(Object.keys(item));
+        return Object.keys(item).toString() === Object.keys(payload).toString();
+      });
+      console.log(index, Object.keys(payload));
+      if (index !== -1) {
+        state.approvalData[index] = payload;
+      } else {
+        state.approvalData.push(payload);
+      }
+      console.log(state.approvalData);
+    },
+    clearApprovalData(state) {
+      state.approvalData = [];
+      console.log(state.approvalData);
+    },
+    currentName(state, payload) {
+      state.currentName = payload;
+      localStorage.setItem("currentName", payload);
+    },
+    //存储同一个事件下参与的人
+    // joinUserSelectName(state, payload) {
+    //   let index = state.userSelectName.findIndex((item) => {
+    //     return Object.keys(item).toString() === Object.keys(payload).toString();
+    //   });
+    //   console.log(index, Object.values(payload)[0]);
+    //   if (index !== -1) {
+    //     console.log(state.userSelectName[index]);
+    //     for (let i in Object.values(payload)[0]) {
+    //       Object.values(payload)[0].push(Object.values(state.userSelectName[index])[0][i]);
+    //     }
+    //     payload.values = Array.from(new Set(Object.values(payload)[0]));
+    //     state.userSelectName[index] = payload;
+    //   } else {
+    //     state.userSelectName.push(payload);
+    //   }
+
+    //   console.log(state.userSelectName);
+    //   // localStorage.setItem("userSelectName", payload);
+    // },
+    //存储价值观选择的人
+    userList(state, payload) {
+      let index = state.userList.findIndex((item) => {
+        // console.log(Object.keys(item));
+        return Object.keys(item).toString() === Object.keys(payload).toString();
+      });
+      console.log(index, Object.keys(payload));
+      if (index !== -1) {
+        state.userList[index] = payload;
+      } else {
+        state.userList.push(payload);
+      }
+      console.log(state.userList);
+    },
+    // oneModelSelectUser(state, payload) {
+    //   state.selectUser = payload;
+    // },
+  },
+});

@@ -1,0 +1,254 @@
+<template>
+  <div class="performanceTable">
+    <!-- 此页面没有被使用 -->
+    <div class="performanceTableTitle">
+      查询部门业绩得分
+      <!-- <div style="color: red; font-size: 14px">
+        <span
+          v-if="
+            (tableData1.length > 0 && tableData1[0].updateTime == null) ||
+            (tableData1.length > 0 && tableData1[0].updateTime == '')
+          "
+          >数据未初始化，请点击更新按钮</span
+        >
+        <span v-if="tableData1.length > 0">
+          【{{ criticalMonth }}】月KPI数据最近更新时间：{{
+            tableData1[0].updateTime
+          }}，如不确定当前数据为最新，请点击更新按钮。</span
+        >
+      </div> -->
+    </div>
+    <el-form :rules="rules">
+      <el-form-item label="年份" prop="year">
+        <el-select placeholder="请选择年份" v-model="year" style="width: 100px">
+          <el-option v-for="item in yearOptions" :key="item" :label="item" :value="item" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="月份" prop="month">
+        <el-select placeholder="请选择月份" v-model="month" style="width: 100px">
+          <el-option v-for="item in monthOptions" :key="item.monthId" :label="item.month" :value="item.monthId" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="部门" prop="deptId">
+        <el-select clearable placeholder="请选择部门" v-model="deptId" multiple style="width: 300px">
+          <el-option v-for="item in deptOptions" :key="item.deptId" :label="item.deptName" :value="item.deptId" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="姓名"
+        ><el-input placeholder="请输入查询的姓名" v-model="name" style="width: 150px"></el-input
+      ></el-form-item>
+      <el-button
+        v-if="
+          deptId.length == 0 ||
+          (tableData1.length > 0 && tableData1[0].year != year) ||
+          (tableData1.length > 0 && tableData1[0].month != month)
+        "
+        @click="getperformanceDept"
+        >查询</el-button
+      >
+      <el-button v-else @click="selectPermanceDept">查询</el-button>
+    </el-form>
+
+    <el-table :data="tableData1" height="70vh" border stripe :row-class-name="tableRowClassName">
+      <el-table-column label="序号" type="index" width="80"></el-table-column>
+      <el-table-column label="部门" prop="deptName"></el-table-column>
+      <el-table-column label="姓名" prop="name"></el-table-column>
+      <el-table-column label="业绩指标实际总分" prop="targetScore"></el-table-column>
+      <el-table-column label="指标名称" width="300">
+        <template #default="scope">
+          <div v-for="(item, index) in scope.row.targetInfoList" :key="item">{{ index + 1 }}.{{ item.targetName }}</div>
+        </template>
+      </el-table-column>
+      <el-table-column label="指标权重">
+        <template #default="scope">
+          <div v-for="item in scope.row.targetInfoList" :key="item">{{ item.weight }}</div>
+        </template>
+      </el-table-column>
+      <el-table-column label="指标实际得分">
+        <template #default="scope">
+          <div v-for="item in scope.row.targetInfoList" :key="item">
+            {{ item.targetBasicScore }}
+          </div>
+        </template>
+      </el-table-column>
+      <!-- <el-table-column label="指标信息" width="400">
+        <template #default="scope">
+          <el-row>
+            <el-col :span="8">指标名称 </el-col>
+            <el-col :span="8">指标权重</el-col>
+            <el-col :span="8">指标实际得分</el-col>
+          </el-row>
+          <el-row v-for="item in scope.row.targetInfoList" :key="item">
+            <el-col :span="8">{{ item.targetName }}</el-col>
+            <el-col :span="8">{{ item.weight }}</el-col>
+            <el-col :span="8">{{ item.targetBasicScore }}</el-col>
+          </el-row>
+        </template>
+      </el-table-column> -->
+      <el-table-column label="状态" prop="complete">
+        <template #default="scope">
+          <span style="color: #67c23a" v-if="scope.row.targetFlowComplete">已完成审批</span>
+          <span style="color: #e6a23c" v-else>未完成审批</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column label="年份" prop="year"></el-table-column>
+      <el-table-column label="月份" prop="month"></el-table-column>
+    </el-table>
+  </div>
+</template>
+
+<script>
+import { getPermanceDeptScore } from "@/api/performance/index";
+import { deptList } from "@/api/register/index";
+import { ElMessage } from "element-plus";
+import store from "@/store";
+
+export default {
+  name: "performanceDept",
+
+  data() {
+    return {
+      year: "",
+      month: "",
+      deptId: [],
+      name: "",
+      deptOptions: store.state.deptList ? store.state.deptList : [],
+      yearOptions: [],
+      tableData: [],
+      tableData1: [],
+      newestMonth: [], //存储最新月份数据
+      src: "",
+      criticalMonth: "暂无数据",
+      monthOptions: [
+        { monthId: 1, month: "一月" },
+        { monthId: 2, month: "二月" },
+        { monthId: 3, month: "三月" },
+        { monthId: 4, month: "四月" },
+        { monthId: 5, month: "五月" },
+        { monthId: 6, month: "六月" },
+        { monthId: 7, month: "七月" },
+        { monthId: 8, month: "八月" },
+        { monthId: 9, month: "九月" },
+        { monthId: 10, month: "十月" },
+        { monthId: 11, month: "十一月" },
+        { monthId: 12, month: "十二月" },
+      ],
+      rules: {
+        year: [{ required: true, message: "请选择年份", trigger: "blur" }],
+        month: [{ required: true, message: "请选择月份", trigger: "blur" }],
+      },
+    };
+  },
+  created() {
+    this.nowtime();
+    // this.getValuesDeptList();
+    if (store.state.deptList.length == 0) {
+      deptList()
+        .then((res) => {
+          if (res.data.code == 0) {
+            this.deptOptions = res.data.data;
+          }
+        })
+        .catch(() => {
+          ElMessage.error("请求失败");
+        });
+    }
+
+    this.getperformanceDept();
+  },
+  methods: {
+    //获取当前时间
+    nowtime() {
+      let nowDate = new Date();
+      this.year = nowDate.getFullYear();
+      this.month = nowDate.getMonth() + 1;
+      for (let i = 2021; i <= this.year; i++) {
+        this.yearOptions.push(i);
+      }
+      if (0 < nowDate.getDate() && nowDate.getDate() <= 15) {
+        this.criticalMonth = nowDate.getMonth();
+      } else if (15 < nowDate.getDate() && nowDate.getDate() < 32) {
+        this.criticalMonth = nowDate.getMonth() + 1;
+        // console.log(this.month);
+      }
+    },
+    async getperformanceDept() {
+      const data = { year: this.year, month: this.month, deptId: this.deptId, name: this.name };
+      // console.log(data);
+      await getPermanceDeptScore(data).then((res) => {
+        if (res.data.code == 0) {
+          if (res.data.data.length > 0) {
+            this.tableData = res.data.data.map((item) => {
+              return { ...item, year: this.year, month: this.month };
+            });
+            this.tableData = this.tableData.map((item) => {
+              const deptOption = this.deptOptions.find((item1) => item1.deptId == item.deptId);
+              if (deptOption) {
+                return { ...item, deptName: deptOption.deptName };
+              } else {
+                // 如果没有找到匹配的项，你可能想要返回原始的item，或者返回null，或者做其他处理
+                return item;
+              }
+            });
+            this.tableData.map((item) => {
+              item.targetInfoList;
+            });
+            this.tableData1 = this.tableData;
+            // console.log(this.tableData1);
+            if (this.year == this.tableData[0].year) {
+              this.newestMonth = this.tableData;
+              this.tableData1 = this.newestMonth;
+            }
+          } else {
+            this.tableData = [];
+            this.tableData1 = [];
+            ElMessage.error("查询数据未空");
+          }
+        }
+      });
+      this.selectPermanceDept();
+    },
+    selectPermanceDept() {
+      // console.log(this.deptId);
+      if (this.deptId.length > 0) {
+        this.tableData1 = this.deptId.reduce((acc, deptId) => {
+          return [...acc, ...this.newestMonth.filter((item1) => item1.deptId == deptId)];
+        }, []);
+        // console.log(this.tableData1);
+      }
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.performanceTable {
+  padding: 1rem;
+  background-color: #fff;
+  height: 95%;
+  border-radius: 10px;
+}
+.performanceTableTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  // padding: 1rem;
+}
+.el-form {
+  display: flex;
+  justify-content: space-around;
+}
+.vue-office-excel {
+  height: 400px;
+}
+// .el-table .el-table__cell {
+//   text-align: center;
+// }
+
+.primary-row {
+  background-color: rgba(235, 244, 255, 0.5);
+  // background-color: #f5f5f5;
+}
+</style>

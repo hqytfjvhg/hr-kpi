@@ -1,0 +1,204 @@
+<template>
+  <div class="userAbout">
+    <div class="userAbout-title">待办中心</div>
+    <div style="display: flex; justify-content: space-around">
+      <el-card class="box-card">
+        <template #header>
+          <div class="card-header">
+            <span>价值观</span>
+
+            <!-- <el-button class="button" @click="getEventInfo">刷新</el-button> -->
+          </div>
+        </template>
+        <div class="scroll">
+          <div v-if="eventInfoList == null || eventInfoList.length == 0">暂无待办事件</div>
+          <el-table :data="eventInfoList" v-else>
+            <el-table-column label="事件名称" prop="eventName"></el-table-column>
+            <el-table-column label="被审批人" prop="name"></el-table-column>
+            <el-table-column label="截止时间">{{ year }}年{{ month }}月30号</el-table-column>
+            <el-table-column label="操作">
+              <template #default="scope">
+                <div v-if="scope.row.deptFlowState == 0 && scope.row.hrFlowState == 0" class="item">
+                  <el-button size="small"><router-link to="/writeValue">去填写</router-link></el-button>
+                </div>
+                <div v-else class="item">
+                  <el-button type="warning" size="small" @click="reviewPush(scope.row.userId, scope.row.deptFlowState)"
+                    >去审批</el-button
+                  >
+                </div></template
+              >
+            </el-table-column>
+          </el-table>
+        </div>
+      </el-card>
+      <el-card
+        class="box-card"
+        v-if="$store.state.role == 'HRMANAGER' || $store.state.role == 'HR' || $store.state.role == 'DEPTMANAGER'"
+      >
+        <template #header>
+          <div class="card-header">
+            <span>业绩</span>
+          </div>
+        </template>
+        <div class="scroll">
+          <div v-if="eventPerformanceList.length == 0">暂无待办事件</div>
+          <el-table :data="eventPerformanceList" v-else>
+            <el-table-column label="事件名称" prop="eventName"></el-table-column>
+            <el-table-column label="被审批人" prop="name"></el-table-column>
+            <el-table-column label="审批截止时间">{{ year }}年{{ criticalMonth }}月15号</el-table-column>
+            <el-table-column label="操作">
+              <template #default="scope">
+                <el-button type="warning" size="small" @click="reviewPerformance(scope.row.userId, scope.row.name)"
+                  >去审批</el-button
+                >
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </el-card>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from "@/router";
+import store from "@/store";
+import { getEventNumber, selectPerformanceInfo } from "@/api/about/index";
+import emitter from "@/utils/eventbus.js";
+import { ElMessage } from "element-plus";
+
+export default {
+  data() {
+    return {
+      eventInfoList: [],
+      eventPerformanceList: [],
+      number: null,
+      sumnumber: null,
+      year: "",
+      month: "",
+      criticalMonth: "",
+    };
+  },
+  created() {
+    this.getEventNumber();
+    this.selectPerformanceInfo();
+    //创建，将这个函数传给审批页面，提交完后刷新
+    emitter.emit("callBPageMethod", this.getEventNumber);
+    emitter.emit("callAbout", this.selectPerformanceInfo);
+    let newDate = new Date();
+    if (0 < newDate.getDate() && newDate.getDate() < 16) {
+      this.criticalMonth = newDate.getMonth + 1;
+    } else {
+      this.criticalMonth = newDate.getMonth() + 2;
+    }
+    this.month = newDate.getMonth() + 1;
+    this.year = newDate.getFullYear();
+  },
+  methods: {
+    getEventNumber() {
+      getEventNumber()
+        .then((res) => {
+          if (res.data.code == 0) {
+            (this.eventInfoList = []), (this.number = null);
+            this.eventInfoList = res.data.data.result;
+            this.number = res.data.data.uncompletedEventNumber;
+
+            // console.log(this.eventInfoList);
+          }
+          store.commit("changeNumber", this.number);
+          store.commit("changeNumber2", this.sumnumber);
+          console.log(this.number, this.sumnumber);
+        })
+        .catch(() => {
+          ElMessage.error("请求失败");
+        });
+    },
+    selectPerformanceInfo() {
+      selectPerformanceInfo().then((res) => {
+        if (res.data.code == 0) {
+          this.sumnumber = res.data.data.uncompletedEventNumber;
+          this.eventPerformanceList = res.data.data.result;
+          // console.log(this.eventPerformanceList);
+        }
+        store.commit("changeNumber2", this.sumnumber);
+        console.log(this.sumnumber);
+      });
+    },
+    // async getEventInfoList() {
+    //   try {
+    //     this.eventInfoList = await this.$store.state.todoList;
+    //     console.log(this.eventInfoList);
+    //   } catch (error) {
+    //     console.error("Error fetching eventInfoList:", error);
+    //   }
+    // },
+    reviewPush(userId, state) {
+      router.replace({ name: "reviewByUserId" });
+      store.commit("currentUserId", userId);
+      store.commit("currentDeptFlow", state);
+      // console.log(userId);
+      // console.log(store.state.currentUserId);
+    },
+    reviewPerformance(userId, name1) {
+      router.replace({ name: "reviewPerformance" });
+      store.commit("currentUserId", userId);
+      store.commit("currentName", name1);
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.userAbout {
+  padding: 17px;
+  background-color: #fff;
+  height: 95%;
+  border-radius: 10px;
+}
+.userAbout-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  padding: 1rem;
+}
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  margin-bottom: 1rem;
+  padding-right: 0.5rem;
+  .item-title {
+    padding: 1rem 0;
+    font-size: 15px;
+  }
+}
+
+.box-card {
+  width: 38vw;
+}
+.scroll {
+  max-height: 60vh;
+  // height: 30%;
+  display: block;
+  overflow-y: auto;
+}
+.scroll::-webkit-scrollbar {
+  width: 5px;
+}
+/*定义滚动条轨道*/
+.scroll::-webkit-scrollbar-track {
+  border-radius: 5px;
+}
+/*定义滑块*/
+.scroll::-webkit-scrollbar-thumb {
+  border-radius: 5px;
+  background: rgba(195, 197, 199, 0.5);
+}
+</style>

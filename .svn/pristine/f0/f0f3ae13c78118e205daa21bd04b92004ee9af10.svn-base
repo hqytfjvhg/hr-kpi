@@ -1,0 +1,109 @@
+<template>
+  <div class="login-body">
+    <div class="login-box">
+      <div>
+        <div class="login-logo">
+          <img src="../../assets/logo.png" width="37" />
+          <!-- <img src="../../assets/logo.png" width="37" />
+          <img src="../../assets/logo.png" width="37" /> -->
+        </div>
+        <div>
+          <el-input v-model="username" placeholder="请输入账号" clearable></el-input>
+        </div>
+        <div>
+          <el-input v-model="password" type="password" placeholder="请输入密码" show-password clearable></el-input>
+        </div>
+
+        <div>
+          <el-button type="primary" round @click="loginSubmit">登录</el-button>
+          <!-- <router-link to="register" @click="getUuid"><el-button type="primary" round>注册</el-button></router-link> -->
+        </div>
+        <!-- <div style="line-height: 1.3rem; font-size: 0.6rem; color: #606266; text-align: right">
+          <div>忘记密码</div>
+          <div><router-link to="register" class="registerLink" @click="getUuid">没有账号? 去注册</router-link></div>
+        </div> -->
+      </div>
+
+      <!-- <el-form-item label="角色" prop="role">
+          <el-radio-group v-model="LoginFrom.role">
+            <el-radio label="管理层人员" name="root"></el-radio>
+            <el-radio label="职工" name="root"></el-radio>
+          </el-radio-group>
+        </el-form-item> -->
+    </div>
+  </div>
+</template>
+<script>
+import { ElButton, ElMessage } from "element-plus";
+import { login, uuid } from "@/api/login/index";
+
+export default {
+  data() {
+    return {
+      username: "",
+      password: "",
+      // isLoading: false,
+    };
+  },
+  methods: {
+    loginSubmit() {
+      if (this.username == "" || this.password == "") {
+        ElMessage.error("账号/密码不能为空");
+      } else {
+        const LoginForm = {
+          username: this.username,
+          password: this.password,
+        };
+        // this.isLoading = true;
+        login(LoginForm);
+      }
+    },
+    getUuid() {
+      uuid();
+    },
+    components: { ElButton },
+  },
+};
+</script>
+<style lang="scss" scoped>
+.login-body {
+  width: 100%;
+  height: 100%;
+  background: url(../../assets/login.svg);
+  background-size: 100%;
+  position: absolute;
+  overflow: hidden;
+}
+
+.login-box {
+  width: 40rem;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  position: relative;
+  top: 30%;
+  left: 33%;
+  .login-logo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    // text-align: right;
+    margin: 0.7rem 0;
+  }
+}
+.el-button {
+  width: 15rem;
+  margin: 0.7rem 0;
+}
+.el-input {
+  width: 15rem;
+  margin: 0.7rem 0;
+}
+.registerLink {
+  color: inherit;
+  text-decoration: none;
+}
+.registerLink:hover {
+  color: blue;
+}
+</style>

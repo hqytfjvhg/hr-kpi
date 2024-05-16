@@ -1,0 +1,381 @@
+<template>
+  <div class="targetlist">
+    <div class="targetlist-title">指标列表</div>
+    <div style="text-align: right; margin-bottom: 10px">
+      <el-tooltip content="新增指标" placement="top" effect="light">
+        <el-button type="success" @click="addNewTarget">
+          <el-icon><Plus /></el-icon>新增
+        </el-button>
+      </el-tooltip>
+      <el-tooltip content="刷新指标列表" placement="top" effect="light">
+        <el-button type="primary" @click="getTargetList">
+          <el-icon><Refresh /></el-icon>刷新
+        </el-button>
+      </el-tooltip>
+    </div>
+
+    <el-table :data="targetList" border :height="tableHeight" style="width: 100%; text-align: center" type="index">
+      <el-table-column type="index" label="序号" width="100" />
+      <el-table-column prop="name" label="指标名称" />
+      <el-table-column prop="description" label="描述" />
+      <el-table-column label="维度" align="center">
+        <template #default="scope">
+          <span v-if="scope.row.targetIsNumber" style="color: #e6a23c">数量</span>
+          <span v-else style="color: #409eff">百分比</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="weight" label="权重（%）"></el-table-column>
+      <el-table-column prop="useState" label="是否使用">
+        <template #default="scope">
+          <span v-if="scope.row.useState == true" style="color: #f56c6c">使用中</span>
+          <span v-if="scope.row.useState == false" style="color: #67c23a">未使用</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作">
+        <template #default="scope">
+          <el-button v-if="scope.row.edit" type="primary" size="small" plain @click="changeTarget(scope.row)"
+            ><el-icon><Edit /></el-icon>编辑</el-button
+          >
+          <el-tooltip
+            v-else
+            content="该指标被进行中的事件引用，暂不可修改，请在事件完成后进行修改。"
+            placement="top"
+            effect="light"
+          >
+            <el-button type="info" size="small" plain @click="changeTarget(scope.row)"
+              ><el-icon><Edit /></el-icon>编辑</el-button
+            ></el-tooltip
+          >
+        </template>
+      </el-table-column>
+    </el-table>
+    <el-dialog v-model="isAddTarget" :title="title" width="500px" :show-close="false" :close-on-click-modal="false">
+      <el-form :model="formData" :rules="rules" label-width="120px">
+        <el-form-item label="指标名称" prop="name">
+          <el-input v-model="targetName" clearable style="width: 214px" disabled v-if="title == '编辑指标'"></el-input>
+          <el-input v-model="targetName" style="width: 214px" clearable v-if="title == '新增指标'"></el-input>
+        </el-form-item>
+        <el-form-item label="指标描述" prop="description" v-if="title == '新增指标'">
+          <el-input v-model="targetDescription" clearable style="width: 214px"></el-input>
+        </el-form-item>
+        <el-form-item label="指标权重" prop="weight" v-if="title == '新增指标'">
+          <el-input v-model.number="weight" clearable style="width: 214px" placeholder="权重请不要加百分号%"></el-input>
+        </el-form-item>
+        <el-form-item label="类型" prop="type" v-if="title == '新增指标'">
+          <el-cascader clearable placeholder="请选择" v-model="value" :options="options" :props="props" />
+          <div style="color: #f56c6c; font-size: 11px">注意：类型不影响使用，与下载的excel模板指标簿顺序有关</div>
+        </el-form-item>
+        <el-form-item label="指标维度" prop="dimensions" v-if="title == '新增指标'">
+          <el-select clearable placeholder="请选择" v-model="targetIsNumber" @change="handleChange">
+            <el-option v-for="item in dimensionsOptions" :key="item.value" :label="item.label" :value="item.value"
+          /></el-select>
+        </el-form-item>
+        <el-form-item label="指标区间" prop="score">
+          <el-table :data="targetScoreScopePos" style="width: 220px">
+            <el-table-column label="分数" prop="score" width="60"></el-table-column>
+            <el-table-column :label="targetIsNumber ? '区间最小完成数' : '区间最小值(%)'" prop="min">
+              <template #default="scope">
+                <el-input v-model.number="scope.row.min"></el-input>
+              </template>
+            </el-table-column>
+            <el-table-column :label="targetIsNumber ? '区间最大完成数' : '区间最大值(%)'" prop="max">
+              <template #default="scope">
+                <el-input v-model.number="scope.row.max"></el-input>
+              </template>
+            </el-table-column>
+          </el-table>
+          <!-- <el-table :data="targetScoreScopePos" style="width: 220px" v-if="targetIsNumber == true">
+            <el-table-column label="分数" prop="score" width="60"></el-table-column>
+            <el-table-column label="区间最少完成数" prop="min">
+              <template #default="scope">
+                <el-input v-model.number="scope.row.min"></el-input>
+              </template>
+            </el-table-column>
+            <el-table-column label="区间最多完成数" prop="max">
+              <template #default="scope">
+                <el-input v-model.number="scope.row.max"></el-input>
+              </template>
+            </el-table-column>
+          </el-table> -->
+          <div style="color: #f56c6c; font-size: 11px; padding-right: 20px">
+            注意：等于号在左边，例如0≤N&lt;30。最大值包括在取值范围内。
+          </div>
+        </el-form-item>
+
+        <div style="text-align: right">
+          <el-button @click="isAddTarget = false">取消</el-button>
+          <el-button type="primary" @click="submitForm" v-if="title == '新增指标' || edit">确定</el-button>
+        </div>
+      </el-form>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+import { getTargetList, addTarget, selectTarget, changeTarget } from "@/api/performance/index";
+import { ElMessage } from "element-plus";
+import { deptList } from "@/api/register/index";
+import { Refresh, Plus, Edit } from "@element-plus/icons-vue";
+export default {
+  name: "targetList",
+  components: { Refresh, Plus, Edit },
+  data() {
+    return {
+      targetList: [],
+      deptOptions: [],
+      isAddTarget: false,
+      targetName: "",
+      targetDescription: "",
+      weight: "",
+      value: "", //判断是否是公共指标类型
+      title: "", //弹窗名称
+      formData: [], //弹窗数据
+      options: [],
+      edit: null, //判断是否能编辑指标
+      targetIsNumber: null, //判断指标的维度，是百分比还是数量
+      tableHeight: null,
+      rules: {
+        name: [{ required: true, message: "" }],
+        type: [{ required: true, message: "" }],
+        weight: [{ required: true, message: "" }],
+        score: [{ required: true, message: "" }],
+        dimensions: [{ required: true, message: "" }],
+      },
+      targetScoreScopePos: [
+        { score: "1", min: null, max: null },
+        { score: "2", min: null, max: null },
+        { score: "3", min: null, max: null },
+        { score: "4", min: null, max: null },
+        { score: "5", min: null, max: null },
+      ],
+      dimensionsOptions: [
+        {
+          value: true,
+          label: "数量",
+        },
+        {
+          value: false,
+          label: "百分比",
+        },
+      ],
+    };
+  },
+  mounted() {
+    deptList()
+      .then((res) => {
+        if (res.data.code == 0) {
+          this.deptOptions = res.data.data;
+          const deptoption = res.data.data.map((item) => {
+            item.value = item.deptId;
+            item.label = item.deptName;
+            return {
+              value: item.value,
+              label: item.label,
+            };
+          });
+          // console.log(deptoption);
+          this.options = [
+            {
+              label: "是否是公用指标",
+              children: [{ value: "true", label: "是" }],
+            },
+            {
+              label: "是否是部门指标",
+              children: deptoption,
+            },
+          ];
+          // console.log(this.options);
+        }
+      })
+      .catch(() => {
+        ElMessage.error("请求失败");
+      });
+    this.getTargetList();
+
+    this.$nextTick(() => {
+      // 根据浏览器高度设置初始高度
+      this.tableHeight = window.innerHeight - 267;
+      // 监听浏览器高度变化，改变表格高度
+      window.onresize = () => {
+        this.tableHeight = window.innerHeight - 267;
+      };
+    });
+  },
+  methods: {
+    getTargetList() {
+      getTargetList()
+        .then((res) => {
+          if (res.data && res.data.code == 0) {
+            let newItems = res.data.data.map((item) => {
+              let matchedOption = this.deptOptions.find((item1) => item1.deptId == item.deptId);
+              return Object.assign({}, item, { deptId: matchedOption ? matchedOption.deptName : item.deptId });
+            });
+            this.targetList = newItems;
+            // this.targetList.sort(function (a, b) {
+            //   return b.targetId - a.targetId;
+            // });
+            // console.log(this.targetList);
+          }
+        })
+        .catch(() => {
+          ElMessage.error("获取数据失败");
+        });
+    },
+    handleChange(value) {
+      console.log(value);
+      this.targetIsNumber = value;
+    },
+    submitForm() {
+      if (this.title == "新增指标") {
+        // console.log(this.targetScoreScopePos[0]);
+        if (
+          this.targetName == "" ||
+          this.targetName.trim() === "" ||
+          this.value[1] == undefined ||
+          this.targetIsNumber == null
+        ) {
+          ElMessage.error("请设置指标名称/类型/维度");
+        } else if (typeof this.weight !== "number") {
+          ElMessage.error("指标权重必须为数字，且不带百分号");
+        } else if (
+          !this.targetScoreScopePos.every((item) => typeof item.min == "number" && typeof item.max == "number")
+        ) {
+          ElMessage.error("配置指标区间数据必须都是数字，请重新输入");
+        } else {
+          const targetScore = this.targetScoreScopePos.map((item) => Object.values(item));
+
+          // console.log(this.targetScoreScopePos);
+          let isAdd = false;
+          for (let i = 0; i < targetScore.length - 1; i++) {
+            if (targetScore[i][1] >= targetScore[i + 1][1] || targetScore[i][2] >= targetScore[i + 1][2]) {
+              ElMessage.error("指标区间数据不是递增的，请检查");
+              isAdd = true;
+            }
+            // console.log(targetScore[i][2], targetScore[i + 1][1]);
+            if (targetScore[i][2] !== targetScore[i + 1][1]) {
+              ElMessage.error("指标区间数据首尾不相等，请检查");
+              isAdd = true;
+            }
+          }
+          let common;
+          let deptId;
+          if (typeof this.value[1] == "number") {
+            common = false;
+            deptId = this.value[1];
+          } else if (this.value[1] == "true") {
+            deptId = null;
+            common = this.value[1];
+          }
+          if (!isAdd) {
+            let lastValue = this.targetScoreScopePos[this.targetScoreScopePos.length - 1]["max"] + 1;
+            this.targetScoreScopePos[this.targetScoreScopePos.length - 1]["max"] = lastValue;
+            const data = {
+              common: common,
+              deptId: deptId,
+              name: this.targetName,
+              weight: this.weight,
+              description: this.targetDescription,
+              targetScoreScopePos: this.targetScoreScopePos,
+              edit: true,
+              targetIsNumber: this.targetIsNumber,
+            };
+            // console.log(data);
+
+            addTarget(data, this);
+            // this.targetList.unshift(data);
+            this.isAddTarget = false;
+            // console.log(this.targetList);
+            // this.getTargetList();
+          }
+        }
+      } else {
+        // console.log(this.formData.targetId);
+        let lastValue = this.targetScoreScopePos[this.targetScoreScopePos.length - 1]["max"] + 1;
+        this.targetScoreScopePos[this.targetScoreScopePos.length - 1]["max"] = lastValue;
+        // this.targetScoreScopePos.map((item) => {
+        //   return {
+        //     item,
+        //     id: this.formData.targetId,
+        //   };
+        // });
+        // console.log(this.targetScoreScopePos);
+        changeTarget(this.targetScoreScopePos, this);
+      }
+    },
+    addNewTarget() {
+      this.isAddTarget = true;
+      this.title = "新增指标";
+      this.targetName = "";
+      this.targetDescription = "";
+      this.targetIsNumber = null;
+      this.weight = "";
+      this.targetScoreScopePos = [
+        { score: "1", min: null, max: null },
+        { score: "2", min: null, max: null },
+        { score: "3", min: null, max: null },
+        { score: "4", min: null, max: null },
+        { score: "5", min: null, max: null },
+      ];
+    },
+    changeTarget(row) {
+      this.title = "编辑指标";
+      this.targetName = row.name;
+      this.targetDescription = row.description;
+      this.weight = row.weight;
+      this.formData = row;
+      this.edit = row.edit;
+      this.targetIsNumber = row.targetIsNumber;
+      if (row.targetId != undefined) {
+        this.isAddTarget = true;
+        selectTarget(row.targetId).then((res) => {
+          if (res.data.code == 0 && res.data.data.length > 0) {
+            this.targetScoreScopePos = res.data.data;
+            let lastValue = this.targetScoreScopePos[this.targetScoreScopePos.length - 1]["max"] - 1;
+            this.targetScoreScopePos[this.targetScoreScopePos.length - 1]["max"] = lastValue;
+            // console.log(this.targetScoreScopePos);
+          }
+        });
+      } else {
+        ElMessage.error("缺少参数，请刷新页面");
+      }
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.targetlist {
+  padding: 1rem;
+  background-color: #fff;
+  height: 95%;
+  border-radius: 10px;
+
+  .targetlist-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left;
+    padding: 1rem;
+  }
+}
+.el-table .el-table__cell {
+  text-align: center;
+  font-size: 12px;
+}
+.el-table .el-table__cell {
+  text-align: center;
+}
+.el-input {
+  --el-input-height: var(--el-component-size);
+  position: relative;
+  font-size: var(--el-font-size-base);
+  display: inline-flex;
+  /* width: 100%; */
+  line-height: var(--el-input-height);
+  box-sizing: border-box;
+  vertical-align: middle;
+}
+.el-icon {
+  margin-right: 5px;
+}
+</style>

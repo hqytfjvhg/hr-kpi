@@ -1,0 +1,86 @@
+<template>
+  <div class="headerUser">
+    <el-breadcrumb :separator-icon="ArrowRight">
+      <el-breadcrumb-item :to="{ path: '/' }">homepage</el-breadcrumb-item>
+      <el-breadcrumb-item>promotion management</el-breadcrumb-item>
+      <el-breadcrumb-item>promotion list</el-breadcrumb-item>
+      <el-breadcrumb-item>promotion detail</el-breadcrumb-item>
+    </el-breadcrumb>
+    <el-dropdown>
+      <a class="el-dropdown-link" @click.prevent>
+        <el-avatar>路飞</el-avatar>
+      </a>
+      <template #dropdown>
+        <el-dropdown-menu>
+          <el-dropdown-item @click="$router.push({ name: 'userInfo' })">个人信息</el-dropdown-item>
+          <el-dropdown-item>个人设置</el-dropdown-item>
+          <el-dropdown-item @click.prevent="doLogout">退出登录</el-dropdown-item>
+        </el-dropdown-menu>
+      </template>
+    </el-dropdown>
+    <!-- <el-icon color="#409EFC" :size="30"><CirclePlusFilled /></el-icon> -->
+  </div>
+</template>
+
+<script setup>
+import { ElMessage, ElMessageBox } from "element-plus";
+import { ArrowRight } from "@element-plus/icons-vue";
+// import { CirclePlusFilled } from "@element-plus/icons-vue";
+// import { useRouter } from "vue-router";
+// import axios from "axios";
+// import store from "@/store";
+import { logout } from "@/api/logout/index";
+
+// const router = useRouter();
+//退出登录
+const doLogout = () => {
+  ElMessageBox.confirm("确定退出系统吗？", "提示", {
+    confirmButtonText: "确定",
+    cancelButtonText: "取消",
+    type: "warning",
+  })
+    .then(() => {
+      localStorage.removeItem("userId");
+      localStorage.removeItem("token");
+      localStorage.clear();
+      window.location.reload();
+      logout();
+      //   axios({
+      //     url: "http://192.168.60.108:8989/ifi-personal/user/logout",
+      //     method: "post",
+      //     headers: {
+      //       token: store.state.token,
+      //     },
+      //   }).then((res) => {
+      //     if (res.data.code == 0) return ElMessage.success("成功退出登录");
+      //     localStorage.removeItem("token");
+      //     localStorage.clear();
+      //     router.replace({ name: "login" });
+      //   });
+    })
+    .catch(() => {
+      ElMessage({
+        type: "info",
+        message: "取消退出",
+      });
+    });
+};
+</script>
+<style>
+.example-showcase .el-dropdown-link {
+  cursor: pointer;
+  color: var(--el-color-primary);
+  display: flex;
+  align-items: center;
+}
+.headerUser {
+  width: 100vw;
+  height: 3.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  .el-avatar {
+    text-align: center;
+  }
+}
+</style>

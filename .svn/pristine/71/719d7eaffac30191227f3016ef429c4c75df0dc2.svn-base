@@ -1,0 +1,25 @@
+import axios from "axios";
+import store from "@/store";
+import { ElMessage } from "element-plus";
+
+export function logout() {
+  axios({
+    url: "http://192.168.60.108:8989/ifi-personal/user/logout",
+    method: "post",
+    headers: {
+      token: store.state.token,
+    },
+  })
+    .then((res) => {
+      if (res.data.code == 0) return ElMessage.success("成功退出登录");
+      localStorage.removeItem("token");
+      localStorage.clear();
+      this.$router.replace({ name: "login" });
+    })
+    .catch(() => {
+      ElMessage({
+        type: "info",
+        message: "取消退出",
+      });
+    });
+}

@@ -1,0 +1,33 @@
+import axios from "axios";
+import store from "@/store";
+import { ElMessage } from "element-plus";
+import router from "@/router";
+
+export function getValues() {
+  return axios({
+    url: "http://192.168.60.108:8989/ifi-personal/value/getValueTemplateData",
+    headers: {
+      token: store.state.token,
+    },
+  });
+}
+
+export function sendValuesData(data) {
+  axios({
+    url: "http://192.168.60.108:8989/ifi-personal/value/insertValueDataByUserId",
+    method: "post",
+    data,
+  })
+    .then((res) => {
+      if (res.data.code == 0) {
+        ElMessage.success("提交成功");
+        router.push({ name: "valueUser" });
+      } else {
+        ElMessage.error(res.data.message);
+      }
+    })
+    .catch((err) => {
+      ElMessage.error(err);
+      console.log(err);
+    });
+}

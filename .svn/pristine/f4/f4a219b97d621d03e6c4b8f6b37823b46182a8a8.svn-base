@@ -1,0 +1,307 @@
+<template>
+  <div class="userlist">
+    <div class="userlist-title">用户列表</div>
+
+    <el-form class="titleForm">
+      <el-form-item label="部门">
+        <el-select clearable placeholder="请选择部门" v-model.number="deptId">
+          <el-option v-for="item in deptOptions" :key="item.deptId" :label="item.deptName" :value="item.deptId" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="角色">
+        <el-select clearable placeholder="请输入角色" v-model="role">
+          <el-option v-for="item in roleOptions" :key="item.roleId" :label="item.roleCnName" :value="item.roleId" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="姓名">
+        <el-input clearable placeholder="请输入姓名" v-model="name" style="width: 214px"></el-input>
+      </el-form-item>
+      <el-button @click="getUserList">查询</el-button>
+      <el-button type="primary" @click="addUser"
+        ><el-icon><Plus /></el-icon>新增</el-button
+      >
+    </el-form>
+    <el-table :data="userListData" height="69vh" style="width: 100%; text-align: center" type="index" border>
+      <el-table-column type="index" label="序号" width="100" />
+
+      <el-table-column prop="name" label="姓名" />
+      <el-table-column prop="username" label="账号" />
+      <el-table-column prop="roleCnName" label="角色" />
+      <el-table-column prop="deptName" label="部门" />
+      <!-- <el-table-column prop="phone" label="手机号码" /> -->
+
+      <el-table-column fixed="right" label="操作">
+        <template #default="{ row }">
+          <el-tooltip content="管理员账户不可删除" placement="top" v-if="row.roleName == 'ROOT'">
+            <el-button type="info" size="small" plain
+              ><el-icon><Delete /></el-icon>删除</el-button
+            >
+          </el-tooltip>
+          <el-button type="danger" size="small" plain @click="deleteRow(row)" v-else
+            ><el-icon><Delete /></el-icon>删除</el-button
+          >
+          <el-tooltip content="管理员账户不可修改" placement="top" v-if="row.roleName == 'ROOT'">
+            <el-button type="info" size="small" plain
+              ><el-icon><Edit /></el-icon>修改</el-button
+            >
+          </el-tooltip>
+          <el-button type="primary" size="small" plain @click="reviseVal(row)" v-else
+            ><el-icon><Edit /></el-icon>修改</el-button
+          >
+          <el-tooltip content="管理员账户不可重置密码" placement="top" v-if="row.roleName == 'ROOT'">
+            <el-button type="info" size="small" plain>重置密码</el-button>
+          </el-tooltip>
+          <el-button type="primary" size="small" plain @click="changeRow(row)" v-else>重置密码</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+    <div class="demo-pagination-block">
+      <el-pagination
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        :page-sizes="[15, 30, 45, 60]"
+        :disabled="disabled"
+        background
+        layout="total,sizes, prev, pager, next"
+        :total="total"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+      />
+    </div>
+    <Dialog
+      v-if="dialogShow"
+      v-model:dialogShow="dialogShow"
+      :rowInfo="rowInfo"
+      :title="title"
+      :arrayNum="userListData.length"
+      :deptOptions="deptOptions"
+      :roleOptions="roleOptions"
+      @addRow="addRow"
+      @editRow="editRow"
+      @reviseRow="reviseRow"
+    />
+  </div>
+</template>
+
+<script>
+import { onMounted, reactive, toRefs } from "vue";
+import { ElMessageBox, ElMessage } from "element-plus";
+import Dialog from "./DialogView.vue";
+import { userList, resetpsw, deleteUser, roleList, sendRoledata, addUser } from "@/api/userlist/index";
+import { deptList } from "@/api/register/index";
+import { Plus, Edit, Delete } from "@element-plus/icons-vue";
+
+export default {
+  components: { Dialog, Plus, Edit, Delete },
+  setup() {
+    const data = reactive({
+      name: null,
+      role: null,
+      deptId: null,
+      deptOptions: [],
+      roleOptions: [],
+      dialogShow: false, // 新增/编辑弹框
+      detailShow: false, // 详情弹窗
+      rowInfo: {}, // 新增/编辑的数据
+      title: "", // 是新建还是修改
+      //列表渲染数据的table
+      userListData: [
+        {
+          userID: "",
+          name: "",
+          deptName: "",
+          phone: "",
+        },
+      ],
+      currentPage: 1,
+      pageSize: 15,
+      total: 100,
+    });
+    onMounted(() => {
+      method.getUserList();
+      deptList()
+        .then((res) => {
+          if (res.data.code == 0) {
+            data.deptOptions = res.data.data;
+          }
+        })
+        .catch(() => {
+          ElMessage.error("请求失败");
+        });
+      roleList().then((res) => {
+        if (res.data.code == 0) {
+          data.roleOptions = res.data.data;
+        }
+      });
+    });
+    const method = reactive({
+      getUserList() {
+        const userdata = {
+          length: data.pageSize,
+          page: data.currentPage,
+          name: data.name,
+          role: data.role,
+          deptId: data.deptId,
+        };
+        userList(userdata)
+          .then((res) => {
+            data.userListData = res.data.data.list;
+            data.total = res.data.data.totalCount;
+            // console.log(res.data.data.list);
+          })
+          .catch(() => {});
+      },
+      handleSizeChange(newSize) {
+        data.pageSize = newSize;
+        method.getUserList();
+      },
+      handleCurrentChange(newPage) {
+        data.currentPage = newPage;
+        method.getUserList();
+      },
+      addUser() {
+        data.title = "新增";
+        data.rowInfo = {};
+        data.dialogShow = true;
+      },
+      changeRow(val) {
+        data.title = "重置";
+        data.dialogShow = true;
+        data.rowInfo = val;
+      },
+      reviseVal(val) {
+        data.title = "修改";
+        data.dialogShow = true;
+        data.rowInfo = val;
+      },
+      deleteRow(val) {
+        ElMessageBox.confirm("确定删除此信息吗?", "提示", {
+          confirmButtonText: "确认",
+          cancelButtonText: "取消",
+          type: "warning",
+        })
+          .then(() => {
+            const deleteData = { userIds: val.userId };
+            deleteUser(deleteData)
+              .then((res) => {
+                method.handleSure(val);
+                if (res.data.code == 0) return ElMessage.success("删除成功");
+              })
+              .catch(() => {});
+          })
+          .catch(() => {
+            ElMessage.info("取消删除");
+            // catch error
+          });
+      },
+      handleSure(val) {
+        this.dialogVisible = false;
+        const index = data.userListData.findIndex((item) => item.userID === val.userID);
+        data.userListData.splice(index, 1);
+        // method.getUserList();
+      },
+      //新增用户
+      addRow(val) {
+        addUser(val)
+          .then((res) => {
+            if (res.data && res.data.code == 0) {
+              const index = data.userListData.findIndex((item) => item.userID === val.userID);
+              data.userListData.splice(index, 1);
+              // method.getUserList();
+              ElMessage.success("新增成功");
+            }
+          })
+          .catch(() => {
+            ElMessage.error("新增失败");
+          });
+        // data.userListData.push(val);
+      },
+      //修改
+      async reviseRow(val) {
+        console.log(val);
+        // let index = data.userListData.findIndex((item) => item.id === val.id);
+        // data.userListData.splice(index, 1, val);
+        let deptId;
+        let roleId;
+        if (typeof val.deptName !== "number") {
+          const result = data.deptOptions.filter((item) => item.deptName === val.deptName);
+          deptId = result[0].deptId;
+          roleId = val.roleCnName;
+        }
+        if (typeof val.roleCnName !== "number") {
+          const result2 = data.roleOptions.filter((item) => item.roleCnName === val.roleCnName);
+          roleId = result2[0].roleId;
+          deptId = val.deptName;
+        }
+        //两个都不修改
+        if (typeof val.deptName !== "number" && typeof val.roleCnName !== "number") {
+          const result = data.deptOptions.filter((item) => item.deptName === val.deptName);
+          deptId = result[0].deptId;
+          const result2 = data.roleOptions.filter((item) => item.roleCnName === val.roleCnName);
+          roleId = result2[0].roleId;
+          //两个一起修改就直接是数字
+        } else if (typeof val.deptName == "number" && typeof val.roleCnName == "number") {
+          roleId = val.roleCnName;
+          deptId = val.deptName;
+        }
+        const reviseData = {
+          userId: val.userId,
+          roleId: roleId,
+          deptId: deptId,
+          //不做解析的话：修改弹窗绑定的字段就行
+          //  roleId: val.roleId,
+          // deptId: val.deptId,
+        };
+        await sendRoledata(reviseData);
+
+        method.getUserList();
+        console.log(reviseData);
+      },
+      //重置密码
+      editRow(val) {
+        console.log(val);
+        // let index = data.userListData.findIndex((item) => item.id === val.id);
+        // data.userListData.splice(index, 1, val);
+        const resetData = {
+          newPassword: val.newPassword,
+          userId: val.userId,
+        };
+        resetpsw(resetData);
+      },
+    });
+    return { ...toRefs(data), ...method };
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.userlist {
+  padding: 1rem;
+  background-color: #fff;
+  height: 96%;
+  border-radius: 10px;
+
+  .userlist-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left;
+    padding: 1rem;
+  }
+  // .el-table__header-wrapper th {
+  //   text-align: center;
+  // }
+  .el-table__cell {
+    // text-align: center;
+    font-size: 12px;
+  }
+}
+.demo-pagination-block {
+  padding: 1rem;
+}
+.titleForm {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 1rem;
+}
+</style>

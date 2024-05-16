@@ -1,0 +1,178 @@
+<template>
+  <div class="headerUser">
+    <el-breadcrumb :separator-icon="ArrowRight">
+      <el-breadcrumb-item :to="{ path: '/home' }">首页</el-breadcrumb-item>
+      <el-breadcrumb-item v-for="item in this.getBreadList()" :key="item" :to="item.path">
+        {{ item.info }}
+      </el-breadcrumb-item>
+    </el-breadcrumb>
+    <!-- <div>{{ $store.state.name }}+{{ $store.state.userId }}+{{ $store.state.number }}+{{ number }}</div> -->
+    <div class="header-right">
+      <el-icon :size="20" class="bellIcon" v-if="$store.state.role != 'ROOT'" @click="$router.push({ name: 'about' })">
+        <BellFilled />
+      </el-icon>
+      <div class="redPoint" v-if="$store.state.role != 'ROOT'">{{ $store.state.number2 }}</div>
+
+      <el-dropdown>
+        <a class="el-dropdown-link" @click.prevent>
+          <el-avatar style="font-size: 0.5rem">{{ $store.state.role }}</el-avatar>
+        </a>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item @click="$router.push({ name: 'about' })" v-if="$store.state.role != 'ROOT'">
+              待办中心
+            </el-dropdown-item>
+            <el-dropdown-item @click="$router.push({ name: 'userinfo' })" v-if="$store.state.role != 'ROOT'">
+              个人信息
+            </el-dropdown-item>
+            <el-dropdown-item @click.prevent="doLogout">退出登录</el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
+    </div>
+    <!-- <el-icon color="#409EFC" :size="30"><CirclePlusFilled /></el-icon> -->
+  </div>
+</template>
+
+<script>
+import { ElMessage, ElMessageBox } from "element-plus";
+import { BellFilled } from "@element-plus/icons-vue";
+// import { useRouter } from "vue-router";
+// import axios from "axios";
+import store from "@/store";
+import { logout } from "@/api/logout/index";
+// import emitter from "@/utils/eventbus.js";
+import { getEventNumber, selectPerformanceInfo } from "@/api/about/index";
+
+export default {
+  data() {
+    return {
+      number: null,
+      sumnumber: null,
+    };
+  },
+  components: {
+    BellFilled,
+  },
+  async mounted() {
+    // this.callBPageMethod();
+
+    await getEventNumber()
+      .then((res) => {
+        if (res.data.code == 0) {
+          // console.log(res.data.data);
+          this.number = res.data.data.uncompletedEventNumber;
+        }
+        store.commit("changeNumber", this.number);
+        // console.log(this.number);
+      })
+      .catch(() => {
+        ElMessage.error("请求失败");
+      });
+    selectPerformanceInfo().then((res) => {
+      if (res.data.code == 0) {
+        this.sumnumber = res.data.data.uncompletedEventNumber;
+      }
+      store.commit("changeNumber2", this.sumnumber);
+      console.log(this.sumnumber);
+    });
+  },
+
+  methods: {
+    //退出登录
+    doLogout() {
+      ElMessageBox.confirm("确定退出系统吗？", "提示", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+      })
+        .then(() => {
+          localStorage.removeItem("userId");
+          localStorage.removeItem("token");
+          localStorage.clear();
+          window.location.reload();
+          logout();
+        })
+        .catch(() => {
+          ElMessage({
+            type: "info",
+            message: "取消退出",
+          });
+        });
+    },
+    getBreadList() {
+      let currentPath = this.$route.path;
+      let routes = this.$router.options.routes[3].children;
+      // console.log(currentPath, routes);
+      return this.breadListSearch(routes, currentPath);
+    },
+    breadListSearch(routes, currentPath, breadList) {
+      breadList = breadList || [];
+      breadList = [...breadList];
+      for (let i = routes.length - 1; i >= 0; i--) {
+        if (routes[i].path === currentPath) {
+          console.log(routes[i]);
+          if (routes[i].meta && routes[i].meta.info)
+            breadList.push({ path: routes[i].path, info: routes[i].meta.info });
+          console.log(breadList);
+          return breadList;
+        } else {
+          if (routes[i].children != undefined) {
+            const index = routes[i].children.filter((item) => item.path === currentPath);
+            // console.log(index);
+            if (index.meta && index.meta.info) {
+              breadList.push({ path: index.path, info: index.meta.info });
+              // console.log(breadList);
+              return breadList;
+            }
+          }
+
+          // if (routes[i].children != undefined && currentPath.indexOf(routes[i].children.path) === 0) {
+          //   breadList.push({ path: routes[i].path, info: routes[i].meta.info });
+          //   return this.breadListSearch(routes[i].children, currentPath, breadList);
+          // }
+        }
+      }
+    },
+  },
+};
+</script>
+<style>
+.example-showcase .el-dropdown-link {
+  cursor: pointer;
+  color: var(--el-color-primary);
+  display: flex;
+  align-items: center;
+}
+.headerUser {
+  width: 100vw;
+  height: 3.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  .bellIcon {
+    height: 3.75rem;
+    padding-right: 1rem;
+    position: relative;
+  }
+  .el-dropdown-link {
+    line-height: 3.75rem;
+  }
+}
+
+.header-right {
+  display: flex;
+  .redPoint {
+    width: 1rem;
+    height: 1rem;
+    background-color: red;
+    border-radius: 50%;
+    z-index: 1;
+    position: absolute;
+    margin-top: 0.6rem;
+    margin-left: 0.6rem;
+    font-size: 14px;
+    color: aliceblue;
+  }
+}
+</style>

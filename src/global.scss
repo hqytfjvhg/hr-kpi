@@ -1,0 +1,134 @@
+/* 全局样式，主要用来修改message弹窗的字体 */
+/* body {
+    font-family: "Microsoft YaHei","微软雅黑",  sans-serif;
+  } */
+// 弹窗
+  .el-message-box__title,.el-message-box__message,.el-button{
+    font-family: "Microsoft YaHei","微软雅黑",  sans-serif;
+  }
+  //表单
+  .el-form-item{
+    margin-right: 12px;
+  }
+  //表头和表格
+  .el-table--border th.el-table__cell {
+    font-size: 15px;
+    font-weight: 600;
+    font-family: "Microsoft Yahei";
+  }
+  
+  .el-table .el-table__cell {
+    font-size: 14px;
+    font-weight: normal;
+    color: #606260;
+    font-family: "Microsoft Yahei";
+  }
+  .el-table .cell{
+    // white-space: nowrap;
+    text-align: center;
+  }
+ 
+  //待办事项的表格要左对齐
+  .aboutViewTableStyle {
+     .cell{
+      // text-align: left;
+      // margin-left: 15px;
+      color: #303133;
+    }
+  }
+  //折叠面板的header
+  .el-collapse-item__header{
+font-size: large;
+background-color: #f5f7fa;
+// opacity: 0.3;
+  }
+  //输入框
+  .el-input__inner{
+    min-width: 35px;
+  }
+  // .el-form-item__content{
+  //   size: small;
+  // }
+
+  //图标
+  .iconStyle{
+    margin-right: 5px;
+  }
+  //分页
+  .demo-pagination-block{
+    padding: 16px;
+    display: flex;
+    justify-content: end;
+  }
+  //开关组件
+  .el-switch{
+    height: auto;
+  }
+
+
+//时间线
+ .timeline {
+    display: flex;
+    // width: 95%;
+    margin: auto auto 25px auto;
+    .lineitem {
+          transform: translateX(50%);
+          width: 25%;
+        }
+        //线
+     .el-timeline-item__tail {
+      border-left: none;
+      border-top: 2px solid #e4e7ed;
+      width: 100%;
+      position: absolute;
+      top: 6px;
+    }
+    .el-timeline-item__wrapper {
+        padding-left: 0;
+        position: absolute;
+        top: 20px;
+        transform: translateX(-50%);
+        text-align: center;
+      }
+    .el-timeline-item__timestamp {
+        font-size: 14px;
+      }   
+      //文字
+      .el-timeline-item__content{
+        font-size: 13px;
+      }
+      //点
+      .el-timeline-item__node--normal{
+        left: -5px;
+      width: 12px;
+      height: 12px;
+      }
+  }
+
+  
+  .active {
+  
+   .el-timeline-item__node {
+      background-color: #409eff;
+    
+    }
+    // :deep(.el-timeline-item__tail) {
+    //   border-color: #409eff;
+    //   /* display: block; */
+    // }
+    // :deep(.el-timeline-item__node.is-hollow) {
+    //   background-color: #fff;
+    //   border-style: solid;
+    //   border-width: 2px;
+    // }
+  }
+  @media (max-width: 450px) {
+    .el-main {
+      min-width: 550px;
+      overflow-x: auto;
+    }
+    body {
+      min-width: 450px;
+      overflow-x: auto; /* 显示水平滚动条，当内容超出时 */
+    }}
+

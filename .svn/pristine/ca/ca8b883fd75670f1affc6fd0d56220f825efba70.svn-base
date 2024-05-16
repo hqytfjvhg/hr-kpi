@@ -1,0 +1,644 @@
+<template>
+  <el-tabs v-model="activeName" class="demo-tabs">
+    <!-- 行为 -->
+    <el-tab-pane name="action" class="demo-tab">
+      <div class="button-group">
+        <el-tooltip content="新增行为" placement="top" effect="light" v-if="!isRootRead && !isRootDown">
+          <el-button type="success" @click="addActionDialog">
+            <el-icon class="icon"><Plus /></el-icon>{{ $t("add") }}
+          </el-button>
+        </el-tooltip>
+        <el-tooltip content="刷新行为列表" placement="top" effect="light">
+          <el-button type="primary" @click="getActionList">
+            <el-icon class="icon"><Refresh /></el-icon>{{ $t("refresh") }}
+          </el-button>
+        </el-tooltip>
+
+        <el-tooltip content="删除行为" placement="top" effect="light" v-if="!isRootRead && !isRootDown">
+          <el-button type="danger" @click="deleteAction()">
+            <el-icon class="icon"><Delete /></el-icon>{{ $t("delete") }}
+          </el-button>
+        </el-tooltip>
+      </div>
+      <template #label>
+        <span class="custom-tabs-label">
+          <span>行为</span>
+        </span>
+      </template>
+      <div class="_table">
+        <el-table
+          border
+          ref="multipleAction"
+          :data="actionTableData"
+          :height="tableHeight"
+          @selection-change="handleSelectionChange"
+        >
+          <el-table-column type="selection" width="55" />
+          <el-table-column label="序号" type="index" width="80"></el-table-column>
+          <el-table-column label="行为" prop="actionDescription">
+            <template #default="scope"
+              ><div v-html="scope.row.actionDescription" style="text-align: left"></div
+            ></template>
+          </el-table-column>
+          <el-table-column label="是否需要案例">
+            <template #default="scope">
+              <span v-if="scope.row.needExample == true" style="color: #f56c6c">是</span>
+              <span v-if="scope.row.needExample == false" style="color: #67c23a">否</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="是否使用">
+            <template #default="scope">
+              <span v-if="scope.row.useState == 0" style="color: #67c23a">未使用</span>
+              <span v-if="scope.row.useState == 1" style="color: #f56c6c">使用中</span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </el-tab-pane>
+    <!-- 价值观 -->
+
+    <el-tab-pane name="value" class="demo-tab">
+      <div class="button-group">
+        <el-tooltip content="新增价值观" placement="top" effect="light">
+          <el-button type="success" @click="isAction = true" v-if="!isRootRead && !isRootDown">
+            <el-icon class="icon"><Plus /></el-icon>{{ $t("add") }}
+          </el-button>
+        </el-tooltip>
+        <el-tooltip content="刷新价值观列表" placement="top" effect="light">
+          <el-button type="primary" @click="getValueList">
+            <el-icon class="icon"><Refresh /></el-icon>{{ $t("refresh") }}
+          </el-button>
+        </el-tooltip>
+
+        <el-tooltip content="删除价值观" placement="top" effect="light" v-if="!isRootRead && !isRootDown">
+          <el-button type="danger" @click="deleteValue()">
+            <el-icon class="icon"><Delete /></el-icon>{{ $t("delete") }}
+          </el-button>
+        </el-tooltip>
+      </div>
+      <template #label>
+        <span class="custom-tabs-label">
+          <span>价值观</span>
+        </span>
+      </template>
+      <el-table
+        border
+        class="table-style"
+        ref="multipleValue"
+        :data="valueTableData"
+        @selection-change="handleSelectionChange"
+        :height="tableHeight"
+      >
+        <el-table-column type="selection" width="55" />
+        <el-table-column label="序号" type="index" width="80"></el-table-column>
+
+        <el-table-column label="价值观名称" prop="valueDescription"></el-table-column>
+        <el-table-column label="行为名称">
+          <template #default="scope">
+            <div v-for="item in scope.row.list" :key="item">
+              <div v-html="item.actionDescription" style="text-align: left; margin: 8px 0"></div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="是否使用">
+          <template #default="scope">
+            <span v-if="scope.row.useState == 0" style="color: #67c23a">未使用</span>
+            <span v-if="scope.row.useState == 1" style="color: #f56c6c">使用中</span>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-tab-pane>
+    <!-- 选择行为创建为价值观的弹窗 -->
+    <el-dialog
+      v-model="isAction"
+      title="请为价值观选择行为"
+      :show-close="false"
+      :close-on-click-modal="false"
+      align-center
+    >
+      <el-table
+        border
+        stripe
+        ref="multipleAction"
+        :data="actionTableData"
+        style="height: 30rem"
+        @selection-change="handleSelectionChange"
+      >
+        <el-table-column type="selection" width="55" />
+        <el-table-column label="序号" type="index" width="55"></el-table-column>
+        <el-table-column label="行为" prop="actionDescription">
+          <template #default="scope"
+            ><div v-html="scope.row.actionDescription" style="text-align: left"></div
+          ></template>
+        </el-table-column>
+        <el-table-column label="是否有案例">
+          <template #default="scope">
+            <span v-if="scope.row.needExample == true" style="color: #f56c6c">是</span>
+            <span v-if="scope.row.needExample == false" style="color: #67c23a">否</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="是否使用">
+          <template #default="scope">
+            <el-col v-if="scope.row.useState == 0" type="info" style="color: #67c23a">未使用</el-col>
+            <el-col v-if="scope.row.useState == 1" type="success" style="color: #f56c6c">使用中</el-col>
+          </template>
+        </el-table-column>
+      </el-table>
+      <div class="button-style">
+        <el-button @click="isAction = false">取消</el-button>
+        <el-button type="primary" @click="sureCreateAction">确定</el-button>
+      </div>
+    </el-dialog>
+    <!-- 模板 -->
+    <el-tab-pane name="model" class="demo-tab">
+      <div class="button-group">
+        <el-tooltip content="新增模板" placement="top" effect="light">
+          <el-button type="success" @click="isValue = true" v-if="!isRootRead && !isRootDown">
+            <el-icon class="icon"><Plus /></el-icon>{{ $t("add") }}
+          </el-button>
+        </el-tooltip>
+        <el-tooltip content="刷新模板列表" placement="top" effect="light">
+          <el-button type="primary" @click="getModelList">
+            <el-icon class="icon"><Refresh /></el-icon>{{ $t("refresh") }}
+          </el-button>
+        </el-tooltip>
+
+        <el-tooltip content="删除模板" placement="top" effect="light" v-if="!isRootRead && !isRootDown">
+          <el-button type="danger" @click="deleteModel()">
+            <el-icon class="icon"><Delete /></el-icon>{{ $t("delete") }}
+          </el-button>
+        </el-tooltip>
+      </div>
+      <template #label>
+        <span class="custom-tabs-label">
+          <span>模板</span>
+        </span>
+      </template>
+      <el-table
+        border
+        class="table-style"
+        ref="multipleModel"
+        :data="modelTableData"
+        @selection-change="handleSelectionChange"
+        :height="tableHeight"
+      >
+        <el-table-column label="选择" type="selection" width="55" />
+        <el-table-column label="序号" type="index" width="80"></el-table-column>
+
+        <el-table-column label="模板名称" prop="templateName"></el-table-column>
+        <el-table-column label="价值观名称">
+          <template #default="scope">
+            <div v-for="item in scope.row.list" :key="item" style="text-align: left; margin: 8px 0">
+              {{ item.valueDescription }}
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="是否使用">
+          <template #default="scope">
+            <span v-if="scope.row.useState == 0" style="color: #67c23a">未使用</span>
+            <span v-if="scope.row.useState == 1" style="color: #f56c6c">使用中</span>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-tab-pane>
+    <!-- 选择价值观创建为模板的弹窗 -->
+    <el-dialog
+      v-model="isValue"
+      title="请为模板选择价值观"
+      :show-close="false"
+      :close-on-click-modal="false"
+      align-center
+    >
+      <el-table
+        border
+        stripe
+        :data="valueTableData"
+        @selection-change="handleSelectionChange"
+        style="height: 30rem"
+        ref="multipleValue"
+      >
+        <el-table-column type="selection" width="55" />
+        <el-table-column label="序号" type="index" width="55"></el-table-column>
+        <el-table-column label="价值观名称" prop="valueDescription"></el-table-column>
+        <el-table-column label="是否使用">
+          <template #default="scope">
+            <span v-if="scope.row.useState == 0" style="color: #67c23a">未使用</span>
+            <span v-if="scope.row.useState == 1" style="color: #f56c6c">使用中</span>
+          </template>
+        </el-table-column>
+      </el-table>
+      <div class="button-style">
+        <el-button @click="isValue = false">取消</el-button>
+        <el-button type="primary" @click="sureCreateAction">确定</el-button>
+      </div>
+    </el-dialog>
+  </el-tabs>
+  <Dialog v-if="dialogShow" v-model:dialogShow="dialogShow" :title="title" @addAction="addAction" />
+  <!-- 创建价值观、模板的窗口 -->
+  <el-dialog v-model="dialogVisible" :title="titleName" :show-close="false" :close-on-click-modal="false">
+    <el-input v-model="valueTitle" style="width: 25rem" @keyup.enter="create"></el-input>
+    <div class="button-style">
+      <el-button @click="dialogVisible = false">取消</el-button>
+      <el-button @click="create" type="primary">确定</el-button>
+    </div>
+  </el-dialog>
+</template>
+
+<script>
+import {
+  getAction,
+  deleteAction,
+  createValue,
+  getValue,
+  getModel,
+  createModel,
+  deleteValue,
+  deleteModel,
+  getValueDetil,
+  getModelDetil,
+  addAction,
+} from "@/api/values/index";
+import Dialog from "../userlist/DialogView.vue";
+import { ElMessage, ElMessageBox } from "element-plus";
+
+import { Refresh, Delete, Plus } from "@element-plus/icons-vue";
+import rootPermission from "@/utils/common.js";
+
+export default {
+  name: "valueManage",
+  components: {
+    Dialog,
+    Refresh,
+    Delete,
+
+    Plus,
+  },
+  data() {
+    return {
+      multipleAction: "", //绑定每个表格，用来清除多选
+      multipleValue: "",
+      multipleModel: "",
+      multipleSelection: [], //每个页面多选的数据
+
+      title: "",
+      dialogShow: false, //控制新建行为
+      dialogVisible: false, //控制创建价值观、模板
+      isAction: false, //控制选择行为的弹窗
+      isValue: false, //控制选择价值观的弹窗
+
+      valueTitle: "", //价值观标题
+      activeName: "action",
+      titleName: "", //创建时的名称
+
+      actionTableData: [],
+      valueTableData: [], //表格展示的内容
+      modelTableData: [],
+
+      selectActionList: {}, //展开的详情
+      selectValueList: {},
+      selectModelList: {},
+
+      valueDetil: {}, //价值观所有详情
+      modelDetil: [],
+      tableHeight: null,
+      isRootRead: null, //判断管理员是否只读
+      isRootDown: null,
+    };
+  },
+  mounted() {
+    this.getActionList();
+    this.getValueList();
+    this.getModelList();
+    this.$nextTick(() => {
+      // 根据浏览器高度设置初始高度
+      this.tableHeight = window.innerHeight - 240;
+      // 监听浏览器高度变化，改变表格高度
+      window.onresize = () => {
+        this.tableHeight = window.innerHeight - 240;
+      };
+    });
+    this.isRootRead = rootPermission.isRootRead();
+    this.isRootDown = rootPermission.isRootDown();
+  },
+  methods: {
+    getActionList() {
+      getAction()
+        .then((res) => {
+          if (res.data.code == 0) {
+            this.actionTableData = res.data.data;
+            this.actionTableData.sort(function (a, b) {
+              return b.actionId - a.actionId;
+            });
+          }
+        })
+        .catch(() => {
+          ElMessage.error("请求失败");
+        });
+    },
+    async getValueList() {
+      await getValue()
+        .then((res) => {
+          if (res.data.code == 0) {
+            this.valueTableData = res.data.data.map((val) => {
+              const expanded = false;
+              val.expanded = expanded;
+              return val;
+            });
+            this.valueTableData.sort(function (a, b) {
+              return b.valueId - a.valueId;
+            });
+          }
+        })
+        .catch(() => {
+          ElMessage.error("请求失败");
+        });
+      await getValueDetil()
+        .then((res) => {
+          if (res.data.code == 0) {
+            this.valueDetil = [];
+            this.valueDetil = res.data.data;
+          }
+        })
+        .catch(() => {
+          ElMessage.error("请求失败");
+        });
+
+      this.valueDetil = this.valueDetil.reduce((acc, item) => {
+        acc[item.valueId] = acc[item.valueId] || [];
+        acc[item.valueId].push(item);
+        return acc;
+      }, {});
+
+      this.valueTableData.map((item) => {
+        let valueDetilList;
+        Object.keys(this.valueDetil).filter((item1) => {
+          if (item1.toString() === item.valueId.toString()) {
+            valueDetilList = this.valueDetil[item1];
+          }
+        });
+
+        if (valueDetilList.length > 0) {
+          item.list = valueDetilList;
+        }
+        return item;
+      });
+    },
+    async getModelList() {
+      await getModel()
+        .then((res) => {
+          if (res.data && res.data.code == 0) {
+            this.modelTableData = res.data.data;
+
+            this.modelTableData.sort(function (a, b) {
+              return b.templateId - a.templateId;
+            });
+          }
+        })
+        .catch((err) => {
+          console.log(err, 22222);
+        });
+
+      await getModelDetil()
+        .then((res) => {
+          if (res.data.code == 0) {
+            this.modelDetil = res.data.data;
+          }
+        })
+        .catch();
+
+      this.modelDetil = this.modelDetil.reduce((acc, item) => {
+        acc[item.templateid] = acc[item.templateid] || [];
+        acc[item.templateid].push(item);
+        return acc;
+      }, {});
+
+      this.modelTableData.map((item) => {
+        let modelDetilList;
+        Object.keys(this.modelDetil).filter((item1) => {
+          if (item1.toString() === item.templateId.toString()) {
+            modelDetilList = this.modelDetil[item1];
+          }
+        });
+
+        if (modelDetilList.length > 0) {
+          item.list = modelDetilList;
+        }
+        return item;
+      });
+    },
+
+    toggleSelection() {
+      this.$refs.multipleAction.clearSelection();
+      // console.log("已清除多选");
+      this.$refs.multipleValue.clearSelection();
+      this.$refs.multipleModel.clearSelection();
+    },
+    //多选的结果
+    handleSelectionChange(val) {
+      this.multipleSelection = val;
+    },
+    //弹窗选择
+    sureCreateAction() {
+      if (this.multipleSelection.length > 0) {
+        if (this.activeName == "value") {
+          this.titleName = "价值观名称";
+        } else if (this.activeName == "model") {
+          this.titleName = "模板名称";
+        }
+        this.dialogVisible = true;
+      } else {
+        if (this.activeName == "value") {
+          ElMessage.error("请选择行为");
+        } else if (this.activeName == "model") {
+          ElMessage.error("请选择价值观");
+        }
+      }
+    },
+
+    async create() {
+      //选中行为创建价值观
+      if (this.activeName == "value") {
+        if (this.valueTitle !== null && this.valueTitle.split(" ").join("").length !== 0) {
+          const actionId = this.multipleSelection.map((item) => {
+            return item.actionId;
+          });
+          const actionList = { actionIdList: actionId, valueDescription: this.valueTitle };
+          await createValue(actionList);
+          this.toggleSelection();
+          this.valueTitle = "";
+          this.dialogVisible = false;
+          this.isAction = false;
+          this.getValueList();
+          this.getActionList();
+        } else {
+          ElMessage.error("请输入价值观标题");
+        }
+
+        //选中价值观创建模板
+      } else if (this.activeName == "model") {
+        if (this.valueTitle !== null && this.valueTitle.split(" ").join("").length !== 0) {
+          const valueId = this.multipleSelection.map((item) => {
+            return item.valueId;
+          });
+          const valueList = { valueIdList: valueId, templateName: this.valueTitle };
+          await createModel(valueList);
+          this.toggleSelection();
+          this.valueTitle = "";
+          this.dialogVisible = false;
+          this.isValue = false;
+
+          this.getModelList();
+          this.getValueList();
+        } else {
+          ElMessage.error("请输入模板标题");
+        }
+      }
+    },
+    async addAction(val) {
+      await addAction(val);
+      this.getActionList();
+    },
+    addActionDialog() {
+      (this.title = "新增行为"), (this.dialogShow = true);
+    },
+    deleteAction() {
+      if (this.multipleSelection.length > 0) {
+        ElMessageBox.confirm("确定删除此行为吗?", "提示", {
+          confirmButtonText: "确认",
+          cancelButtonText: "取消",
+          type: "warning",
+        })
+          .then(() => {
+            const actionId = this.multipleSelection.map((item) => {
+              return item.actionId;
+            });
+            const actionIds = { actionIds: actionId };
+
+            deleteAction(actionIds).then(() => {
+              this.getActionList();
+            });
+          })
+          .catch(() => {
+            ElMessage.info("取消删除");
+          });
+      } else {
+        ElMessage.error("请选择需要删除的行为");
+      }
+    },
+    async deleteValue() {
+      try {
+        if (this.multipleSelection.length > 0) {
+          const result = await ElMessageBox.confirm("确定删除此价值观吗?", "提示", {
+            confirmButtonText: "确认",
+            cancelButtonText: "取消",
+            type: "warning",
+          });
+
+          if (result) {
+            const valueId = this.multipleSelection.map((item) => {
+              return item.valueId;
+            });
+            const valueIds = { valueIds: valueId };
+            await deleteValue(valueIds);
+            this.getValueList();
+          }
+        } else {
+          ElMessage.error("请选择需要删除的价值观");
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    },
+
+    deleteModel() {
+      if (this.multipleSelection.length > 0) {
+        ElMessageBox.confirm("确定删除此模板吗?", "提示", {
+          confirmButtonText: "确认",
+          cancelButtonText: "取消",
+          type: "warning",
+        })
+          .then(() => {
+            const templateId = this.multipleSelection.map((item) => {
+              return item.templateId;
+            });
+            const templateIds = { tempIdList: templateId };
+            deleteModel(templateIds).then(() => {
+              this.getModelList();
+            });
+          })
+          .catch(() => {
+            ElMessage.info("取消删除");
+          });
+      } else {
+        ElMessage.error("请选择需要删除的模板");
+      }
+    },
+  },
+};
+</script>
+
+<style lang="scss">
+.demo-tabs {
+  background-color: #fff;
+  height: 96%;
+  border-radius: 10px;
+  padding: 0 20px;
+  min-width: 550px;
+  overflow-x: auto;
+}
+.demo-tab {
+  padding: 0 15px 0 15px;
+}
+.el-tabs--card > .el-tabs__header .el-tabs__item {
+  font-size: 14px;
+}
+
+.demo-tabs > .el-tabs__content {
+  padding: 0 !important;
+  color: #6b778c;
+  font-size: 32px;
+  font-weight: 600;
+}
+
+.el-tabs {
+  height: 100%;
+  --el-tabs-header-height: 55px;
+  .el-tabs__item {
+    font-size: 1rem;
+  }
+}
+
+.button-group {
+  overflow: hidden;
+  text-align: right;
+  margin-bottom: 16px;
+}
+.button-style {
+  margin-top: 20px;
+  text-align: right;
+}
+
+/* 表格宽度自适应 */
+.el-table {
+  width: 100%;
+  .el-table__header-wrapper table,
+  .el-table__body-wrapper table {
+    width: 100% !important;
+  }
+  .el-table__body,
+  .el-table__footer,
+  .el-table__header {
+    table-layout: auto;
+  }
+}
+
+.table-style {
+  .el-table-column--selection.is-leaf .el-checkbox {
+    display: none;
+  }
+}
+
+.icon {
+  margin-right: 5px;
+}
+</style>

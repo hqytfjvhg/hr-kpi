@@ -1,0 +1,647 @@
+<template>
+  <div class="userAbout">
+    <!-- 折叠面板 -->
+    <!-- <div style="display: flex; align-items: flex-start">
+      <el-collapse v-model="activeNames" style="width: 45%; margin: auto; min-width: 460px">
+        <el-collapse-item title="价值观" name="1">
+          <div
+            v-if="eventInfoList == null || eventInfoList.length == 0"
+            style="border-left: 1px solid #ebeef5; border-right: 1px solid #ebeef5"
+          >
+            <el-icon style="margin-top: 80px; font-size: 50px"><Calendar /></el-icon>
+            <div style="padding-bottom: 40px">暂无待办事件</div>
+          </div>
+          <div v-else>
+            <div
+              v-if="$store.state.role !== 'EMPLOYEE'"
+              style="
+                display: flex;
+                justify-content: space-between;
+                padding: 0 20px;
+                border-left: 1px solid #ebeef5;
+                border-right: 1px solid #ebeef5;
+              "
+            >
+              <div style="font-size: 25px; padding-bottom: 20px">
+                <span style="color: #f56c6c; font-weight: 700; margin-right: 5px">{{ $store.state.number }}</span>
+                <span style="font-size: 12px">待审批数</span>
+                <div style="font-size: 13px; text-align: center; min-width: 200px">
+                  <div
+                    v-if="($store.state.role == 'DEPT' || $store.state.role == 'DEPTMANAGER') && showValueApprovalTime"
+                  >
+                    请在<span style="color: #f56c6c">{{ year }}年{{ nextMonth }}月5日</span>前完成审批
+                  </div>
+                  <div v-if="($store.state.role == 'HR' || $store.state.role == 'HRMANAGER') && showValueApprovalTime">
+                    请在<span style="color: #f56c6c">{{ year }}年{{ nextMonth }}月15日</span>前完成审批
+                  </div>
+                  <div v-if="!showValueApprovalTime">
+                    请在<span style="color: #f56c6c">{{ new Date().getFullYear() }}年{{ month }}月{{ endDay }}日</span
+                    >前完成填写。
+                  </div>
+                </div>
+              </div>
+              <el-form style="display: flex; align-items: center" v-if="$store.state.role == 'HRMANAGER'">
+                <el-form-item label="部门" prop="deptId" style="width: 140px">
+                  <el-select clearable placeholder="请选择" v-model="deptId">
+                    <el-option
+                      v-for="item in deptOptions"
+                      :key="item.deptId"
+                      :label="item.deptName"
+                      :value="item.deptId"
+                    />
+                  </el-select>
+                </el-form-item>
+                <el-button style="margin-left: 10px; margin-bottom: 18px" @click="selectValueByDept" type="primary"
+                  >筛选</el-button
+                >
+              </el-form>
+            </div>
+            <el-table border :data="eventInfoList1" class="aboutViewTableStyle" :show-header="false" height="65vh">
+              <el-table-column prop="name"></el-table-column>
+              <el-table-column>
+                <template #default="{ row }">
+                  <div
+                    v-if="row.deptFlowState == 0 && row.hrFlowState == 0"
+                    style="font-size: 12px; text-align: center"
+                  >
+                    <router-link to="/writeValue" style="color: #ebeef5; text-decoration: none">
+                      <el-button type="success" circle>
+                        <el-icon><Edit /></el-icon></el-button
+                    ></router-link>
+                  </div>
+                  <div v-else style="font-size: 12px; text-align: center">
+                    <el-button type="success" circle @click="reviewPush(row.userId, row.deptFlowState)">
+                      <el-icon><Edit /></el-icon>
+                    </el-button>
+                  </div>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </el-collapse-item>
+      </el-collapse>
+      <el-collapse
+        v-model="activeNames"
+        style="width: 45%; margin: auto; min-width: 460px"
+        v-if="
+          $store.state.role == 'HRMANAGER' ||
+          ($store.state.role == 'DEPTMANAGER' && $store.state.name != '温上凯') ||
+          $store.state.role == 'HR'
+        "
+      >
+        <el-collapse-item title="业绩" name="2">
+          <div
+            v-if="eventPerformanceList == null || eventPerformanceList.length == 0"
+            style="border-left: 1px solid #ebeef5; border-right: 1px solid #ebeef5"
+          >
+            <el-icon style="margin-top: 80px; font-size: 50px"><Calendar /></el-icon>
+            <div style="padding-bottom: 40px">暂无待办事件</div>
+          </div>
+          <div v-else>
+            <div
+              style="
+                font-size: 25px;
+                padding: 0 20px 20px;
+                border-left: 1px solid #ebeef5;
+                border-right: 1px solid #ebeef5;
+              "
+            >
+              <div style="width: 202px">
+                <span style="color: #f56c6c; font-weight: 700; margin-right: 5px">{{
+                  $store.state.number2 - $store.state.number
+                }}</span>
+                <span style="font-weight: normal; font-size: 12px">待审批数</span>
+                <div style="font-weight: normal; font-size: 13px; text-align: center; min-width: 160px">
+                  <div v-if="$store.state.role == 'DEPTMANAGER' && eventPerformanceList.length > 0">
+                    请在<span style="color: #f56c6c">{{ year }}年{{ nextMonth }}月5日</span>前录入指标数据
+                  </div>
+                  <div
+                    v-if="
+                      ($store.state.role == 'HR' || $store.state.role == 'HRMANAGER') && eventPerformanceList.length > 0
+                    "
+                  >
+                    请在<span style="color: #f56c6c">{{ year }}年{{ nextMonth }}月15日</span>前完成审批
+                  </div>
+                </div>
+              </div>
+            </div>
+            <el-table
+              border
+              :data="eventPerformanceList"
+              class="aboutViewTableStyle"
+              :show-header="false"
+              height="65vh"
+            >
+              <el-table-column prop="deptName"></el-table-column>
+              <el-table-column>
+                <template #default="{ row }">
+                  <div style="font-size: 12px; text-align: center">
+                    <el-tooltip effect="light" content="去审批业绩" placement="top"></el-tooltip>
+                    <el-button type="success" circle @click="reviewPerformance(row.deptId, row.deptName)">
+                      <el-icon><Edit /></el-icon
+                    ></el-button></div></template
+              ></el-table-column>
+            </el-table>
+          </div>
+        </el-collapse-item>
+      </el-collapse>
+    </div> -->
+    <!-- 旧版本，两个卡片 -->
+    <div style="display: flex; justify-content: space-between">
+      <el-card shadow="never" class="cardStyle">
+        <template #header>
+          <div class="card-header">
+            价值观
+            <!-- <div v-if="($store.state.role == 'DEPT' || $store.state.role == 'DEPTMANAGER') && showValueApprovalTime">
+              请在<span style="color: #409eff">{{ year }}年{{ nextMonth }}月5日</span>前完成审批
+            </div>
+            <div v-if="($store.state.role == 'HR' || $store.state.role == 'HRMANAGER') && showValueApprovalTime">
+              请在<span style="color: #409eff">{{ year }}年{{ nextMonth }}月15日</span>前完成审批
+            </div> -->
+          </div>
+        </template>
+        <div v-if="eventInfoList == null || eventInfoList.length == 0" class="scroll">
+          <el-icon style="margin-top: 85px; font-size: 50px"><Calendar /></el-icon>
+          <div>暂无待办事件</div>
+        </div>
+        <div v-else class="scroll">
+          <div
+            v-if="$store.state.role !== 'EMPLOYEE'"
+            style="display: flex; justify-content: space-between; padding: 10px 20px 0"
+          >
+            <div style="font-size: 25px; padding-bottom: 20px">
+              <span style="color: #f56c6c; font-weight: 700; margin-right: 5px">{{ $store.state.number }}</span>
+              <span style="font-size: 12px">待审批数</span>
+              <div style="font-size: 13px; text-align: center; min-width: 200px">
+                <div
+                  v-if="($store.state.role == 'DEPT' || $store.state.role == 'DEPTMANAGER') && showValueApprovalTime"
+                >
+                  请在<span style="color: #f56c6c">{{ year }}年{{ nextMonth }}月5日</span>前完成审批
+                </div>
+                <div v-if="($store.state.role == 'HR' || $store.state.role == 'HRMANAGER') && showValueApprovalTime">
+                  请在<span style="color: #f56c6c">{{ year }}年{{ nextMonth }}月15日</span>前完成审批
+                </div>
+                <div v-if="!showValueApprovalTime">
+                  请在<span style="color: #f56c6c">{{ new Date().getFullYear() }}年{{ month }}月{{ endDay }}日</span
+                  >前完成填写。
+                </div>
+              </div>
+            </div>
+            <el-form style="display: flex; align-items: center" v-if="$store.state.role == 'HRMANAGER'">
+              <el-form-item label="部门" prop="deptId" style="width: 150px">
+                <el-select clearable placeholder="请选择" v-model="deptId">
+                  <el-option
+                    v-for="item in deptOptions"
+                    :key="item.deptId"
+                    :label="item.deptName"
+                    :value="item.deptId"
+                  />
+                </el-select>
+              </el-form-item>
+              <el-button style="margin-left: 10px; margin-bottom: 18px" @click="selectValueByDept" type="primary"
+                >筛选</el-button
+              >
+            </el-form>
+          </div>
+          <!-- <div
+            v-if="$store.state.role == 'HRMANAGER'"
+            style="display: flex; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid #ebeef5"
+          >
+            <div style="margin-right: 5vw; font-size: 25px; font-weight: 700; padding-bottom: 20px">
+              {{ $store.state.number }}
+              <div style="font-weight: normal; font-size: 11px; text-align: center; width: 48px">待审批数</div>
+            </div>
+            <el-form style="display: flex; align-items: center">
+              <el-form-item label="部门" prop="deptId">
+                <el-select clearable placeholder="请选择" v-model="deptId">
+                  <el-option
+                    v-for="item in deptOptions"
+                    :key="item.deptId"
+                    :label="item.deptName"
+                    :value="item.deptId"
+                  />
+                </el-select>
+              </el-form-item>
+              <el-button style="margin-left: 20px; margin-bottom: 18px" @click="selectValueByDept" type="primary"
+                >筛选</el-button
+              >
+            </el-form>
+          </div> -->
+          <!-- <div v-for="item in eventInfoList1" :key="item">
+            <div style="display: flex; align-items: center; border-bottom: 1px solid #ebeef5; padding: 5px 0">
+              <div
+                style="
+                  margin-left: 20px;
+                  width: 100%;
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                "
+              >
+                <div style="font-size: 14px; text-align: left">
+                  <span style="margin-right: 20px">{{ item.name }}</span>
+                  <div
+                    v-if="item.deptFlowState == 0 && item.hrFlowState == 0"
+                    style="font-size: 12px; margin-top: 10px"
+                  >
+                    请在{{ new Date().getFullYear() }}年{{ month }}月{{ endDay }}日前完成填写。
+                  </div>
+                </div>
+                <div
+                  v-if="item.deptFlowState == 0 && item.hrFlowState == 0"
+                  style="
+                    font-size: 12px;
+                    text-align: left;
+
+                    margin-right: 20px;
+                  "
+                >
+                  <router-link to="/writeValue" style="color: #ebeef5; text-decoration: none">
+                    <el-button type="success">
+                      <el-icon><Edit /></el-icon></el-button
+                  ></router-link>
+                </div>
+                <div v-else style="font-size: 12px; text-align: left; margin-right: 20px">
+                  <el-button type="success" circle @click="reviewPush(item.userId, item.deptFlowState)">
+                    <el-icon><Edit /></el-icon>
+                  </el-button>
+                </div>
+              </div>
+            </div>
+          </div> -->
+          <el-table border :data="eventInfoList1" class="aboutViewTableStyle" :show-header="false">
+            <el-table-column prop="name"></el-table-column>
+            <el-table-column>
+              <template #default="{ row }">
+                <div v-if="row.deptFlowState == 0 && row.hrFlowState == 0" style="font-size: 12px; text-align: center">
+                  <router-link to="/kpi/writeValue" style="color: #ebeef5; text-decoration: none">
+                    <el-button type="primary" circle>
+                      <el-icon><Edit /></el-icon></el-button
+                  ></router-link>
+                </div>
+                <div v-else style="font-size: 12px; text-align: center">
+                  <el-button type="primary" circle @click="reviewPush(row.userId, row.deptFlowState)">
+                    <el-icon><Edit /></el-icon>
+                  </el-button>
+                </div>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </el-card>
+      <el-card
+        class="cardStyle"
+        shadow="never"
+        v-if="
+          $store.state.role == 'HRMANAGER' ||
+          ($store.state.role == 'DEPTMANAGER' && $store.state.name != '温上凯') ||
+          $store.state.role == 'HR'
+        "
+      >
+        <template #header>
+          <div class="card-header">
+            业绩指标
+            <!-- <div v-if="$store.state.role == 'DEPTMANAGER' && eventPerformanceList.length > 0">
+              请在<span style="color: #409eff">{{ year }}年{{ nextMonth }}月5日</span>前录入指标数据
+            </div>
+            <div
+              v-if="($store.state.role == 'HR' || $store.state.role == 'HRMANAGER') && eventPerformanceList.length > 0"
+            >
+              请在<span style="color: #409eff">{{ year }}年{{ nextMonth }}月15日</span>前完成审批
+            </div> -->
+          </div>
+        </template>
+        <div v-if="eventPerformanceList == null || eventPerformanceList.length == 0" class="scroll">
+          <el-icon style="margin-top: 85px; font-size: 50px"><Calendar /></el-icon>
+          <div>暂无待办事件</div>
+        </div>
+        <div v-else class="scroll">
+          <div style="font-size: 25px; padding: 10px 20px 20px">
+            <div style="width: 202px">
+              <span style="color: #f56c6c; font-weight: 700; margin-right: 5px">{{
+                $store.state.number2 - $store.state.number
+              }}</span>
+              <span style="font-weight: normal; font-size: 12px">待审批数</span>
+              <div style="font-weight: normal; font-size: 13px; text-align: center; min-width: 220px">
+                <div v-if="$store.state.role == 'DEPTMANAGER' && eventPerformanceList.length > 0">
+                  请在<span style="color: #f56c6c">{{ year }}年{{ nextMonth }}月12日</span>前录入指标数据
+                </div>
+                <div
+                  v-if="
+                    ($store.state.role == 'HR' || $store.state.role == 'HRMANAGER') && eventPerformanceList.length > 0
+                  "
+                >
+                  请在<span style="color: #f56c6c">{{ year }}年{{ nextMonth }}月15日</span>前完成审批
+                </div>
+              </div>
+            </div>
+          </div>
+          <el-table border :data="eventPerformanceList" class="aboutViewTableStyle" :show-header="false">
+            <el-table-column prop="deptName"></el-table-column>
+            <el-table-column>
+              <template #default="{ row }">
+                <div style="font-size: 12px; text-align: center">
+                  <el-tooltip effect="light" content="去审批业绩" placement="top"></el-tooltip>
+                  <el-button type="primary" circle @click="reviewPerformance(row.deptId, row.deptName)">
+                    <el-icon><Edit /></el-icon
+                  ></el-button></div></template
+            ></el-table-column>
+          </el-table>
+          <!-- <div v-for="item in eventPerformanceList" :key="item">
+            <div style="display: flex; align-items: center; border-bottom: 1px solid #ebeef5; padding: 15px 0">
+              <div>
+                <span>
+                  <el-button type="warning" circle size="large"
+                    ><el-icon><Document /></el-icon
+                  ></el-button>
+                </span>
+              </div>
+              <div
+                style="
+                  margin-left: 20px;
+                  width: 100%;
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                "
+              >
+                <div style="text-align: left; font-size: 14px">
+                  <span style="margin-right: 15px; font-size: 17px">{{ item.deptName }}</span>
+                  <span v-if="$store.state.role == 'DEPTMANAGER'">
+                    <el-tag v-if="day < 6 && $store.state.month != month">还剩{{ 5 - day }}天截止</el-tag>
+                    <el-tag v-if="day > 5 && day < 16 && $store.state.month != month" type="danger"
+                      >已超时{{ day - 5 }}天，请尽快审批</el-tag
+                    >
+                    <el-tag v-if="$store.state.month == month">还剩{{ endDay - day + 5 }}天截止</el-tag></span
+                  >
+                  <span v-if="$store.state.role == 'HR' || $store.state.role == 'HRMANAGER'">
+                    <el-tag v-if="$store.state.month != month">还剩{{ 15 - day }}天截止</el-tag>
+                    <el-tag v-if="$store.state.month == month">还剩{{ endDay - day + 15 }}天截止</el-tag>
+                  </span>
+                </div>
+
+                <div style="font-size: 12px; margin-right: 20px">
+                  <el-button type="warning" size="small" @click="reviewPerformance(item.deptId, item.deptName)"
+                    >去审批</el-button
+                  >
+                </div>
+              </div>
+            </div>
+          </div> -->
+        </div>
+      </el-card>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from "@/router";
+import store from "@/store";
+import { getEventNumber, selectPerformanceInfo } from "@/api/about/index";
+
+import { Edit } from "@element-plus/icons-vue";
+import { Calendar } from "@element-plus/icons-vue";
+
+export default {
+  components: { Edit, Calendar },
+  data() {
+    return {
+      eventInfoList: [],
+      eventInfoList1: [], //价值观数据副本
+      eventPerformanceList: [],
+      number: null,
+      sumnumber: null,
+      year: "",
+      month: "",
+      day: "",
+      endDay: "",
+      criticalMonth: "",
+      nextMonth: "", //下一个月
+      activeName: "first",
+      // userInfo: [],
+      editUser: false,
+      phone: "",
+      deptId: null, //人事负责人筛选部门条件
+      deptOptions: {},
+      eventPerformanceByUserId: [], //业绩审批的数据，用来提取userId
+      deptOptionName: [], //存储的部门信息
+      showValueApprovalTime: false, //判断是否显示价值观的审批截止时间
+      activeNames: ["1", "2"], //默认展开的折叠面板
+    };
+  },
+
+  mounted() {
+    setTimeout(() => {}, 100);
+    let newDate = new Date();
+    //临界月份，以15号为界限
+    if (0 < newDate.getDate() && newDate.getDate() < 16) {
+      this.criticalMonth = newDate.getMonth() + 1;
+    } else {
+      this.criticalMonth = newDate.getMonth() + 2;
+    }
+    //当前时间
+    this.month = newDate.getMonth() + 1;
+
+    this.year = newDate.getFullYear();
+    this.day = newDate.getDate();
+    this.nextMonth = Number(store.state.month) + 1;
+    if (this.nextMonth === 13 || (store.state.month == 12 && this.month == 12)) {
+      this.year = newDate.getFullYear() + 1;
+      this.nextMonth = 1;
+    }
+
+    this.getLastDay(this.year, this.month);
+    this.deptOptionName = JSON.parse(localStorage.getItem("deptOptions"));
+
+    if (store.state.number !== 0) {
+      this.getEventNumber();
+    }
+    if (store.state.sumnumber !== 0) {
+      this.selectPerformanceInfo();
+    }
+  },
+  methods: {
+    getLastDay(year, month) {
+      // 创建一个 Date 对象，设置为下个月的第一天（0号）
+      const nextMonthDate = new Date(year, month, 0);
+
+      // 获取当前月份的最后一天
+      this.endDay = nextMonthDate.getDate();
+    },
+    async getEventNumber() {
+      await getEventNumber()
+        .then((res) => {
+          if (res.data.code == 0) {
+            ((this.eventInfoList = []), (this.eventInfoList1 = [])), (this.number = null);
+            this.deptOptions = res.data.data.result.reduce((acc, item) => {
+              const deptName = this.deptOptionName.find((dept) => dept.deptId === item.deptId);
+
+              if (deptName && !acc.some((dept) => dept.deptId === item.deptId)) {
+                acc.push({ deptId: item.deptId, deptName: deptName.deptName });
+              }
+
+              return acc;
+            }, []);
+
+            this.eventInfoList = res.data.data.result;
+
+            if (this.eventInfoList.some((item) => !(item.deptFlowState == 0 && item.hrFlowState == 0))) {
+              //价值观分为填写和审批，只显示审批的截止时间
+              this.showValueApprovalTime = true;
+            }
+
+            this.eventInfoList1 = this.eventInfoList;
+
+            this.number = res.data.data.uncompletedEventNumber;
+          }
+          store.commit("changeNumber", this.number);
+          store.commit("changeNumber2", this.sumnumber);
+          store.commit("changeValueResult", res.data.data.result);
+        })
+        .catch((e) => {
+          console.log(e);
+        });
+    },
+    async selectPerformanceInfo() {
+      await selectPerformanceInfo().then((res) => {
+        if (res.data.code == 0) {
+          this.sumnumber = res.data.data.uncompletedEventNumber;
+          this.eventPerformanceByUserId = res.data.data.result;
+
+          this.eventPerformanceList = res.data.data.result.reduce((acc, item) => {
+            const deptName = this.deptOptionName.find((dept) => dept.deptId === item.deptId);
+
+            if (deptName && !acc.some((dept) => dept.deptId === item.deptId)) {
+              acc.push({ deptId: item.deptId, deptName: deptName.deptName });
+            }
+
+            return acc;
+          }, []);
+        }
+        store.commit("changeNumber2", this.sumnumber);
+      });
+    },
+
+    reviewPush(userId, state) {
+      router.push({ name: "reviewByUserId" });
+      store.commit("currentUserId", userId);
+      store.commit("currentDeptFlow", state);
+    },
+
+    //批量审批
+    reviewPerformance(deptId, deptName) {
+      const userId = this.eventPerformanceByUserId.filter((item) => item.deptId == deptId).map((item1) => item1.userId);
+      store.commit("currentUserIdList", userId);
+
+      store.commit("currentName", deptName);
+
+      router.push({ name: "inputTarget" });
+    },
+    //部门筛选
+    selectValueByDept() {
+      if (this.deptId !== "" && this.deptId !== null) {
+        this.eventInfoList1 = this.eventInfoList.filter((item) => item.deptId == this.deptId);
+      } else {
+        this.eventInfoList1 = this.eventInfoList;
+      }
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.userAbout {
+  padding: 20px 20px;
+  background-color: #fff;
+  min-height: 93%;
+  // height: 84vh;
+  border-radius: 10px;
+}
+.userAbout-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  padding: 15px 0;
+}
+:deep(.el-card__header) {
+  background-color: #f5f7fa;
+}
+.cardStyle {
+  width: 45%;
+  border-radius: 15px;
+  min-width: 460px;
+  margin: auto;
+}
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: large;
+  font-weight: 700;
+
+  div {
+    font-size: small;
+  }
+}
+
+.scroll {
+  height: 67vh;
+
+  display: block;
+  overflow-y: auto;
+  .aboutViewTableStyle {
+    max-height: 65vh;
+  }
+}
+.scroll::-webkit-scrollbar {
+  width: 5px;
+}
+/*定义滚动条轨道*/
+.scroll::-webkit-scrollbar-track {
+  border-radius: 5px;
+}
+/*定义滑块*/
+.scroll::-webkit-scrollbar-thumb {
+  border-radius: 5px;
+  background: rgba(195, 197, 199, 0.5);
+}
+
+.boder-img {
+  width: 60px;
+  height: 60px;
+  background-position: 50%;
+  border-radius: 50%;
+  background-size: cover;
+  overflow: hidden;
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  transform-origin: 95% 40%;
+  transition: all 0.3s ease-in-out;
+}
+.boder-img:hover {
+  transform: rotate(-90deg);
+}
+.rightSize {
+  font-size: 14px;
+  color: #777;
+  margin-top: 15px;
+}
+
+:deep(.el-collapse-item__header) {
+  padding-left: 10px;
+  font-weight: 700;
+  border-left: 1px solid #ebeef5;
+  border-right: 1px solid #ebeef5;
+}
+:deep(.el-table td.el-table__cell div) {
+  font-size: 15px;
+}
+:deep(.el-collapse-item__content) {
+  padding-bottom: 0;
+}
+:deep(.el-card__body) {
+  padding: 0;
+}
+</style>

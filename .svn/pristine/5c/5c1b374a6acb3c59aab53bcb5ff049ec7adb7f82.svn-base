@@ -1,0 +1,17 @@
+import axios from 'axios'
+
+export function idCodeRequest(){
+    axios({
+        url:'http://test-api.nexis.ifi-cloud.com/api/app/user/info',
+        method:'post',
+        headers:{
+            token:'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJ2ZGhkaHMiLCJleHAiOjE2OTQyMzIzNzEsImluZm8iOnsidXNlcm5hbWUiOiJ2ZGhkaHMifX0.XkQ0PpGdN9KSZeSZ4JAhuvyDCGwof98rUXtZfZOUhNM'
+        }
+    })
+    .then(function (response) {
+        console.log(response.data)
+    }).catch(function (err) {
+        console.log(err)
+    })
+
+    }

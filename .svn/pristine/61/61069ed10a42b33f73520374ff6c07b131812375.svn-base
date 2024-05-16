@@ -1,0 +1,146 @@
+<template>
+  <div class="tagsbox">
+    <scroll-pane class="tags-view-wrapper" ref="scrollPane">
+      <div
+        :class="isActive(item.path) ? 'active' : ''"
+        class="tagsview"
+        v-for="(item, index) in tags"
+        :key="index"
+        @click="tagsmenu(item)"
+      >
+        {{ item.info }}
+        <!-- 这个地方一定要click加个stop阻止，不然会因为事件冒泡一直触发父元素的点击事件，无法跳转另一个路由 -->
+        <el-icon class="tagsicon" @click.stop="handleClose(item, index)"><Close /></el-icon>
+      </div>
+    </scroll-pane>
+  </div>
+</template>
+
+<script>
+//这个就是导入vuex的数据，配合下面...map用
+import { mapState, mapMutations } from "vuex";
+import { Close } from "@element-plus/icons-vue";
+import ScrollPane from "@/components/header/ScrollPane";
+export default {
+  components: { Close, ScrollPane },
+  data() {
+    return {
+      //右键菜单隐藏对应布尔值
+      visible: false,
+      //右键菜单对应位置
+      top: 0,
+      left: 0,
+    };
+  },
+  computed: {
+    //引入vuex中state中的tags数据，一样this调用就行
+    ...mapState(["tags"]),
+  },
+  watch: {
+    //监听右键菜单的值是否为true，如果是就创建全局监听点击事件，触发closeMenu事件隐藏菜单，如果是false就删除监听
+    visible(value) {
+      if (value) {
+        document.body.addEventListener("click", this.closeMenu);
+      } else {
+        document.body.removeEventListener("click", this.closeMenu);
+      }
+    },
+  },
+  methods: {
+    //引入vuex中mutation方法，可以直接this.xxx调用他
+    ...mapMutations(["closeTab", "cleartagsview"]),
+    //点击叉叉删除的事件
+    handleClose(item, index) {
+      let length = this.tags.length - 1;
+      this.closeTab(item);
+      if (item.path !== this.$route.path) {
+        return;
+      }
+      if (index === length) {
+        if (length === 0) {
+          if (this.$route.path !== "/mainHome") {
+            this.$router.push({ path: "/mainHome" });
+          }
+        } else {
+          this.$router.push({ path: this.tags[index - 1].path });
+        }
+      } else {
+        this.$router.push({ path: this.tags[index].path });
+      }
+    },
+    //点击跳转路由
+    tagsmenu(item) {
+      // console.log(item);
+      if (this.$route.path !== item.path) {
+        this.$router.push({ path: item.path });
+      }
+    },
+    //通过判断路由一致返回布尔值添加class，添加高亮效果
+    isActive(route) {
+      return route === this.$route.path;
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.tagsbox {
+  display: flex;
+  background: #fff;
+  height: 36px !important;
+  border-bottom: 1px solid #d8dce5;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.12), 0 0 3px 0 rgba(0, 0, 0, 0.04);
+}
+//标签导航样式
+.tagsview {
+  border-radius: 5px;
+  display: inline-block;
+  position: relative;
+  height: 26px;
+  line-height: 26px;
+  border: 1px solid #d8dce5;
+  color: #495060;
+  background: #fff;
+  padding: 0 8px;
+  font-size: 12px;
+  margin-left: 5px;
+  margin-top: 4px;
+}
+.tagsview:hover {
+  cursor: pointer;
+}
+.tagsview:first-of-type {
+  margin-left: 20px;
+}
+//叉号鼠标经过样式
+.tagsicon:hover {
+  color: #f56c6c;
+}
+//标签高亮
+.active {
+  background-color: rgba(235, 244, 255);
+  color: #409eff;
+}
+//右键菜单样式
+.contextmenu {
+  margin: 0;
+  background: #fff;
+  z-index: 100;
+  position: absolute;
+  list-style-type: none;
+  padding: 5px 0;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 400;
+  color: #333;
+  box-shadow: 2px 2px 3px 0 rgba(0, 0, 0, 0.3);
+  li {
+    margin: 0;
+    padding: 7px 16px;
+    cursor: pointer;
+    &:hover {
+      background: #eee;
+    }
+  }
+}
+</style>

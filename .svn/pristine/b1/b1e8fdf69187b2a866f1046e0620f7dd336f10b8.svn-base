@@ -1,0 +1,526 @@
+<template>
+  <div class="userlist" v-if="$store.state.role == 'ROOT'">
+    <!-- <div class="userlist-title">用户列表</div> -->
+    <div style="display: flex; justify-content: space-between">
+      <div style="width: 55%">
+        <el-form class="titleForm">
+          <el-form-item label="部门" width="150px">
+            <el-select clearable placeholder="请选择" v-model.number="deptId">
+              <el-option v-for="item in deptOptions" :key="item.deptId" :label="item.deptName" :value="item.deptId" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="角色">
+            <el-select clearable placeholder="请输入" v-model="role">
+              <el-option v-for="item in roleOptions" :key="item.roleId" :label="item.roleCnName" :value="item.roleId" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="姓名">
+            <el-input clearable placeholder="请输入" v-model="name"></el-input>
+          </el-form-item>
+          <el-button @click="getUserList">查询</el-button>
+        </el-form>
+      </div>
+      <div style="display: flex">
+        <el-button type="success" @click="addUser"
+          ><el-icon><Plus /></el-icon>新增</el-button
+        >
+        <el-button type="primary" @click="downloadUserTemplate"
+          ><el-icon><Download /></el-icon>模板</el-button
+        >
+
+        <el-upload
+          class="upload-demo"
+          action="#"
+          accept=".xlsx,.xls"
+          :on-preview="handlePreview"
+          :on-remove="handleRemove"
+          :before-upload="beforeUpload"
+          :before-remove="beforeRemove"
+          :on-exceed="handleExceed"
+          :on-change="loadFile"
+          :http-request="uploadHttpRequest"
+          :show-file-list="false"
+          style="margin: 0 12px"
+        >
+          <el-button type="primary"
+            ><el-icon><Download /></el-icon>导入</el-button
+          >
+        </el-upload>
+
+        <el-button type="warning" @click="exportUserInfo"
+          ><el-icon><Upload /></el-icon>导出</el-button
+        >
+      </div>
+    </div>
+
+    <el-table :data="userListData" :height="tableHeight" border stripe ref="table">
+      <el-table-column type="index" label="序号" width="100" align="center" />
+
+      <el-table-column prop="name" label="姓名" />
+      <el-table-column prop="position" label="职务" />
+      <el-table-column prop="username" label="账号" />
+      <el-table-column prop="roleCnName" label="角色" />
+
+      <el-table-column prop="deptName" label="部门" />
+      <el-table-column label="单独审批" align="center">
+        <template #default="{ row }">
+          <el-switch
+            v-model="row.customFlow"
+            inline-prompt
+            active-text="是"
+            inactive-text="否"
+            @change="changeUserCustom(row)"
+        /></template>
+      </el-table-column>
+      <el-table-column label="操作" width="260px" align="center">
+        <template #default="{ row }">
+          <el-tooltip content="管理员账户不可删除" placement="top" v-if="row.roleName == 'ROOT'">
+            <el-button type="info" size="small" plain
+              ><el-icon><Delete /></el-icon>删除</el-button
+            >
+          </el-tooltip>
+          <el-button type="danger" size="small" plain @click="deleteRow(row)" v-else
+            ><el-icon><Delete /></el-icon>删除</el-button
+          >
+          <el-tooltip content="管理员账户不可修改" placement="top" v-if="row.roleName == 'ROOT'">
+            <el-button type="info" size="small" plain
+              ><el-icon><Edit /></el-icon>修改</el-button
+            >
+          </el-tooltip>
+          <el-button type="primary" size="small" plain @click="reviseVal(row)" v-else
+            ><el-icon><Edit /></el-icon>修改</el-button
+          >
+          <el-tooltip content="管理员账户不可重置密码" placement="top" v-if="row.roleName == 'ROOT'">
+            <el-button type="info" size="small" plain>重置密码</el-button>
+          </el-tooltip>
+          <el-button type="primary" size="small" plain @click="changeRow(row)" v-else>重置密码</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+    <div class="demo-pagination-block">
+      <el-pagination
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        :page-sizes="[15, 30, 45, 60]"
+        :disabled="disabled"
+        background
+        layout="total,sizes, prev, pager, next"
+        :total="total"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+      />
+    </div>
+    <Dialog
+      v-if="dialogShow"
+      v-model:dialogShow="dialogShow"
+      :rowInfo="rowInfo"
+      :title="title"
+      :arrayNum="userListData.length"
+      :deptOptions="deptOptions"
+      :roleOptions="roleOptions"
+      @addRow="addRow"
+      @editRow="editRow"
+      @reviseRow="reviseRow"
+    />
+  </div>
+</template>
+
+<script>
+import { onMounted, reactive, toRefs, nextTick } from "vue";
+import { ElMessageBox, ElMessage } from "element-plus";
+import Dialog from "@/views/userlist/DialogView.vue";
+import {
+  userList,
+  resetpsw,
+  deleteUser,
+  roleList,
+  sendRoledata,
+  addUser,
+  downloadUserTemplate,
+  exportUserInfo,
+  batchAddUser,
+  changeUserCustom,
+} from "@/api/userlist/index";
+import { deptList } from "@/api/register/index";
+import { Plus, Edit, Delete, Download, Upload } from "@element-plus/icons-vue";
+// import * as XLSX from "xlsx";
+import * as XLSX from "xlsx/xlsx.mjs";
+
+export default {
+  name: "UserList",
+  components: { Dialog, Plus, Edit, Delete, Download, Upload },
+  setup() {
+    const data = reactive({
+      name: null,
+      role: null,
+      deptId: null,
+      deptOptions: [],
+      roleOptions: [],
+      dialogShow: false, // 新增/编辑弹框
+      detailShow: false, // 详情弹窗
+      rowInfo: {}, // 新增/编辑的数据
+      title: "", // 是新建还是修改
+      //列表渲染数据的table
+      userListData: [
+        {
+          userID: "",
+          name: "",
+          deptName: "",
+          phone: "",
+        },
+      ],
+      currentPage: 1,
+      pageSize: 15,
+      total: 100,
+
+      tableHeight: 65,
+    });
+    // watch(()=>{
+    //   tableHeight() {
+    //       window.onresize = () =>
+    //       this.tableHeight =
+    //           window.innerHeight - this.$refs["table"].$el.offsetTop - 315
+    //     }
+
+    // })
+
+    onMounted(async () => {
+      method.getUserList();
+      deptList()
+        .then((res) => {
+          if (res.data.code == 0) {
+            data.deptOptions = res.data.data;
+          }
+        })
+        .catch(() => {
+          ElMessage.error("请求失败");
+        });
+      roleList().then((res) => {
+        if (res.data.code == 0) {
+          data.roleOptions = res.data.data;
+        }
+      });
+
+      await nextTick();
+
+      // nextTick(() => {
+      // 根据浏览器高度设置初始高度
+      data.tableHeight = window.innerHeight - 240;
+      // 监听浏览器高度变化，改变表格高度
+      window.onresize = () => {
+        data.tableHeight = window.innerHeight - 240;
+      };
+      // });
+    });
+    // onActivated(() => {
+    //   method.getUserList();
+    // });
+    const method = reactive({
+      getUserList() {
+        const userdata = {
+          length: data.pageSize,
+          page: data.currentPage,
+          name: data.name,
+          role: data.role,
+          deptId: data.deptId,
+        };
+        userList(userdata)
+          .then((res) => {
+            data.userListData = res.data.data.list;
+            data.total = res.data.data.totalCount;
+            // console.log(res.data.data.list);
+          })
+          .catch(() => {});
+      },
+      handleSizeChange(newSize) {
+        data.pageSize = newSize;
+        method.getUserList();
+      },
+      handleCurrentChange(newPage) {
+        data.currentPage = newPage;
+        method.getUserList();
+      },
+      addUser() {
+        data.title = "新增用户";
+        data.rowInfo = {};
+        data.dialogShow = true;
+      },
+      changeRow(val) {
+        data.title = "重置";
+        data.dialogShow = true;
+        data.rowInfo = val;
+      },
+      reviseVal(val) {
+        data.title = "修改";
+        data.dialogShow = true;
+        data.rowInfo = val;
+      },
+      deleteRow(val) {
+        ElMessageBox.confirm("确定删除此信息吗?", "提示", {
+          confirmButtonText: "确认",
+          cancelButtonText: "取消",
+          type: "warning",
+        })
+          .then(() => {
+            const deleteData = { userIds: val.userId };
+            deleteUser(deleteData)
+              .then((res) => {
+                method.handleSure(val);
+                if (res.data.code == 0) return ElMessage.success("删除成功");
+              })
+              .catch(() => {});
+          })
+          .catch(() => {
+            ElMessage.info("取消删除");
+            // catch error
+          });
+      },
+      handleSure(val) {
+        this.dialogVisible = false;
+        const index = data.userListData.findIndex((item) => item.userId === val.userId);
+        data.userListData.splice(index, 1);
+        // method.getUserList();
+      },
+      //新增用户
+      addRow(val) {
+        addUser(val)
+          .then((res) => {
+            if (res.data && res.data.code == 0) {
+              const index = data.userListData.findIndex((item) => item.userID === val.userID);
+              data.userListData.splice(index, 1);
+              method.getUserList();
+              ElMessage.success("新增成功");
+            }
+          })
+          .catch(() => {
+            ElMessage.error("新增失败");
+          });
+        // data.userListData.push(val);
+      },
+      //修改
+      async reviseRow(val) {
+        // console.log(val);
+        // let index = data.userListData.findIndex((item) => item.id === val.id);
+        // data.userListData.splice(index, 1, val);
+        let deptId;
+        let roleId;
+        if (typeof val.deptName !== "number") {
+          const result = data.deptOptions.filter((item) => item.deptName === val.deptName);
+          deptId = result[0].deptId;
+          roleId = val.roleCnName;
+        }
+        if (typeof val.roleCnName !== "number") {
+          const result2 = data.roleOptions.filter((item) => item.roleCnName === val.roleCnName);
+          roleId = result2[0].roleId;
+          deptId = val.deptName;
+        }
+        //两个都不修改
+        if (typeof val.deptName !== "number" && typeof val.roleCnName !== "number") {
+          const result = data.deptOptions.filter((item) => item.deptName === val.deptName);
+          deptId = result[0].deptId;
+          const result2 = data.roleOptions.filter((item) => item.roleCnName === val.roleCnName);
+          roleId = result2[0].roleId;
+          //两个一起修改就直接是数字
+        } else if (typeof val.deptName == "number" && typeof val.roleCnName == "number") {
+          roleId = val.roleCnName;
+          deptId = val.deptName;
+        }
+        const reviseData = {
+          userId: val.userId,
+          roleId: roleId,
+          deptId: deptId,
+          position: val.position,
+          //不做解析的话：修改弹窗绑定的字段就行
+          //  roleId: val.roleId,
+          // deptId: val.deptId,
+        };
+        await sendRoledata(reviseData);
+
+        method.getUserList();
+        // console.log(reviseData);
+      },
+      //重置密码
+      editRow(val) {
+        // console.log(val);
+        // let index = data.userListData.findIndex((item) => item.id === val.id);
+        // data.userListData.splice(index, 1, val);
+        const resetData = {
+          newPassword: val.newPassword,
+          userId: val.userId,
+        };
+        resetpsw(resetData);
+      },
+
+      //下载添加用户的模板
+      downloadUserTemplate() {
+        downloadUserTemplate();
+      },
+      //导出所有用户信息
+      exportUserInfo() {
+        exportUserInfo();
+      },
+      //导入文件
+      uploadHttpRequest(data) {
+        console.log(data);
+      },
+      handleExceed(file) {
+        console.log(file);
+      },
+      loadFile(file) {
+        const reader = new FileReader();
+        reader.readAsBinaryString(file.raw);
+        reader.onload = (ev) => {
+          try {
+            const f = ev.target.result;
+            const workbook = XLSX.read(f, { type: "binary" });
+            // const wsname = workbook.SheetNames[0];
+
+            let excelData = [];
+            for (let i = 0; i < workbook.SheetNames.length; i++) {
+              const worksheet = workbook.Sheets[workbook.SheetNames[i]];
+              // 将sheet转换为json数组
+              const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+              excelData.push(jsonData);
+            }
+            excelData[0].splice(0, 1);
+            console.log(excelData[0]);
+            const userList = excelData[0].map((item) => {
+              //deptId
+              const deptId = excelData[1].find((item1) => item1[1] == item[0]);
+              // console.log(deptId);
+              //roleId
+              const roleId = excelData[2].find((item1) => item1[1] == item[4]);
+              // console.log(roleId);
+
+              return Object.assign(
+                {},
+                item,
+                { deptId: deptId ? deptId[0] : null },
+                { roleId: roleId ? roleId[0] : null },
+                { name: item[1] },
+                { username: item[2] },
+                { password: item[3] },
+                { position: item[5] },
+                { deptName: item[0] },
+                { roleCnName: item[4] },
+              );
+            });
+            // console.log(userList);
+            let isError = false;
+            userList.map((item) => {
+              const reg = /^[\u4e00-\u9fa5]+$/;
+              // console.log(item.name);
+              // console.log(reg.test(item.name));
+              if (!reg.test(item.name)) {
+                ElMessageBox.confirm("中文姓名存在英文，请检查", "警告", {
+                  confirmButtonText: "确认",
+                  cancelButtonText: "取消",
+                  type: "warning",
+                });
+                isError = true;
+              }
+              Object.values(item).find((item1) => {
+                if (item1 == null || item1 == undefined) {
+                  ElMessageBox.confirm("文件数据存在空值，请重新上传", "警告", {
+                    confirmButtonText: "确认",
+                    cancelButtonText: "取消",
+                    type: "warning",
+                  });
+                  isError = true;
+                }
+              });
+            });
+            userList.reduce((acc, item) => {
+              let tempItem = acc.find((user) => user.username === item.username);
+              if (tempItem) {
+                ElMessageBox.confirm(
+                  `【${item.name}】与【${tempItem.name}】存在重复账号，请检查文件并重新上传`,
+                  "警告",
+                  {
+                    confirmButtonText: "确认",
+                    cancelButtonText: "取消",
+                    type: "warning",
+                  },
+                );
+                isError = true;
+                // console.log(tempItem, item);
+                // errorNumber++;
+              } else {
+                acc.push(item);
+              }
+              return acc;
+            }, []);
+            //userList只是部分数据，不能直接添加到列表中
+            // console.log(userList);
+            // console.log(data.userListData);
+
+            if (!isError) {
+              const data1 = userList.map((item) => {
+                return {
+                  deptId: item.deptId,
+                  roleId: item.roleId,
+                  name: item.name,
+                  username: item.username,
+                  password: item.password,
+                  position: item.position,
+                };
+              });
+
+              batchAddUser(data1).then((res) => {
+                if (res.data.code == 0) {
+                  ElMessage.success("上传成功");
+                  userList.map((item) => data.userListData.unshift(item));
+                }
+              });
+            }
+
+            // console.log(data, userList);
+          } catch (e) {
+            console.log(e);
+            ElMessage.error("文件上传数据错误");
+          }
+        };
+      },
+      changeUserCustom(row) {
+        changeUserCustom({ customFlowState: row.customFlow, userId: row.userId });
+      },
+    });
+    return { ...toRefs(data), ...method };
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.userlist {
+  padding: 17px;
+  background-color: #fff;
+  height: 95%;
+  border-radius: 10px;
+
+  .userlist-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left;
+    padding: 0 1rem 1rem 1rem;
+  }
+  // .el-table__header-wrapper th {
+  //   text-align: center;
+  // }
+  // .el-table__cell {
+  //   // text-align: center;
+  //   font-size: 12px;
+  // }
+}
+.demo-pagination-block {
+  padding: 16px;
+}
+.titleForm {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 1rem;
+}
+.el-icon {
+  margin-right: 5px;
+}
+</style>

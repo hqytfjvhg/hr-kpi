@@ -1,0 +1,254 @@
+<template>
+  <el-dialog
+    :model-value="true"
+    :title="title"
+    @close="handleClose"
+    width="500px"
+    :show-close="false"
+    :close-on-click-modal="false"
+  >
+    <el-form :model="formData" :rules="rules" v-if="title == '新增行为'" label-width="120px">
+      <el-form-item label="行为中文描述" prop="actionDescription">
+        <el-input v-model="formData.actionDescription"></el-input>
+      </el-form-item>
+      <!-- <el-form-item label="自评初始分" prop="selfScore">
+        <el-input v-model="formData.selfScore"></el-input>
+      </el-form-item> -->
+      <!-- <el-form-item label="他评初始分" prop="leaderScore">
+        <el-input v-model="formData.leaderScore"></el-input>
+      </el-form-item> -->
+      <el-form-item label="是否需要案例" prop="needExample">
+        <el-radio-group v-model="formData.needExample">
+          <el-radio-button :label="true">是</el-radio-button>
+          <el-radio-button :label="false">否</el-radio-button>
+        </el-radio-group>
+      </el-form-item>
+      <div style="margin-top: 10px; text-align: right">
+        <el-button type="primary" @click="submitForm">确定</el-button>
+        <el-button @click="handleClose">取消</el-button>
+      </div>
+    </el-form>
+    <el-form
+      v-else
+      ref="ruleFormRef"
+      :model="formData"
+      :rules="rules"
+      label-width="120px"
+      style="width: 400px"
+      :size="formSize"
+    >
+      <el-form-item label="姓名" prop="name" v-if="title == '新增用户'">
+        <el-input clearable v-model="formData.name" placeholder="请输入姓名长度在2-15的中文"></el-input>
+      </el-form-item>
+      <el-form-item label="姓名" prop="name" v-if="title !== '新增用户'">
+        <el-input clearable v-model="formData.name" placeholder="请输入姓名长度在2-15的中文" disabled></el-input>
+      </el-form-item>
+      <el-form-item label="部门" prop="deptName" v-if="title !== '重置'">
+        <el-select clearable placeholder="请选择部门" v-model="formData.deptName" style="width: 280px">
+          <el-option v-for="item in deptOptions" :key="item.deptId" :label="item.deptName" :value="item.deptId" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="新密码" prop="newPassword" v-if="title == '重置'">
+        <el-input clearable v-model="formData.newPassword" type="password" show-password></el-input>
+      </el-form-item>
+      <el-form-item label="账号" prop="username" v-if="title == '新增用户'">
+        <el-input clearable v-model="formData.username" placeholder="请输入账号/密码长度在4-16的字母和数字"></el-input>
+      </el-form-item>
+      <el-form-item label="密码" prop="password" v-if="title == '新增用户'">
+        <el-input
+          clearable
+          type="password"
+          show-password
+          v-model="formData.password"
+          placeholder="请输入账号/密码长度在4-16的字母和数字"
+        ></el-input>
+      </el-form-item>
+      <el-form-item label="角色" prop="roleName" v-if="title !== '重置'">
+        <el-select clearable placeholder="请输入角色" v-model="formData.roleCnName" style="width: 280px">
+          <el-option
+            v-for="(item, index) in roleOptions"
+            :key="item.roleId"
+            :label="item.roleCnName"
+            :value="item.roleId"
+            :hidden="index === 0"
+          />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="职务" prop="position" v-if="title != '重置'"
+        ><el-input clearable placeholder="请输入职务" v-model="formData.position"></el-input
+      ></el-form-item>
+      <div style="margin-top: 10px; text-align: right">
+        <el-button @click="handleClose">取消</el-button>
+        <el-button @click="resetForm">重置</el-button>
+        <el-button type="primary" @click="submitForm">确定</el-button>
+      </div>
+    </el-form>
+  </el-dialog>
+</template>
+
+<script>
+// import { addAction } from "@/api/values/index";
+import { ElMessage } from "element-plus";
+import { reactive, toRefs, onMounted } from "vue";
+
+export default {
+  props: {
+    title: {
+      type: String,
+      default: "",
+    },
+    dialogShow: {
+      type: Boolean,
+      default: false,
+    },
+    rowInfo: {
+      type: Object,
+      default() {
+        return {};
+      },
+    },
+    arrayNum: {
+      type: Number,
+      default: 0,
+    },
+    deptOptions: {
+      type: Object,
+      default() {
+        return {};
+      },
+    },
+    roleOptions: {
+      type: Object,
+      default() {
+        return {};
+      },
+    },
+  },
+  setup(props, { emit }) {
+    const data = reactive({
+      dialogFlag: false,
+      formData: {},
+      rules: {
+        name: [{ required: true, message: "请输入中文姓名", trigger: "blur" }],
+        deptName: [{ required: true, message: "请输入数字类型的部门ID", trigger: "blur" }],
+        newPassword: [{ required: true, message: "请输入新密码", trigger: "blur" }],
+        phone: [{ required: true, message: "请输入手机号码", trigger: "blur" }],
+        roleName: [{ required: true, message: "请输入角色", trigger: "blur" }],
+        actionDescription: [{ required: true, message: "请输入行为描述", trigger: "blur" }],
+        selfScore: [{ required: true, message: "初始分数请输入0", trigger: "blur" }],
+        leaderScore: [{ required: true, message: "初始分数请输入0", trigger: "blur" }],
+        needExample: [{ required: true, message: "请选择是否需要案例", trigger: "blur" }],
+        username: [{ required: true }],
+        password: [{ required: true }],
+        position: [{ required: true }],
+      },
+    });
+    const method = reactive({
+      // 关闭弹窗
+      handleClose() {
+        emit("update:dialogShow", false);
+      },
+      // 重置
+      resetForm() {
+        data.formData = Object.assign({}, props.rowInfo);
+      },
+      // 提交表单内容
+      submitForm() {
+        if (props.title == "新增行为") {
+          if (data.formData.actionDescription == null || data.formData.needExample == null) {
+            ElMessage.error("请设置参数");
+          } else {
+            method.handleClose();
+            if (data.formData.needExample == true) {
+              data.formData.actionDescription = "* " + data.formData.actionDescription;
+            } else if (data.formData.needExample == false) {
+              data.formData.actionDescription = data.formData.actionDescription.replace(/[*]/g, "");
+              console.log(data.formData.actionDescription);
+            }
+            const formdata = {
+              actionDescription: data.formData.actionDescription,
+              hrScore: 0,
+              leaderScore: 0,
+              needExample: data.formData.needExample,
+              selfScore: 0,
+            };
+            // console.log(formdata);
+            emit("addAction", formdata);
+          }
+
+          // addAction(formdata);
+        }
+        if (props.title == "重置") {
+          // 修改
+          emit("editRow", data.formData);
+          method.handleClose();
+        } else if (props.title == "新增用户") {
+          // 新增用户
+          const regex = /^[\u4e00-\u9fff]{2,15}$/;
+          const regex2 = /^[a-zA-Z0-9]{4,16}$/;
+          const regex3 = /^[0-9]{4,16}$/;
+          // console.log(regex3.test(data.formData.username));
+          // console.log(regex2.test("argsgs11111"));
+          // console.log(regex2.test("1111111111"));
+          // console.log(regex2.test("argsgs"));
+          if (
+            data.formData.name == null ||
+            data.formData.deptName == "" ||
+            data.formData.username == null ||
+            data.formData.password == null ||
+            data.formData.roleName == "" ||
+            data.formData.position == null
+          ) {
+            ElMessage.error("请设置参数");
+          } else if (!regex.test(data.formData.name)) {
+            ElMessage.error("请输入姓名长度在2-15的中文");
+          } else if (
+            !regex2.test(data.formData.username) ||
+            !regex2.test(data.formData.password) ||
+            regex3.test(data.formData.username) ||
+            regex3.test(data.formData.password)
+          ) {
+            ElMessage.error("请输入账号/密码长度在4-16的字母和数字");
+          } else {
+            // data.formData["id"] = props.arrayNum + 1;
+            // data.formData.position = data.formData.position.replace(/[*]/g, "");
+            const formData = {
+              name: data.formData.name,
+              deptId: data.formData.deptName,
+              username: data.formData.username,
+              password: data.formData.password,
+              roleId: data.formData.roleCnName,
+              position: data.formData.position,
+            };
+            console.log(formData);
+            emit("addRow", formData);
+            method.handleClose();
+          }
+        } else if (props.title == "修改") {
+          emit("reviseRow", data.formData);
+          method.handleClose();
+        }
+      },
+    });
+    onMounted(() => {
+      data.formData = Object.assign({}, props.rowInfo);
+      // console.log(props.deptOptions);
+      data.dialogFlag = props.rowInfo;
+    });
+    return { ...toRefs(data), ...method };
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.el-input {
+  --el-input-height: var(--el-component-size);
+  position: relative;
+  font-size: var(--el-font-size-base);
+  display: inline-flex;
+  /* width: 100%; */
+  line-height: var(--el-input-height);
+  box-sizing: border-box;
+  vertical-align: middle;
+}
+</style>

@@ -1,0 +1,130 @@
+const { defineConfig } = require("@vue/cli-service");
+// const HtmlWebpackPlugin = require("html-webpack-plugin");
+// const HtmlWebpackInlineSourcePlugin = require("html-webpack-inline-source-plugin");
+// const HardSourceWebpackPlugin = require("hard-source-webpack-plugin");
+// const os = require("os");
+// var ifaces = os.networkInterfaces();
+// let networkAddress = ifaces["en0"].filter((item) => item.family === "IPv4")[0].address;
+// const PORT = 2233;
+// const SERVE_PATH = `"http://${networkAddress}:${PORT}"`;
+// console.log(SERVE_PATH);
+
+// const CDN = {
+//   css: [
+//     // 'https://cdn.bootcdn.net/ajax/libs/normalize/8.0.1/normalize.min.css',
+//     "https://cdn.bootcdn.net/ajax/libs/element-plus/2.2.27/index.css",
+//   ],
+//   js: [
+//     "https://cdn.bootcdn.net/ajax/libs/vue/3.2.13/vue.global.js",
+//     "https://cdn.bootcdn.net/ajax/libs/vue-router/4.0.3/vue-router.global.min.js",
+//     // 'https://cdn.bootcdn.net/ajax/libs/vue-router/4.0.11/vue-router.global.js',
+//     "https://cdn.bootcdn.net/ajax/libs/vuex/4.0.0/vuex.global.min.js",
+//     // 'https://cdn.bootcdn.net/ajax/libs/vuex/4.0.2/vuex.global.js',
+//     "https://cdn.bootcdn.net/ajax/libs/axios/1.5.0/axios.min.js",
+//     // 'https://cdn.bootcdn.net/ajax/libs/axios/0.21.4/axios.js',
+//     "https://cdn.bootcdn.net/ajax/libs/element-plus/2.2.27/index.full.js",
+//     // 'https://unpkg.com/element-plus@1.2.0-beta.6/dist/index.full.js',
+//     // 'https://unpkg.com/browse/element-plus@1.2.0-beta.6/lib/locale/lang/zh-cn.js'
+//   ],
+// };
+// let objExternals = {
+//   vue: "Vue",
+//   axios: "axios",
+//   vuex: "Vuex",
+//   "vue-router": "VueRouter",
+//   "element-plus": "ElementPlus",
+// };
+
+module.exports = defineConfig({
+  transpileDependencies: true,
+  productionSourceMap: false,
+  publicPath: "./",
+  outputDir: "dist",
+  assetsDir: "assets",
+  configureWebpack: {
+    resolve: { fallback: { fs: false, crypto: false } },
+
+    // Webpack 配置选项
+    // devtool: "none", // 禁用源映射
+    devServer: {
+      client: {
+        overlay: false,
+      },
+      // overlay: false, // 禁用错误弹出到浏览器页面
+
+      port: 8081,
+      host: "0.0.0.0",
+      https: false,
+      // https: true,
+      open: true,
+
+      // client: {
+      //   WebSocketURL: "ws://192.168.1.189:8080/ws",
+      // },
+      //允许访问的域名
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
+      proxy: {
+        "/api": {
+          target: "http://192.168.1.149:9001/",
+          // target: "http://120.78.238.125:9009/",
+          changeOrigin: true,
+          // secure: false, // 当代理某些https服务报错时用
+          pathRewrite: {
+            "^/api": "",
+          },
+        },
+      },
+    },
+    // module: {
+    //   rules: [
+    //     {
+    //       test: /\.mjs$/,
+    //       include: /node_modules/,
+    //       type: "javascript/auto",
+    //     },
+    //   ],
+    // },
+    // 定义webpack打包配置
+    // externals: process.env.VUE_APP_STAGE === "LOCAL" ? {} : objExternals,
+    // plugins: [
+    //   new HtmlWebpackPlugin({
+    //     template: "public/index.html",
+    //     filename: "index.html",
+    //     cdn: CDN,
+    //     inlineSource: ".(css)$", // 只内联CSS文件，JS文件保持外部引用
+    //     inject: true,
+    //     publicPath: process.env.BASE_URL || "",
+    //   }),
+    // ],
+  },
+
+  // chainWebpack: (config) => {
+  //   // 压缩代码
+  //   config.optimization.minimize(true);
+  //   // 分割代码
+  //   config.optimization.splitChunks({
+  //     chunks: "all",
+  //   });
+  //   config.externals({
+  //     vue: "Vue",
+  //     vuex: "Vuex",
+  //     axios: "axios",
+  //     "vue-router": "VueRouter",
+  //     "element-plus": "ElementPlus",
+  //   });
+
+  // config.resolve.symlinks(true); // 修复热更新失效
+  // config.resolve.alias.set("@", resolve("src"));
+  // config.performance.set("hints", false);
+  // config.plugin("xcCache").use(HardSourceWebpackPlugin); //提升编译速度  不能跟speed-measure-webpack-plugin同时使用
+  // //config.plugin("xcTime").use(SpeedMeasurePlugin);  //然后我们配置到chainwebpack中
+  // config.output.filename("[name].[hash].js").end();
+  // if (IS_PROD) {
+  //   config.optimization.delete("splitChunks");
+  // }
+
+  // return config;
+  // },
+});

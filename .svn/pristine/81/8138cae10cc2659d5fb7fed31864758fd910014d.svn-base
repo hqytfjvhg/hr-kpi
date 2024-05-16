@@ -1,0 +1,563 @@
+<template>
+  <div class="KpiScoreTable">
+    <el-form class="titleForm">
+      <el-form-item label="年份" prop="year">
+        <el-select placeholder="请选择" v-model="year" style="min-width: 50px">
+          <el-option v-for="item in yearOptions" :key="item" :label="item" :value="item" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="月份" prop="month">
+        <el-select placeholder="请选择" v-model="month" style="min-width: 50px">
+          <el-option v-for="item in monthOptions" :key="item.monthId" :label="item.month" :value="item.monthId" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="部门" prop="deptId">
+        <el-select clearable collapse-tags multiple placeholder="请选择" v-model="deptId" style="min-width: 125px">
+          <el-option
+            v-for="item in $store.state.deptOptions"
+            :key="item.deptId"
+            :label="item.deptName"
+            :value="item.deptId"
+          />
+        </el-select>
+      </el-form-item>
+
+      <el-form-item label="姓名"
+        ><el-input placeholder="请输入" v-model="name" style="min-width: 60px"></el-input
+      ></el-form-item>
+
+      <el-form-item label="状态">
+        <el-select clearable placeholder="请选择" v-model="finishState" style="min-width: 60px">
+          <el-option
+            v-for="item in finishStateOptions"
+            :key="item.name"
+            :label="item.name"
+            :value="item.state"
+          ></el-option></el-select
+      ></el-form-item>
+      <el-form-item label="系数≥120%">
+        <el-select clearable placeholder="请选择" v-model="kpiScoreState" style="min-width: 60px">
+          <el-option v-for="item in kpiScoreOptions" :key="item.name" :label="item.name" :value="item.state"></el-option
+        ></el-select>
+      </el-form-item>
+      <el-button @click="getKPIScore" type="primary">查询</el-button>
+      <el-button v-if="completionProgress" type="warning" @click="saveKPI">保存</el-button>
+    </el-form>
+
+    <el-skeleton animated :loading="loading" :rows="5" style="text-align: left">
+      <el-table :data="tableData1" border :height="tableHeight" id="kpi-table">
+        <el-table-column label="序号" type="index" width="80"></el-table-column>
+        <el-table-column label="部门" prop="deptName"></el-table-column>
+        <el-table-column label="姓名" prop="name"></el-table-column>
+        <el-table-column prop="valueScore">
+          <template #header>
+            <div>价值观<br />分数</div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="valueRealScore">
+          <template #header>
+            <div style="min-width: 60px">价值观<br />实际得分</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="业绩指标" min-width="200">
+          <template #default="scope">
+            <div v-for="item in scope.row.targetInfoList" :key="item">
+              {{ item.targetName }}
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column>
+          <template #header>
+            <div style="min-width: 60px">业绩<br />指标分数</div>
+          </template>
+          <template #default="scope">
+            <div v-for="item in scope.row.targetInfoList" :key="item">
+              {{ item.targetBasicScore }}
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="targetScore">
+          <template #header>
+            <div style="min-width: 60px">业绩指标<br />实际得分</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="KPI">
+          <template #default="scope">
+            {{ (Number(scope.row.valueRealScore) + Number(scope.row.targetScore)).toFixed(2) }}</template
+          >
+        </el-table-column>
+        <el-table-column label="奖金系数" prop="bonusCoefficient" min-width="60">
+          <template #default="scope">{{ scope.row.bonusCoefficient }}%</template>
+        </el-table-column>
+
+        <el-table-column label="价值观" prop="complete" v-if="isShowComplete">
+          <template #default="scope">
+            <span style="color: #f56c6c" v-if="!scope.row.valueWrite">未填写</span>
+            <span style="color: #67c23a" v-else-if="scope.row.valueComplete">已完成</span>
+            <span style="color: #e6a23c" v-else-if="!scope.row.valueComplete">未完成</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="业绩" v-if="isShowComplete">
+          <template #default="scope">
+            <span style="color: #e6a23c" v-if="!scope.row.targetFlowComplete">未完成</span>
+            <span style="color: #67c23a" v-else>已完成</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" min-width="100" v-if="isShowHelpWrite || isShowComplete">
+          <template #default="scope">
+            <el-button
+              type="danger"
+              size="small"
+              circle
+              @click="getSencond(scope.row)"
+              v-if="!scope.row.eventKpiDatSave"
+              ><el-icon><Minus /></el-icon
+            ></el-button>
+            <el-button
+              type="primary"
+              size="small"
+              circle
+              @click="helpWriteByUserId(scope.row)"
+              v-if="!scope.row.valueWrite"
+              ><el-icon><Edit /></el-icon
+            ></el-button>
+          </template>
+        </el-table-column> </el-table
+    ></el-skeleton>
+    <div style="text-align: right; margin-top: 10px">
+      <el-button type="primary" @click="downLoadKPIExcel">导出{{ this.month }}月奖金系数报表</el-button>
+      <el-button type="primary" @click="downLoadOneYearKPIExcel">导出{{ this.year }}年度绩效汇总表</el-button>
+    </div>
+
+    <el-dialog v-model="isRemove" title="警告" style="width: 500px" align-center>
+      <div style="text-align: left">
+        移除将改变事件的完成进度，且该员工KPI数据不会被保存、无法预览/打印【绩效月考评表】，移除该员工整个审批流程，是否确定移除
+      </div>
+      <div style="text-align: right; margin-top: 20px">
+        <el-button @click="isRemove = false">取消</el-button
+        ><el-button type="primary" @click="removeUser()" :disabled="confirmButtonTextRef == '确定' ? false : true">{{
+          confirmButtonTextRef
+        }}</el-button>
+      </div>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+import store from "../../store";
+import { getKPIScore, removeUser, getKPIScoreHistory, saveKPIData } from "@/api/kpi";
+import { getNewestEventInfo, getDepartmentPerformanceAnnualSummary } from "@/api/visualization/index";
+import { ElMessageBox, ElMessage } from "element-plus";
+import { Minus, Edit } from "@element-plus/icons-vue";
+
+export default {
+  components: { Minus, Edit },
+  data() {
+    return {
+      tableData: [],
+      tableData1: [],
+      newestMonth: [], //存储最新月的数据
+      year: store.state.year ? store.state.year : "",
+      month: store.state.eventMonth ? store.state.eventMonth : "",
+      deptId: [],
+      name: "",
+      kpiScoreState: null, //筛选的条件
+      helpWrite: false, //管理员去帮忙填写控制弹窗
+      isShowHelpWrite: false, //操作列是否显示
+      isShowComplete: false, //审批列和操作列是否显示
+      deptOptions: store.state.deptList ? store.state.deptList : [],
+      yearOptions: store.state.yearOptions ? store.state.yearOptions : [],
+      monthOptions: store.state.monthOptions ? store.state.monthOptions : [],
+      finishState: "", //状态筛选结果
+      isRemove: false, //删除的弹窗
+      rowData: {}, //点击删除的行数据
+      completionProgress: false, //判断是否能保存数据
+      confirmButtonTextRef: "5秒后确定", //移除显示的文本
+      timerId: null, //事件定时器
+      tableHeight: null,
+      finishStateOptions: [
+        { name: "未填写", state: "noWrite" },
+        { name: "已完成", state: "finish" },
+        { name: "未完成", state: "noFinish" },
+      ], //状态的选择
+      kpiScoreOptions: [{ name: "是", state: true }],
+      loading: true, //骨架屏加载
+    };
+  },
+  mounted() {
+    this.yearOptions = store.state.yearOptions;
+
+    this.$nextTick(() => {
+      // 根据浏览器高度设置初始高度
+      this.tableHeight = window.innerHeight - 230;
+      // 监听浏览器高度变化，改变表格高度
+      window.onresize = () => {
+        this.tableHeight = window.innerHeight - 230;
+      };
+    });
+    //  this.getNewestEventInfo();
+    this.getKPIScore();
+  },
+  methods: {
+    async getKPIScore() {
+      this.loading = true;
+      await this.getNewestEventInfo();
+      if (this.year == store.state.year && this.month == store.state.eventMonth) {
+        getKPIScore({ year: this.year, month: this.month }).then((res) => {
+          if (res.data.code == 0) {
+            res.data.data = res.data.data.map((item) => {
+              const deptOption = store.state.deptOptions.find((item2) => item2.deptId === item.deptId);
+              return { ...item, deptName: deptOption?.deptName || item.deptName, year: this.year, month: this.month };
+            });
+            res.data.data.map((item) => {
+              if (!item.valueWrite) {
+                this.isShowHelpWrite = true;
+              }
+              if (!(item.valueComplete && item.targetFlowComplete)) {
+                this.isShowComplete = true;
+              }
+            });
+            this.tableData = res.data.data;
+            this.tableData1 = res.data.data;
+            this.selectKPIScore();
+          }
+          this.loading = false;
+        });
+      } else {
+        this.isShowComplete = false;
+        this.isShowHelpWrite = false;
+        getKPIScoreHistory({ year: this.year, month: this.month }).then((res) => {
+          if (res.data.code == 0 && res.data.data.length > 0) {
+            res.data.data = res.data.data.map((item) => {
+              const deptOption = store.state.deptOptions.find((item2) => item2.deptId === item.deptId);
+              return { ...item, deptName: deptOption?.deptName || item.deptName, year: this.year, month: this.month };
+            });
+            this.tableData = res.data.data;
+            this.tableData1 = res.data.data;
+            this.selectKPIScore();
+          } else if (res.data.code == 0 && res.data.data.length == 0) {
+            this.tableData = [];
+            this.tableData1 = [];
+            ElMessage.error("查询数据为空");
+          }
+          this.loading = false;
+        });
+      }
+    },
+    async selectKPIScore() {
+      // if (this.deptId.length > 0 || this.name || this.kpiScoreState) {
+      //   const filterDept = Array.isArray(this.deptId) ? (item) => this.deptId.includes(item.deptId) : () => true;
+      //   const filterName = this.name ? (item) => item.name.includes(this.name) : () => true;
+      //   const filterKPIState = this.kpiScoreState
+      //     ? (item) => item.bonusCoefficient > 120 || item.bonusCoefficient == 120
+      //     : () => true;
+
+      //   this.tableData1 = this.tableData.filter((item) => filterDept(item) && filterName(item) && filterKPIState(item));
+      // } else {
+      //   this.tableData1 = this.tableData;
+      // }
+      let filteredData = this.tableData;
+
+      if (this.deptId.length > 0) {
+        const filterDept = Array.isArray(this.deptId) ? (item) => this.deptId.includes(item.deptId) : () => true;
+        filteredData = filteredData.filter(filterDept);
+      }
+
+      if (this.name) {
+        const filterName = (item) => item.name.includes(this.name);
+        filteredData = filteredData.filter(filterName);
+      }
+
+      if (this.kpiScoreState) {
+        const filterKPIState = (item) => item.bonusCoefficient > 120 || item.bonusCoefficient == 120;
+        filteredData = filteredData.filter(filterKPIState);
+      }
+
+      this.tableData1 = filteredData;
+      this.selectFinishState();
+    },
+    helpWriteByUserId(row) {
+      ElMessageBox.confirm(`确定帮【${row.name}】填写${row.year}年${row.month}月份价值观？`, "提示", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+      }).then(() => {
+        this.$store.commit("currentUserId", row.userId);
+        this.$store.commit("currentName", row.name);
+        this.$router.push("/kpi/writeValue");
+      });
+    },
+    selectFinishState() {
+      if (this.finishState == "noWrite") {
+        this.tableData1 = this.tableData1.filter((item) => !item.valueWrite);
+      } else if (this.finishState == "finish") {
+        this.tableData1 = this.tableData1.filter((item) => item.targetFlowComplete && item.valueComplete);
+      } else if (this.finishState == "noFinish") {
+        this.tableData1 = this.tableData1.filter(
+          (item) => (item.valueWrite && !item.targetFlowComplete) || !item.valueComplete,
+        );
+      }
+    },
+    getSencond(row) {
+      this.rowData = row;
+      // 清除之前可能存在的定时器
+      if (this.timerId) {
+        clearInterval(this.timerId);
+      }
+      this.isRemove = true;
+
+      // 在确认按钮上显示倒计时
+      let count = 5;
+      this.timerId = setInterval(() => {
+        if (count === 0) {
+          clearInterval(this.timerId);
+          this.confirmButtonTextRef = "确定";
+        } else {
+          this.confirmButtonTextRef = `${count--}秒后确定`;
+        }
+      }, 1000);
+    },
+    async removeUser() {
+      removeUser([this.rowData.userId]).then((res) => {
+        if (res.data.code == 0) {
+          this.isRemove = false;
+          ElMessage.success("移除成功");
+          this.getKPIScore();
+        }
+      });
+    },
+    //获取最新月份的事件进度
+    async getNewestEventInfo() {
+      await getNewestEventInfo().then((res) => {
+        if (res.data.code == 0 && res.data.data.length > 0) {
+          this.newestMonth = res.data.data;
+          store.commit("saveMonth", { month: res.data.data[0].eventPublishMonth, save: res.data.data[0].save });
+
+          res.data.data.sort((a, b) => b.eventId - a.eventId);
+          //事件进度100并且未保存
+          if (res.data.data[0].completionProgress === (100).toFixed(2) && !res.data.data[0].save) {
+            this.completionProgress = true;
+          } else {
+            this.completionProgress = false;
+            this.isShowComplete = false;
+          }
+        }
+      });
+    },
+    //保存最新月份数据
+    async saveKPI() {
+      const message = `是否确认保存【${this.newestMonth[0].eventName}】KPI数据，一旦保存将永久不可修改`;
+      ElMessageBox.confirm(message, "警告", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+      })
+        .then(() => {
+          saveKPIData(this.newestMonth[0].eventId, this);
+        })
+        .catch((e) => {
+          console.log(e);
+          ElMessage.info("取消保存");
+        });
+    },
+    //导出年度绩效汇总表
+    downLoadOneYearKPIExcel() {
+      if (this.deptId == "") {
+        ElMessage.error("请选择部门");
+      } else {
+        getDepartmentPerformanceAnnualSummary({ year: this.year, deptIdList: this.deptId });
+      }
+    },
+    //导出ecxel
+    downLoadKPIExcel() {
+      const XLSX = require("xlsx");
+      const XLSXStyle = require("xlsx-style");
+      const FileSaver = require("file-saver");
+
+      const newArr = [];
+      this.tableData.map((item, index) => {
+        var obj = {};
+        obj.index = index + 1;
+        obj.name = item.name;
+        obj.deptName = item.deptName;
+        obj.valueScore = item.valueScore;
+        obj.valueRealScore = item.valueRealScore;
+        obj.targetScore = item.targetScore;
+        obj.KPIScore = (Number(item.targetScore) + Number(item.valueRealScore)).toFixed(2);
+        obj.bonusCoefficient = (item.bonusCoefficient / 100).toFixed(2);
+        newArr.push(obj);
+      });
+
+      // 创建工作簿
+      const workbook = XLSX.utils.book_new();
+
+      // 创建工作表并定义列标题
+      // const worksheetData = [
+      //   [], // 空白的第一行
+      //   ["序号", "名字", "部门", "价值观分数", "价值观实际得分", "业绩指标实际得分", "KPI得分", "奖金系数"],
+      // ];
+      const worksheet = XLSX.utils.aoa_to_sheet([
+        [`${this.year}年${this.month}月奖金系数汇总`],
+        ["序号", "名字", "部门", "价值观分数", "价值观实际得分", "业绩指标实际得分", "KPI得分", "奖金系数"],
+      ]);
+      // XLSX.utils.sheet_add_aoa(worksheet, [worksheetData]);
+      //合并单元格 这里指定列合并单元格的范围,与列宽度设置类似也是一个数组
+      let excelMerges = [];
+      excelMerges.push({
+        s: { r: 0, c: 0 },
+        e: { r: 0, c: 7 },
+      });
+      worksheet["!merges"] = excelMerges;
+
+      // 遍历后端数据并写入工作表
+      newArr.forEach((row, rowIndex) => {
+        // console.log(rowIndex);
+        const sheetRow = [];
+        // console.log(row);
+        for (let i = 0; i < 8; i++) {
+          if (i === 3 || i === 4 || i === 5 || i === 6 || i === 7) {
+            sheetRow.push(Number(Object.values(row)[i]));
+          } else {
+            sheetRow.push(Object.values(row)[i]); // 替换为实际属性名或处理空值
+          }
+        }
+        // console.log(sheetRow);
+        XLSX.utils.sheet_add_aoa(worksheet, [sheetRow], { origin: rowIndex + 2 });
+      });
+      const styles = {
+        firstHeader: {
+          font: { bold: true, name: "微软雅黑", sz: 16 },
+          alignment: {
+            //文字居中
+            horizontal: "center",
+            vertical: "center",
+            wrap_text: true,
+          },
+          border: {
+            top: { style: "thin" },
+            left: { style: "thin" },
+            right: { style: "thin" },
+            bottom: { style: "thin" },
+          },
+        },
+        headerStyle: {
+          font: { bold: true, name: "微软雅黑", sz: 11 },
+          fill: { fgColor: { rgb: "C0C0C0" } }, // 背景色
+          alignment: {
+            //文字居中
+            horizontal: "center",
+            vertical: "center",
+            wrap_text: true,
+          },
+          border: {
+            top: { style: "thin" },
+            left: { style: "thin" },
+            right: { style: "thin" },
+            bottom: { style: "thin" },
+          },
+          // height: 40,
+        },
+        cellStyle: {
+          font: { name: "微软雅黑", sz: 11 },
+          alignment: {
+            //文字居中
+            horizontal: "center",
+            vertical: "center",
+            wrap_text: true,
+          },
+          border: {
+            top: { style: "thin" },
+            left: { style: "thin" },
+            right: { style: "thin" },
+            bottom: { style: "thin" },
+          },
+          // height: 40,
+        },
+      };
+
+      // 应用样式到列头
+      // const headerRange = XLSX.utils.decode_range(`A1:H1`);
+
+      if (!worksheet["!rows"] || !worksheet["!cols"]) {
+        worksheet["!rows"] = [];
+        worksheet["!cols"] = [];
+      }
+      const range = XLSX.utils.decode_range(worksheet["!ref"]);
+      // console.log(range);
+      for (var i = 0; i < 9; i++) {
+        worksheet["!cols"][i] = { wch: 20 };
+      }
+      for (let i = range.s.r + 1; i < range.e.r + 1; i++) {
+        worksheet["!rows"][0] = { hpx: 40 };
+        worksheet["!rows"][i] = { hpx: 30 };
+      }
+      // console.log(worksheet);
+
+      // 应用样式到列头
+      for (let col of ["A", "B", "C", "D", "E", "F", "G", "H"]) {
+        let cellRef1 = `${col}1`;
+        if (worksheet[cellRef1]) {
+          worksheet[cellRef1].s = styles.firstHeader;
+        }
+        let cellRef2 = `${col}2`;
+        if (worksheet[cellRef2]) {
+          worksheet[cellRef2].s = styles.headerStyle;
+        }
+      }
+      // console.log(Number(worksheet["!ref"].split(":")[1].slice(1)) + 1);
+      const bigestRow = Number(worksheet["!ref"].split(":")[1].slice(1)) + 1;
+      for (let row = 3; row < bigestRow; row++) {
+        // console.log(row);
+        for (let col of ["A", "B", "C", "D", "E", "F", "G", "H"]) {
+          let cellRef = `${col}${row}`;
+          if (worksheet[cellRef]) {
+            worksheet[cellRef].s = styles.cellStyle;
+            // worksheet[cellRef].t = "n";
+          }
+        }
+      }
+
+      // worksheet["!rows"].push({ s: styles.headerStyle }); // 应用到第一行
+
+      // 添加工作表到工作簿
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+      // 确保导出时包含样式信息
+      const wbOut = XLSXStyle.write(workbook, { bookType: "xlsx", type: "binary" });
+
+      // 写入文件
+      // FileSaver.saveAs(
+      //   new Blob([XLSX.read(wbOut, { type: "binary" }).buffer], { type: "application/octet-stream" }),
+      //   "output.xlsx",
+      // );
+      FileSaver.saveAs(
+        // Blob: 对象表示一个不可变 原始数据的类文件对象,不一定是JS原生格式的数据。
+        // File: 基于Blob，继承了blob的功能并将其扩展使其支持用户系统上的文件。
+        new Blob([this.s2ab(wbOut)], { type: "appliction/octet-stream" }),
+        // 设置导出的文件名称可随意
+        `${this.year}年${this.month}月份奖金系数.xlsx`,
+      );
+
+      // 导出 Excel 文件
+      // XLSX.writeFile(workbook, "output.xlsx");
+    },
+    s2ab(s) {
+      var buf = new ArrayBuffer(s.length);
+      var view = new Uint8Array(buf);
+      for (var i = 0; i != s.length; ++i) view[i] = s.charCodeAt(i) & 0xff;
+      return buf;
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.KpiScoreTable {
+  padding: 17px;
+  background-color: #fff;
+  height: 95%;
+  border-radius: 10px;
+}
+.titleForm {
+  display: flex;
+}
+</style>

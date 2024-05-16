@@ -1,0 +1,192 @@
+<template>
+  <div class="kpiTable">
+    <!-- 此页面没有被使用 -->
+    <div class="kpiTableTitle">计算【{{ month }}】月最新KPI数值</div>
+    <el-form :rules="rules">
+      <el-form-item label="部门" prop="deptId">
+        <el-select clearable placeholder="请选择部门" v-model="deptId">
+          <el-option v-for="item in deptOptions" :key="item.deptId" :label="item.deptName" :value="item.deptId" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="姓名"><el-input placeholder="请输入查询的姓名" v-model="name"></el-input></el-form-item>
+      <el-form-item label="状态">
+        <el-select clearable placeholder="请选择" v-model="finishState">
+          <el-option
+            v-for="item in finishStateOptions"
+            :key="item.name"
+            :label="item.name"
+            :value="item.state"
+          ></el-option></el-select
+      ></el-form-item>
+      <el-button v-if="finishState !== ''" @click="selectKpiDept">计算</el-button>
+      <el-button v-if="finishState.length == 0" @click="getKpiDept">计算</el-button>
+      <el-button type="primary" @click="saveKPI">保存【{{ month }}】月KPI数值</el-button>
+    </el-form>
+
+    <el-table :data="tableData1" height="70vh" border>
+      <el-table-column label="序号" type="index" width="80"></el-table-column>
+      <el-table-column label="部门" prop="deptName"></el-table-column>
+      <el-table-column label="姓名" prop="name"></el-table-column>
+      <el-table-column label="价值观分值" prop="valueScore"></el-table-column>
+      <el-table-column label="业绩指标分值" prop="targetScore"></el-table-column>
+      <el-table-column label="kpi总分" prop="totalScore"></el-table-column>
+      <el-table-column label="kpi奖金系数(%)" prop="kpi"></el-table-column>
+      <el-table-column label="状态">
+        <template #default="scope">
+          <span
+            v-if="scope.row.valueFlowComplete == true && scope.row.targetFlowComplete == true"
+            style="color: #67c23a"
+          >
+            已完成审批
+          </span>
+          <span
+            v-if="scope.row.valueFlowComplete == true && scope.row.targetFlowComplete == false"
+            style="color: #e6a23c"
+          >
+            业绩正在审批中
+          </span>
+
+          <span
+            v-if="scope.row.valueFlowComplete == false && scope.row.targetFlowComplete == true"
+            style="color: #e6a23c"
+          >
+            价值观正在审批中
+          </span>
+          <span
+            v-if="scope.row.valueFlowComplete == false && scope.row.targetFlowComplete == false"
+            style="color: #f56c6c"
+          >
+            价值观和业绩都未完成审批
+          </span>
+        </template>
+      </el-table-column>
+    </el-table>
+  </div>
+</template>
+
+<script>
+// import { deptList } from "@/api/register/index";
+// import { ElMessage } from "element-plus";
+import { getKpiList, saveKPIData } from "@/api/kpi/index";
+import { ElMessageBox } from "element-plus";
+import store from "@/store";
+export default {
+  name: "kpiDept",
+  data() {
+    return {
+      year: "",
+      deptId: null,
+      name: "",
+      month: null,
+      day: null,
+      deptOptions: store.state.deptList ? store.state.deptList : [],
+      tableData: [],
+      tableData1: [], //筛选后的数据
+      finishStateOptions: [
+        { name: "已审批完成", state: true },
+        { name: "未审批完成", state: false },
+      ],
+      finishState: "",
+    };
+  },
+  created() {
+    this.nowtime();
+    this.getKpiDept();
+    // deptList()
+    //   .then((res) => {
+    //     if (res.data.code == 0) {
+    //       this.deptOptions = res.data.data;
+    //     }
+    //   })
+    //   .catch(() => {
+    //     ElMessage.error("请求失败");
+    //   });
+  },
+  methods: {
+    //获取当前时间
+    nowtime() {
+      let nowDate = new Date();
+      if (0 < nowDate.getDate() && nowDate.getDate() <= 15) {
+        this.month = nowDate.getMonth();
+      } else if (15 < nowDate.getDate() && nowDate.getDate() < 32) {
+        this.month = nowDate.getMonth() + 1;
+        // console.log(this.month);
+      }
+    },
+    getKpiDept() {
+      // console.log(this.finishState);
+      // console.log(this.finishState == "");
+      const data = { deptId: this.deptId, name: this.name };
+      getKpiList(data)
+        .then((res) => {
+          if (res.data.code == 0) {
+            this.tableData = res.data.data;
+            this.tableData = this.tableData.map((item) => {
+              const deptOption = this.deptOptions.find((item1) => item1.deptId == item.deptId);
+              if (deptOption) {
+                return { ...item, deptName: deptOption.deptName };
+              } else {
+                // 如果没有找到匹配的项，你可能想要返回原始的item，或者返回null，或者做其他处理
+                return item;
+              }
+            });
+            this.tableData1 = res.data.data;
+          }
+        })
+        .catch((e) => {
+          console.log(e);
+        });
+    },
+    selectKpiDept() {
+      // console.log(this.finishState.length);
+      // console.log(this.finishState == null);
+      if (this.finishState == true) {
+        this.tableData1 = this.tableData.filter((item) => item.valueFlowComplete && item.targetFlowComplete);
+      } else if (this.finishState == false) {
+        this.tableData1 = this.tableData.filter((item) => !(item.valueFlowComplete && item.targetFlowComplete));
+      }
+      console.log(this.tableData1);
+    },
+    saveKPI() {
+      const message = `是否将本次KPI计算结果保存为${this.month}月最终版数据，可重复保存。保存数据可在【查询KPI历史数值】查看`;
+      ElMessageBox.confirm(message, "警告", {
+        confirmButtonText: "确认保存",
+        cancelButtonText: "取消保存",
+        type: "warning",
+      }).then(() => {
+        saveKPIData();
+      });
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.kpiTable {
+  padding: 17px;
+  background-color: #fff;
+  height: 95%;
+  border-radius: 10px;
+}
+.kpiTableTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  padding: 1rem;
+}
+.el-form {
+  display: flex;
+  justify-content: space-around;
+}
+// .el-table .el-table__cell {
+//   text-align: center;
+//   font-size: 12px;
+// }
+// .el-table .el-table__cell {
+//   text-align: center;
+// }
+// .el-table th.el-table__cell {
+//   font-size: 14px;
+// }
+</style>

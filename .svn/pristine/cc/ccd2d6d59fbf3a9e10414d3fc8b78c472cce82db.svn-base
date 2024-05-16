@@ -1,0 +1,374 @@
+<template>
+  <div class="targetlist">
+    <el-tabs v-model="activeName" class="demo-tabs" @tab-click="handleClick">
+      <el-tab-pane label="指标列表" name="target">
+        <el-table :data="targetList1" border :height="tableHeight" type="index" class="table-target">
+          <el-table-column type="index" label="序号" width="50" />
+          <el-table-column label="所属部门" prop="deptName"></el-table-column>
+          <el-table-column prop="name" label="指标名称" />
+          <el-table-column prop="targetValue" label="目标值" width="80">
+            <!-- <template #default="{ row }">
+              {{ row.targetValue }}<span v-if="row.targetIsNumber">项</span> <span v-else>%</span>
+            </template> -->
+          </el-table-column>
+          <el-table-column label="计算方法" prop="calculationMethod" width="200"></el-table-column>
+          <el-table-column prop="dataProvider" label="数据提供人" width="100" />
+          <el-table-column prop="reportSource" label="报表源" />
+          <el-table-column label="考核区间" align="center" prop="targetScoreList" width="850">
+            <el-table-column label="1分" align="center">
+              <template #default="scope"
+                >{{ scope.row.targetScoreList[0].min }}<span v-if="!scope.row.targetIsNumber">%</span> ≤ N &lt;{{
+                  scope.row.targetScoreList[0].max
+                }}<span v-if="!scope.row.targetIsNumber">%</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="2分" align="center">
+              <template #default="scope"
+                >{{ scope.row.targetScoreList[1].min }}<span v-if="!scope.row.targetIsNumber">%</span>≤ N &lt;{{
+                  scope.row.targetScoreList[1].max
+                }}<span v-if="!scope.row.targetIsNumber">%</span></template
+              ></el-table-column
+            >
+            <el-table-column label="3分" align="center">
+              <template #default="scope"
+                >{{ scope.row.targetScoreList[2].min }}<span v-if="!scope.row.targetIsNumber">%</span>≤ N &lt;{{
+                  scope.row.targetScoreList[2].max
+                }}<span v-if="!scope.row.targetIsNumber">%</span></template
+              ></el-table-column
+            >
+            <el-table-column label="4分" align="center">
+              <template #default="scope"
+                >{{ scope.row.targetScoreList[3].min }}<span v-if="!scope.row.targetIsNumber">%</span>≤ N &lt;{{
+                  scope.row.targetScoreList[3].max
+                }}<span v-if="!scope.row.targetIsNumber">%</span>
+              </template></el-table-column
+            >
+            <el-table-column label="5分" align="center">
+              <template #default="scope"
+                >{{ scope.row.targetScoreList[4].min }}<span v-if="!scope.row.targetIsNumber">%</span>≤ N &lt;{{
+                  scope.row.targetScoreList[4].max - 1
+                }}<span v-if="!scope.row.targetIsNumber">%</span><span v-else></span> </template
+            ></el-table-column>
+          </el-table-column> </el-table
+      ></el-tab-pane>
+      <el-tab-pane label="绩效奖金核算方法" name="bouns">
+        <el-table :data="bounsCoefficientList" border :height="tableHeight" type="index" class="table-bouns">
+          <el-table-column label="考核得分范围(0.15)" prop="score" align="center" />
+          <el-table-column prop="bouns" label="奖金系数(0.03)" align="center"
+        /></el-table>
+      </el-tab-pane>
+    </el-tabs>
+  </div>
+</template>
+
+<script>
+import { getTargetList, addTarget, selectTarget, changeTarget } from "@/api/performance/index";
+import { ElMessage } from "element-plus";
+import { deptList } from "@/api/register/index";
+
+export default {
+  name: "targetList",
+  data() {
+    return {
+      targetList: [],
+      targetList1: [],
+      deptOptions: [],
+      isAddTarget: false,
+      targetName: "",
+      targetDescription: "",
+      weight: "",
+      value: "", //判断是否是公共指标类型
+      title: "", //弹窗名称
+      formData: {
+        deptId: "",
+        name: "",
+        weight: null,
+        // value: null,
+        targetValue: "",
+        reportSource: "",
+        targetIsNumber: null,
+        dataProvider: "",
+        calculationMethod: "",
+      }, //弹窗数据
+      options: [],
+      edit: null, //判断是否能编辑指标
+      targetIsNumber: null, //判断指标的维度，是百分比还是数量
+      tableHeight: null,
+      // deptId: "", //绑定的部门id
+      activeName: "target",
+      bounsCoefficientList: [
+        { score: "N=5", bouns: "142%" },
+        { score: "4.8≤ N <5", bouns: "139%" },
+        { score: "4.65≤ N <4.8", bouns: "136%" },
+        { score: "4.5≤ N <4.65", bouns: "133%" },
+        { score: "4.35≤ N <4.5", bouns: "130%" },
+        { score: "4.2≤ N <4.35", bouns: "127%" },
+        { score: "4.05≤ N <4.2", bouns: "124%" },
+        { score: "3.9≤ N <4.05", bouns: "121%" },
+        { score: "3.75≤ N <3.9", bouns: "118%" },
+        { score: "3.6≤ N <3.75", bouns: "115%" },
+        { score: "3.45≤ N <3.6", bouns: "112%" },
+        { score: "3.3≤ N <3.45", bouns: "109%" },
+        { score: "3.15≤ N <3.3", bouns: "106%" },
+        { score: "3≤ N <3.15", bouns: "103%" },
+        { score: "2.85≤ N <3", bouns: "100%" },
+        { score: "2.7≤ N <2.85", bouns: "97%" },
+        { score: "2.55≤ N <2.7", bouns: "94%" },
+        { score: "2.4≤ N <2.55", bouns: "91%" },
+        { score: "2.25≤ N <2.4", bouns: "88%" },
+        { score: "2.1≤ N <2.25", bouns: "85%" },
+        { score: "1.95≤ N <2.1", bouns: "82%" },
+        { score: "1.8≤ N <1.95", bouns: "79%" },
+        { score: "1.65≤ N <1.8", bouns: "76%" },
+        { score: "N <1.65", bouns: "0%" },
+      ],
+
+      rules: {
+        name: [{ required: true, message: "" }],
+        type: [{ required: true, message: "" }],
+        weight: [{ required: true, message: "" }],
+        score: [{ required: true, message: "" }],
+        dimensions: [{ required: true, message: "" }],
+        dataProvider: [{ required: true, message: "" }],
+        reportSource: [{ required: true, message: "" }],
+        targetValue: [{ required: true, message: "" }],
+        calculationMethod: [{ required: true, message: "" }],
+      },
+      targetScoreScopePos: [
+        { score: "1", min: null, max: null },
+        { score: "2", min: null, max: null },
+        { score: "3", min: null, max: null },
+        { score: "4", min: null, max: null },
+        { score: "5", min: null, max: null },
+      ],
+      dimensionsOptions: [
+        {
+          value: true,
+          label: "数量",
+        },
+        {
+          value: false,
+          label: "百分比",
+        },
+      ],
+    };
+  },
+  async mounted() {
+    setTimeout(() => {}, 100);
+    await deptList()
+      .then((res) => {
+        if (res.data.code == 0) {
+          this.deptOptions = res.data.data;
+          const deptoption = res.data.data.map((item) => {
+            item.value = item.deptId;
+            item.label = item.deptName;
+            return {
+              value: item.value,
+              label: item.label,
+            };
+          });
+          this.options = [
+            {
+              label: "是否是公用指标",
+              children: [{ value: "true", label: "是" }],
+            },
+            {
+              label: "是否是部门指标",
+              children: deptoption,
+            },
+          ];
+        }
+      })
+      .catch(() => {
+        ElMessage.error("请求失败");
+      });
+    this.getTargetList();
+
+    this.$nextTick(() => {
+      // 根据浏览器高度设置初始高度
+      this.tableHeight = window.innerHeight - 210;
+      // 监听浏览器高度变化，改变表格高度
+      window.onresize = () => {
+        this.tableHeight = window.innerHeight - 210;
+      };
+    });
+  },
+  methods: {
+    getTargetList() {
+      getTargetList()
+        .then((res) => {
+          if (res.data && res.data.code == 0) {
+            // for (let key in res.data.data.targetScoreList) {
+            //   const arrayToSort = res.data.data.targetScoreList[key];
+            //   arrayToSort.sort((a, b) => a.score - b.score);
+            //   res.data.data.targetScoreList[key] = arrayToSort;
+            // }
+            let newItems = res.data.data.map((item) => {
+              let matchedOption = this.deptOptions.find((item1) => item1.deptId == item.deptId);
+              return Object.assign({}, item, { deptName: matchedOption ? matchedOption.deptName : "" });
+            });
+            this.targetList = newItems;
+            this.targetList1 = this.targetList;
+          }
+        })
+        .catch((e) => {
+          console.log(e);
+          // ElMessage.error("获取数据失败");
+        });
+    },
+    handleChange(value) {
+      this.formData.targetIsNumber = value;
+    },
+    submitForm() {
+      if (this.title == "新增指标") {
+        if (
+          Object.values(this.formData)
+            .map((item) => item === null || item === "" || item === undefined)
+            .filter((item) => item).length > 0
+        ) {
+          ElMessage.error("请设置参数");
+        } else if (typeof this.formData.weight !== "number" || Number(this.formData.weight) > 100) {
+          ElMessage.error("权重必须为数字且不超过100，不带百分号");
+        }
+        // else if (typeof this.formData.targetValue !== "number") {
+        //   ElMessage.error("目标值必须为数字，不带百分号");
+        // }
+        else if (
+          !this.targetScoreScopePos.every((item) => typeof item.min == "number" && typeof item.max == "number")
+        ) {
+          ElMessage.error("配置指标区间数据必须都是数字，请重新输入");
+        } else {
+          const targetScore = this.targetScoreScopePos.map((item) => Object.values(item));
+
+          let isAdd = false;
+          for (let i = 0; i < targetScore.length - 1; i++) {
+            if (targetScore[i][1] >= targetScore[i + 1][1] || targetScore[i][2] >= targetScore[i + 1][2]) {
+              ElMessage.error("指标区间数据不是递增的，请检查");
+              isAdd = true;
+            }
+            if (targetScore[i][2] !== targetScore[i + 1][1]) {
+              ElMessage.error("指标区间数据首尾不相等，请检查");
+              isAdd = true;
+            }
+          }
+          if (!isAdd) {
+            let lastValue = this.targetScoreScopePos[this.targetScoreScopePos.length - 1]["max"] + 1;
+            this.targetScoreScopePos[this.targetScoreScopePos.length - 1]["max"] = lastValue;
+            this.formData.targetScoreScopePos = this.targetScoreScopePos;
+            this.formData.common = false;
+
+            addTarget(this.formData, this);
+          }
+        }
+      } else {
+        const targetScore = this.targetScoreScopePos.map((item) => Object.values(item));
+
+        let isAdd = false;
+        for (let i = 0; i < targetScore.length - 1; i++) {
+          if (targetScore[i][1] >= targetScore[i + 1][1] || targetScore[i][2] >= targetScore[i + 1][2]) {
+            ElMessage.error("指标区间数据不是递增的，请检查");
+            isAdd = true;
+          }
+          if (targetScore[i][2] !== targetScore[i + 1][1]) {
+            ElMessage.error("指标区间数据首尾不相等，请检查");
+            isAdd = true;
+          }
+        }
+        if (!isAdd) {
+          let lastValue = this.targetScoreScopePos[this.targetScoreScopePos.length - 1]["max"] + 1;
+          this.targetScoreScopePos[this.targetScoreScopePos.length - 1]["max"] = lastValue;
+          changeTarget(this.targetScoreScopePos, this);
+        }
+      }
+    },
+    addNewTarget() {
+      this.isAddTarget = true;
+      this.title = "新增指标";
+      this.formData.name = "";
+      this.formData.targetIsNumber = null;
+      this.formData.weight = "";
+      this.targetScoreScopePos = [
+        { score: "1", min: null, max: null },
+        { score: "2", min: null, max: null },
+        { score: "3", min: null, max: null },
+        { score: "4", min: null, max: null },
+        { score: "5", min: null, max: null },
+      ];
+    },
+    changeTarget(row) {
+      this.title = "编辑指标";
+      this.formData.name = row.name;
+      this.edit = row.edit;
+      this.formData.targetIsNumber = row.targetIsNumber;
+      if (row.targetId != undefined) {
+        this.isAddTarget = true;
+        selectTarget(row.targetId).then((res) => {
+          if (res.data.code == 0 && res.data.data.length > 0) {
+            this.targetScoreScopePos = res.data.data;
+            let lastValue = this.targetScoreScopePos[this.targetScoreScopePos.length - 1]["max"] - 1;
+            this.targetScoreScopePos[this.targetScoreScopePos.length - 1]["max"] = lastValue;
+          }
+        });
+      } else {
+        ElMessage.error("缺少参数，请刷新页面");
+      }
+    },
+    //查询部门
+    selectTargetByDept() {
+      if (this.deptId !== "") {
+        this.targetList1 = this.targetList.filter((item) => item.deptId == this.deptId);
+      } else {
+        this.targetList1 = this.targetList;
+      }
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.targetlist {
+  padding: 1.5%;
+  background-color: #fff;
+  height: 94%;
+  border-radius: 10px;
+
+  .targetlist-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left;
+    padding: 1rem;
+  }
+}
+.table-target {
+  width: 100%;
+  text-align: center;
+  margin-top: 10px;
+}
+.table-bouns {
+  width: 50%;
+  text-align: center;
+  margin-top: 10px;
+  margin: auto;
+}
+
+.el-input {
+  --el-input-height: var(--el-component-size);
+  position: relative;
+  font-size: var(--el-font-size-base);
+  display: inline-flex;
+  line-height: var(--el-input-height);
+  box-sizing: border-box;
+  vertical-align: middle;
+}
+.el-icon {
+  margin-right: 5px;
+}
+:deep(.table-target .el-table__cell.is-center) {
+  text-align: left;
+  font-size: 12px;
+}
+:deep(.el-table .el-table__cell.is-center .cell) {
+  padding: 0;
+}
+</style>

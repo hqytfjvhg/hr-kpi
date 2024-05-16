@@ -1,0 +1,175 @@
+<template>
+  <div class="common-layout">
+    <el-container>
+      <el-aside :width="isCollapse == false ? '12rem' : '6rem'" class="aside">
+        <div class="logo">
+          <img src="~@/assets/logo.png" alt="" />
+          <h2 class="title">HR</h2>
+        </div>
+
+        <el-menu
+          default-active="this.$route.path"
+          :collapse="isCollapse"
+          :collapse-transition="false"
+          @open="handleOpen"
+          @close="handleClose"
+          @select="handleSelect"
+          :router="true"
+        >
+          <el-sub-menu index="1">
+            <template #title>
+              <el-icon><Location /></el-icon>
+              <span>数据类型</span>
+            </template>
+            <el-menu-item index="1-1">Excel表格</el-menu-item>
+            <el-menu-item index="1-2">柱状图</el-menu-item>
+            <el-menu-item index="1-3">饼图</el-menu-item>
+            <el-menu-item index="1-4">散点图</el-menu-item>
+          </el-sub-menu>
+
+          <el-sub-menu index="3">
+            <template #title>
+              <el-icon><Document /></el-icon>
+              <span>查看类型</span>
+            </template>
+            <el-sub-menu>
+              <template #title>价值观</template>
+
+              <el-sub-menu index="2">
+                <template #title>
+                  <el-icon><Menu /></el-icon>
+                  <span>组别</span>
+                </template>
+                <el-menu-item index="/ValueDept">部门</el-menu-item>
+                <el-menu-item index="/valueUser">个人</el-menu-item>
+                <el-menu-item index="2-3">性别</el-menu-item>
+              </el-sub-menu>
+            </el-sub-menu>
+            <el-menu-item index="/test">项目考核</el-menu-item>
+            <el-menu-item index="3-3">绩点</el-menu-item>
+            <el-menu-item index="3-4">KPI</el-menu-item>
+          </el-sub-menu>
+          <el-sub-menu index="4">
+            <template #title>
+              <el-icon><Setting /></el-icon>
+              <span>时间</span>
+            </template>
+            <el-menu-item index="4-1">年</el-menu-item>
+            <el-menu-item index="4-2">季</el-menu-item>
+            <el-menu-item index="4-3">月</el-menu-item>
+          </el-sub-menu>
+          <el-menu-item index="/UserList">
+            <el-icon><UserFilled /></el-icon>
+            <template #title>用户列表</template>
+          </el-menu-item>
+          <el-menu-item index="/writeValue">
+            <el-icon><UserFilled /></el-icon>
+            <template #title>填写个人价值观</template>
+          </el-menu-item>
+        </el-menu>
+        <!-- <el-radio-group v-model="isCollapse">
+          <el-radio-button :label="false">expand</el-radio-button>
+          <el-radio-button :label="true">collapse</el-radio-button>
+        </el-radio-group> -->
+      </el-aside>
+      <el-container>
+        <el-header>
+          <div class="siderOpen">
+            <el-icon :size="20" v-if="isCollapse === false" @click="triggerSidebarOpened"><Expand /></el-icon>
+            <el-icon :size="20" v-if="isCollapse === true" @click="triggerSidebarOpened"><Fold /></el-icon>
+          </div>
+          <Header></Header>
+        </el-header>
+        <el-main><router-view /></el-main>
+        <el-footer>
+          凯韵科技有限公司
+          <br />
+          2023年8月
+        </el-footer>
+      </el-container>
+    </el-container>
+  </div>
+</template>
+
+<script>
+import { Menu, Setting, UserFilled, Location, Document, Expand, Fold } from "@element-plus/icons-vue";
+import Header from "../components/header/HeaderView.vue";
+
+export default {
+  components: { Header, Menu, Setting, UserFilled, Location, Document, Expand, Fold },
+  data() {
+    return {
+      isCollapse: false,
+      width: "200px",
+      collapsed: {
+        type: Boolean,
+      },
+    };
+  },
+  methods: {
+    handleOpen(key, keyPath) {
+      console.log(key, keyPath);
+    },
+    handleClose(key, keyPath) {
+      console.log(key, keyPath);
+    },
+    handleSelect(key, keyPath) {
+      console.log(key, keyPath);
+    },
+    triggerSidebarOpened() {
+      this.isCollapse = !this.isCollapse;
+    },
+  },
+};
+</script>
+<style lang="scss">
+html {
+  background-color: #f0f2f5;
+}
+.common-layout {
+  height: 100vh;
+}
+
+.logo {
+  // width: 200/16rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 3.75rem;
+  line-height: 3.75rem;
+  // background-color: #fff;
+  img {
+    height: 2rem;
+    margin-right: 0.5rem;
+  }
+  h2 {
+    color: #1890ff;
+  }
+}
+.el-menu-vertical-demo:not(.el-menu--collapse) {
+  width: 12rem;
+}
+.aside {
+  height: 100vh;
+  background-color: #fff;
+}
+.el-menu {
+  border-right: 0 !important;
+  .el-sub-menu__title,
+  .el-menu-item .el-menu-tooltip__trigger {
+    padding-left: 2rem;
+  }
+}
+.el-header {
+  background-color: #fff;
+  display: flex;
+  align-items: center;
+  .siderOpen {
+    margin-top: 0.25rem;
+    padding-right: 0.5rem;
+  }
+}
+.el-footer {
+  font-size: 0.5rem;
+}
+</style>

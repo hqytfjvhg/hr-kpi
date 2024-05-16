@@ -1,0 +1,668 @@
+<template>
+  <!-- 旧页面 -->
+  <div>
+    <el-dialog
+      :model-value="true"
+      :title="modelData.templateName"
+      @close="handleClose"
+      :show-close="false"
+      :close-on-click-modal="false"
+    >
+      <el-timeline style="text-align: left">
+        <el-timeline-item
+          v-for="(activity, index) in timeActivity"
+          :key="index"
+          :icon="activity.icon"
+          :color="activity.color"
+          :size="activity.size"
+          :content="activity.content"
+        >
+          {{ activity.content }}
+          <el-button v-if="index == 0" @click="dialogUser = true" size="small" type="primary" plain
+            >选择参与人员</el-button
+          >
+          <div v-if="userSelectName && index == 0" style="font-size: 12px; color: gray; margin-top: 0.5rem">
+            参与人员：
+            <span v-for="(item, index) in userSelectName" :key="index"
+              >{{ item }} <span v-if="index != userSelectName.length - 1">、</span></span
+            >
+          </div>
+
+          <el-button v-if="index == 1" @click="deptApproval" size="small" type="primary" plain>常用审批流程</el-button>
+          <!-- <el-button v-if="index == 1" @click="deptCustom" size="small" type="primary" plain>自定义审批流程</el-button> -->
+          <div v-if="index == 1" style="margin-top: 0.5rem; font-size: 12px; color: gray">
+            审批路线:
+
+            <span v-for="(item, index) in deptCustomUserNames" :key="item"
+              >{{ item }}
+              <span v-if="index !== deptCustomUserNames.length - 1">
+                <!-- <i class="fa fa-arrow-right"></i>    -->
+                →
+              </span></span
+            >
+          </div>
+
+          <el-button v-if="index == 2" @click="hrApproval" size="small" type="primary" plain>常用审批流程</el-button>
+          <!-- <el-button v-if="index == 2" @click="hrCustom" size="small" type="primary" plain>自定义审批流程</el-button> -->
+          <div v-if="index == 2" style="margin-top: 0.5rem; font-size: 12px; color: gray">
+            审批路线:
+            <span v-for="(item, index) in hrCustomUserNames" :key="item">
+              {{ item }}
+              <span v-if="index !== hrCustomUserNames.length - 1">
+                <!-- <i class="fa fa-arrow-right"></i> -->
+                →
+              </span>
+            </span>
+          </div>
+        </el-timeline-item>
+      </el-timeline>
+
+      <!-- <el-timeline style="text-align: left">
+        <el-timeline-item>
+          选择参与人员
+          <el-button @click="dialogUser = true" size="small" type="primary" plain>选择参与人员</el-button>
+
+          <div v-if="userSelectName" style="font-size: 12px; color: gray; margin-top: 0.5rem">
+            参与人员：
+            <span v-for="(item, index) in userSelectName" :key="index"
+              >{{ item }} <span v-if="index != userSelectName.length - 1">、</span></span
+            >
+          </div>
+        </el-timeline-item>
+        <el-timeline-item>
+          部门负责人审批
+          <el-button @click="deptApproval" size="small" type="primary" plain>常用审批流程</el-button>
+          <el-button @click="deptCustom" size="small" type="primary" plain>自定义审批流程</el-button>
+
+          <div style="margin-top: 0.5rem; font-size: 12px; color: gray">
+            填写人:
+
+            <span v-for="(item, index) in deptCustomUserNames" :key="item"
+              >{{ item }}
+              <span v-if="index !== deptCustomUserNames.length - 1"> <i class="fa fa-arrow-right"></i> </span
+            ></span>
+          </div>
+        </el-timeline-item>
+        <el-timeline-item>
+          人事行政部审批
+          <el-button @click="hrApproval" size="small" type="primary" plain>常用审批流程</el-button>
+          <el-button @click="hrCustom" size="small" type="primary" plain>自定义审批流程</el-button>
+          <div style="margin-top: 0.5rem; font-size: 12px; color: gray">
+            填写人:
+            <span v-for="(item, index) in hrCustomUserNames" :key="item">
+              {{ item }}
+              <span v-if="index !== hrCustomUserNames.length - 1">
+                <i class="fa fa-arrow-right"></i>
+              </span>
+            </span>
+          </div>
+        </el-timeline-item>
+      </el-timeline> -->
+      <div style="text-align: left; margin-bottom: 0.5rem; margin-left: 28px">
+        <span style="font-weight: 700">流程检查</span>
+        <div style="margin-top: 0.5rem; font-size: 12px; color: gray">
+          审批路线:
+
+          <span v-for="item in deptCustomUserNames" :key="item"
+            >{{ item }}
+            <span>
+              <!-- <i class="fa fa-arrow-right"></i> -->
+              →
+            </span>
+          </span>
+          <span v-for="(item, index) in hrCustomUserNames" :key="item"
+            >{{ item }}
+            <span v-if="index !== hrCustomUserNames.length - 1">
+              <!-- <i class="fa fa-arrow-right"></i> -->
+              →
+            </span>
+          </span>
+        </div>
+      </div>
+      <div style="margin-top: 10px; text-align: right">
+        <el-button @click="handleClose">取消</el-button>
+        <el-button type="primary" @click="createEvent">确定</el-button>
+      </div>
+
+      <SelectUserName
+        v-if="dialogUser"
+        v-model:dialogUser="dialogUser"
+        :modelData="modelData"
+        :userSelectionUser="userSelection"
+        @userSelectList="userSelectList"
+      ></SelectUserName>
+      <!-- 选择人员弹窗 -->
+      <!-- <el-dialog v-model="dialogUser" destroy-on-close >
+        <el-form class="titleForm">
+          <el-form-item label="部门">
+            <el-select clearable placeholder="请选择部门" v-model="deptName">
+              <el-option v-for="item in deptOptions" :key="item.deptId" :label="item.deptName" :value="item.deptName" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="姓名">
+            <el-input placeholder="请输入姓名" v-model="name"></el-input>
+          </el-form-item>
+          <el-button @click="getUser">查询</el-button>
+        </el-form>
+        <el-table
+          :data="userList"
+          style="width: 100%"
+          height="23rem"
+          stripe
+          type="index"
+          @selection-change="handleSelectionUser"
+          ref="multipleTable"
+        >
+          <el-table-column type="selection" />
+          <el-table-column type="index" label="序号" width="100" />
+          <el-table-column prop="name" label="姓名"></el-table-column>
+          <el-table-column prop="deptName" label="部门" />
+        </el-table>
+        <div style="margin-top: 20px">
+          <el-button @click="srueSeleteUser">确定</el-button>
+        </div>
+      </el-dialog> -->
+      <!-- 选择审批人的弹窗 -->
+      <el-dialog style="width: 40%" v-model="approvalPeoper" destroy-on-close>
+        <template #title>
+          <span style="font-weight: 700">{{ title }}</span>
+        </template>
+        <el-table
+          border
+          class="table-style"
+          :data="title == '部门审批' ? deptData : hrData"
+          style="width: 100%"
+          height="20rem"
+          ref="selectTable"
+          @select="selectCur"
+        >
+          <el-table-column type="selection"></el-table-column>
+          <el-table-column label="流程名称">
+            <template #default="scope">
+              <span v-if="title == '部门审批'">{{ scope.row.deptFlowName }}</span>
+              <span v-if="title == '人事审批'">{{ scope.row.hrFlowName }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="审核路线">
+            <template #default="scope">
+              <span v-for="(value, key, index) in scope.row" :key="index">
+                <span v-if="key.startsWith('deptUserName')"
+                  >{{ value }}
+                  <span v-if="index !== Object.keys(scope.row).length - 1">
+                    <!-- <i class="fa fa-arrow-right"></i> -->
+                    →
+                  </span>
+                </span>
+              </span>
+              <span v-for="(value, key, index) in scope.row" :key="index">
+                <span v-if="key.startsWith('hrUserName')"
+                  >{{ value }}
+                  <span v-if="index !== Object.keys(scope.row).length - 1">
+                    <!-- <i class="fa fa-arrow-right"></i>  -->
+                    →
+                  </span></span
+                >
+              </span>
+              <!-- <span v-if="title == '部门审批'">{{ scope.row.deptUserName1 }}----{{ scope.row.deptUserName2 }}</span>
+              <span v-if="title == '人事审批'">{{ scope.row.hrUserName1 }}----{{ scope.row.hrUserName2 }}</span> -->
+            </template>
+          </el-table-column>
+        </el-table>
+        <div style="margin-top: 20px; text-align: right">
+          <!-- <el-button @click="approvalPeoper = false">取消</el-button> -->
+          <el-button @click="approvalPeoper = false">确定</el-button>
+        </div>
+      </el-dialog>
+      <!-- 自定义的弹窗 -->
+      <el-dialog style="width: 40%" v-model="approvalCustom" destroy-on-close>
+        <template #title>
+          <span style="font-weight: 700">{{ title }}</span>
+        </template>
+        <div style="text-align: left; font-size: 14px; padding: 0 0 10px 20px">
+          请按审批顺序勾选审批人,勾选顺序与审批顺序是一致的。
+        </div>
+        <el-table
+          border
+          :data="title == '部门自定义审批' ? addDeptFlow : addHrFlow"
+          style="width: 100%"
+          height="20rem"
+          @selection-change="handleSelection"
+        >
+          <el-table-column type="selection"></el-table-column>
+          <el-table-column label="姓名" prop="name"></el-table-column>
+        </el-table>
+        <div style="margin-top: 20px; text-align: right">
+          <!-- <el-button @click="approvalPeoper = false">取消</el-button> -->
+          <el-button @click="approvalCustom = false">确定</el-button>
+        </div>
+      </el-dialog>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+// import { getUser } from "@/api/values/index";
+import { getCommonDept, getCommonHr, getDeptFlow, getHrFlow } from "@/api/userlist/index";
+// import { deptList } from "@/api/register/index";
+import { ElMessage } from "element-plus";
+import store from "@/store";
+import SelectUserName from "@/views/values/SelectUserName.vue";
+import { Warning, SuccessFilled } from "@element-plus/icons-vue";
+// import { getUser } from "@/api/values/index";
+
+export default {
+  props: {
+    dialogApproval: {
+      type: Boolean,
+      default: false,
+    },
+    modelData: {
+      type: Object,
+      default() {
+        return {
+          templateName: "",
+        };
+      },
+    },
+  },
+  components: { SelectUserName },
+  data() {
+    return {
+      dialogUser: false,
+      approvalPeoper: false,
+      approvalCustom: false, //自定义流程
+      deptFlowIsCustom: false, //部门自定义
+      hrFlowIsCustom: false, //人事自定义
+      // userListData: [], //查询出来的用户列表
+      // userList: [], //价值观选择参与人过滤的数据
+      // userListDate2: [], //查询出来的用户完整列表，用于参加字段
+      userSelection: [], //选择的用户
+      name: "", //选择参与人员查询的名字
+      deptName: "", //选择参与人员查询的部门
+
+      multipleSelection: null,
+      title: "", //弹窗绑定的标题
+      approveStatus: null, //时间线
+      deptData: [], //部门审核
+      hrData: [], //人事审核
+      tempList: [],
+      deptOptions: [], //按部门查询
+      // userSelectName: store.state.userSelectName[this.modelData.eventId]
+      //   ? store.state.userSelectName[this.modelData.eventId]
+      //   : [],
+      userSelectName: [], //回显选中参与的人的名字
+      // userSelectName2: [], //参与过的人传到弹窗
+      addDeptFlow: [], //具有部门权限的审批人
+      addHrFlow: [], //具有人事审批权限的人
+
+      deptList: [], //部门审批流程显示的人
+      approvalList: [], //人事审批流程选的人
+      deptUserNames: [], //部门审批在页面显示的人
+      hrUserNames: [], //人事审批在页面上显示的人
+      deptCustomUserNames: [], //部门自定义审批选的人名，用来展示
+      hrCustomUserNames: [], //人事自定义
+      hrCustomList: [], //人事自定义流程
+      deptCustomList: [], //部门自定义流程
+      timeActivity: [
+        {
+          content: "选择参与人员",
+          icon: Warning,
+          size: "large",
+          color: "#E6A23C",
+        },
+        {
+          content: "选择部门审批人",
+          icon: Warning,
+          size: "large",
+          color: "#E6A23C",
+        },
+        {
+          content: "选择人事审批人",
+          icon: Warning,
+          size: "large",
+          color: "#E6A23C",
+        },
+      ],
+    };
+  },
+  created() {},
+  computed: {
+    icon() {
+      return "SuccessFilled";
+
+      // return "CircleCloseFilled";
+    },
+  },
+  mounted() {
+    // deptList()
+    //   .then((res) => {
+    //     if (res.data.code == 0) {
+    //       this.deptOptions = res.data.data;
+    //     }
+    //   })
+    //   .catch(() => {
+    //     ElMessage.error("请求失败");
+    //   });
+
+    const approval = this.$store.state.approvalData.find(
+      (item) => item[this.modelData.eventId.toString() + this.modelData.templateId + "$"],
+    );
+
+    if (approval) {
+      const approvalData = approval[this.modelData.eventId.toString() + this.modelData.templateId + "$"];
+      // console.log("测试", approvalData);
+      this.userSelection = approvalData.userIdList;
+      this.userSelectName = approvalData.userSelectName;
+      this.deptCustomUserNames = approvalData.deptCustomUserNames;
+      this.hrCustomUserNames = approvalData.hrCustomUserNames;
+
+      this.approvalList = approvalData.approvalList;
+      this.deptList = approvalData.deptList;
+      this.hrFlowIsCustom = approvalData.hrFlowIsCustom;
+      this.deptFlowIsCustom = approvalData.deptFlowIsCustom;
+      this.hrCustomList = approvalData.hrCustomList;
+      this.deptCustomList = approvalData.deptCustomList;
+      this.timeActivity = approvalData.timeActivity;
+    }
+  },
+  methods: {
+    color() {
+      return "#F56C6C";
+    },
+    //关闭弹窗
+    handleClose() {
+      this.$emit("update:dialogApproval", false);
+    },
+    //val是选中的所有行，row是当前行
+    selectCur(val, row) {
+      // console.log(val, "val");
+      // console.log(row, "row");
+      this.$refs.selectTable.clearSelection();
+      this.$refs.selectTable.toggleRowSelection(row, true);
+      if (this.title == "部门审批") {
+        this.deptList = row;
+        this.deptFlowIsCustom = false;
+        this.deptCustomUserNames = Object.keys(row)
+          .filter((key) => key.startsWith("deptUserName"))
+          .map((key) => row[key]);
+
+        // console.log(this.deptList);
+        if (this.deptList != []) {
+          this.timeActivity[1].color = "#67C23A";
+          this.timeActivity[1].icon = SuccessFilled;
+        }
+      } else if (this.title == "人事审批") {
+        this.approvalList = row;
+        this.hrFlowIsCustom = false;
+        this.hrCustomUserNames = Object.keys(row)
+          .filter((key) => key.startsWith("hrUserName"))
+          .map((key) => row[key]);
+        // console.log(this.approvalList);
+        if (this.approvalList) {
+          this.timeActivity[2].color = "#67C23A";
+          this.timeActivity[2].icon = SuccessFilled;
+        }
+      }
+    },
+    //接收参与人员弹窗的数据
+    userSelectList(data) {
+      // console.log("传所选择的人", data);
+      this.userSelection = data.userSelection;
+      this.userSelectName = data.userSelectName;
+      // console.log("价值观参与人的userId", this.userSelection);
+      // console.log("价值观参与人的名字", this.userSelectName);
+      if (this.userSelectName.length > 0) {
+        this.timeActivity[0].color = "#67C23A";
+        this.timeActivity[0].icon = SuccessFilled;
+      }
+    },
+    handleSelection(row) {
+      if (this.title == "部门自定义审批") {
+        this.deptCustomList = row.map((item) => {
+          return item.userId;
+        });
+        this.deptCustomUserNames = row.map((item) => {
+          return item.name.replace(/\(.*\)/g, "");
+        });
+        // console.log(this.deptCustomUserNames);
+        if (this.deptCustomUserNames.length > 0) {
+          this.timeActivity[1].color = "#67C23A";
+          this.timeActivity[1].icon = SuccessFilled;
+          this.timeActivity[2].color = "#E6A23C";
+          this.timeActivity[2].icon = Warning;
+        }
+
+        if (this.deptCustomUserNames.length > 0 && this.deptCustomList.length > 0 && this.deptFlowIsCustom == false) {
+          this.deptFlowIsCustom = true;
+          // console.log("成功l");
+        }
+      } else if (this.title == "人事自定义审批") {
+        this.hrCustomList = row.map((item) => {
+          return item.userId;
+        });
+        this.hrCustomUserNames = row.map((item) => {
+          return item.name.replace(/\(.*\)/g, "");
+        });
+        // console.log(this.hrCustomUserNames);
+        if (this.hrCustomUserNames.length > 0) {
+          this.timeActivity[2].color = "#67C23A";
+          this.timeActivity[2].icon = SuccessFilled;
+        }
+        if (this.hrCustomUserNames.length > 0 && this.hrCustomList.length > 0 && this.hrFlowIsCustom == false) {
+          this.hrFlowIsCustom = true;
+        }
+      }
+    },
+    deptApproval() {
+      this.approvalPeoper = true;
+      this.title = "部门审批";
+      getCommonDept()
+        .then((res) => {
+          if (res.data.code == 0) {
+            const commonList = Object.values(res.data.data);
+
+            // console.log(this.commonList);
+            const transformed = {};
+            commonList.forEach((item) => {
+              item.map((item1) => {
+                const { deptFlowName, deptFlowId, name, sequence } = item1;
+                //检测transformed对象中是否已经存在deptFlowName作为键的对象
+                if (!transformed[deptFlowName]) {
+                  transformed[deptFlowName] = {
+                    deptFlowId,
+                    deptFlowName,
+                  };
+                }
+                transformed[deptFlowName]["deptUserName" + sequence] = name;
+              });
+            });
+
+            this.deptData = Object.values(transformed);
+            // console.log("部门常用审批", this.deptData);
+          }
+        })
+        .catch(() => {
+          ElMessage.error("请求失败");
+        });
+    },
+    hrApproval() {
+      this.approvalPeoper = true;
+      this.title = "人事审批";
+      getCommonHr()
+        .then((res) => {
+          if (res.data.code == 0) {
+            const commonList = Object.values(res.data.data);
+            const transformed = {};
+            commonList.forEach((item) => {
+              item.map((item1) => {
+                const { hrFlowName, hrFlowId, name, sequence } = item1;
+                //检测transformed对象中是否已经存在deptFlowName作为键的对象
+
+                if (!transformed[hrFlowName]) {
+                  transformed[hrFlowName] = {
+                    hrFlowId,
+                    hrFlowName,
+                  };
+                }
+                transformed[hrFlowName]["hrUserName" + sequence] = name;
+              });
+            });
+            // console.log(transformed);
+            this.hrData = Object.values(transformed);
+          }
+        })
+        .catch(() => {
+          ElMessage.error("请求失败");
+        });
+    },
+    deptCustom() {
+      this.approvalCustom = true;
+      this.title = "部门自定义审批";
+      getDeptFlow()
+        .then((res) => {
+          if (res.data.code == 0) {
+            this.addDeptFlow = res.data.data;
+            // console.log(this.addDeptFlow);
+          }
+        })
+        .catch(() => {
+          ElMessage.error("请求失败");
+        });
+    },
+    hrCustom() {
+      this.approvalCustom = true;
+      this.title = "人事自定义审批";
+
+      getHrFlow()
+        .then((res) => {
+          if (res.data.code == 0) {
+            this.addHrFlow = res.data.data;
+            // console.log(this.addHrFlow);
+          }
+        })
+        .catch(() => {
+          ElMessage.error("请求失败");
+        });
+    },
+    srueSeleteUser() {
+      this.dialogUser = false;
+      this.approveStatus = 2;
+    },
+    createEvent() {
+      // console.log(this.modelData);
+      // console.log(this.deptList);
+      // console.log(this.approvalList, this.userSelection);
+      // console.log(this.userSelectName);
+
+      if (this.userSelection.length > 0 && this.deptCustomUserNames.length > 0 && this.hrCustomUserNames.length > 0) {
+        this.handleClose();
+        // console.log("部门自定义", this.deptFlowIsCustom, this.hrFlowIsCustom);
+        //向store中存储弹窗的内容
+        const approvalStoreData = {
+          userSelectName: this.userSelectName,
+          userIdList: this.userSelection,
+          deptList: this.deptList,
+          approvalList: this.approvalList,
+          deptCustomUserNames: this.deptCustomUserNames,
+
+          hrCustomUserNames: this.hrCustomUserNames,
+
+          // templateId: this.modelData.templateId,
+          deptFlowIsCustom: this.deptFlowIsCustom,
+          hrFlowIsCustom: this.hrFlowIsCustom,
+          hrCustomList: this.hrCustomList,
+          deptCustomList: this.deptCustomList,
+          timeActivity: this.timeActivity,
+        };
+        store.commit("changeApprovalData", {
+          [this.modelData.eventId.toString() + this.modelData.templateId + "$"]: approvalStoreData,
+        });
+        // console.log(approvalStoreData);
+        // store.commit("joinUserSelectName", { [this.modelData.eventId]: approvalStoreData.userSelectName });
+
+        //需要的数据，每一次选择都会覆盖，将他们push进新数组
+        const templateData = {
+          hrFlowId: this.approvalList.hrFlowId,
+          deptFlowId: this.deptList.deptFlowId,
+          hrFlowName: this.approvalList.hrFlowName,
+          deptFlowName: this.deptList.deptFlowName,
+          templateId: this.modelData.templateId,
+          eventId: this.modelData.eventId,
+          templateName: this.modelData.templateName,
+          userIdList: store.state.approvalData.userIdList ? store.state.approvalData.userIdList : this.userSelection,
+          deptList: this.deptList,
+          hrList: this.approvalList,
+          hrFlowIsCustom: this.hrFlowIsCustom,
+          deptFlowIsCustom: this.deptFlowIsCustom,
+          userSelectName: this.userSelectName,
+        };
+        if (this.hrFlowIsCustom) {
+          const hrList = [];
+          // 循环遍历原始数据
+          for (let i = 0; i < this.hrCustomList.length; i++) {
+            // 为每个元素创建新的对象，并添加到新的数组中
+            hrList.push({
+              sequence: i + 1, // 注意，这里使用 i + 1，因为序列应该从1开始，而不是0
+              userId: this.hrCustomList[i],
+            });
+          }
+          // console.log(hrList);
+          templateData["userSequenceInHrFlowList"] = hrList;
+        }
+        //是否是自定义
+        if (this.deptFlowIsCustom && this.deptCustomList.length > 0) {
+          const deptList = [];
+          // 循环遍历原始数据
+          for (let i = 0; i < this.deptCustomList.length; i++) {
+            // 为每个元素创建新的对象，并添加到新的数组中
+            deptList.push({
+              sequence: i + 1, // 注意，这里使用 i + 1，因为序列应该从1开始，而不是0
+              userId: this.deptCustomList[i],
+            });
+          }
+          // console.log(deptList);
+          templateData["userSequenceInDeptFlowList"] = deptList;
+        }
+        // console.log(templateData);
+        this.$emit("approvalData", templateData);
+
+        // console.log(this.userSelection);
+      } else {
+        ElMessage.error("请设置参数");
+      }
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.timeline-box {
+  display: flex;
+  margin-top: 0.5rem;
+  margin-left: 0.5rem;
+}
+.timeline-node {
+  width: 0.5rem;
+  height: 0.5rem;
+  color: #467ae9;
+  font-size: 18;
+  background: #467ae9;
+  box-sizing: border-box;
+  border-radius: 50%;
+}
+.timeline-line {
+  width: 7rem;
+  height: 3px;
+  margin-top: 3px;
+  /* margin: -6px 0 0 10px; */
+  background-color: #c0c4cc;
+  /* border-top: 3px solid rgba(255, 255, 255, 0); */
+  border-left: none;
+}
+/* 将全选项隐藏 */
+.table-style {
+  .el-table-column--selection.is-leaf .el-checkbox {
+    display: none;
+  }
+}
+</style>

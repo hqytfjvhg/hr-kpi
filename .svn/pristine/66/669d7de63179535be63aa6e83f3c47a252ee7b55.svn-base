@@ -1,0 +1,718 @@
+<template>
+  <div class="userAbout">
+    <!-- <div style="display: flex; padding: 20px 20px"> -->
+    <!-- <div style="width: 30%; margin-right: 100px">
+        <el-card style="text-align: left">
+          <template #header>
+            <span>关于我</span>
+          </template>
+          <div class="scroll">
+            <div>
+              <img style="width: 100%; height: 100%" src="@/assets/about.jpg" />
+            </div>
+            <div style="position: relative">
+              <div
+                style="
+                  width: 70px;
+                  height: 70px;
+                  background-color: #fff;
+                  border-radius: 50%;
+                  position: absolute;
+                  top: -30px;
+                "
+              >
+                <div
+                  style="background-image: url('https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif')"
+                  class="boder-img"
+                ></div>
+              </div>
+              <div style="text-align: center">
+                <div style="font-size: 20px; font-weight: 700; color: #4dd9d5">{{ userInfo.name }}</div>
+                <div style="font-size: 14px; margin-top: 15px">{{ userInfo.position }}</div>
+              </div>
+              <div style="text-align: left; margin-top: 10px; margin: 0 20px">
+                <div style="border-bottom: 1px solid #ebeef5; font-weight: 700; padding: 10px 0">
+                  基本信息
+                  <el-button type="primary" plain size="small" @click="editUserPhone">编辑</el-button>
+                </div>
+                <div class="rightSize">
+                  姓名：
+                  <span>{{ userInfo.name }}</span>
+                </div>
+                <div class="rightSize">
+                  账号：
+                  <span>{{ userInfo.username }}</span>
+                </div>
+                <div class="rightSize">
+                  部门：
+                  <span>{{ userInfo.deptName }}</span>
+                </div>
+                <div class="rightSize">
+                  号码：
+                  <span>{{ userInfo.phone }}</span>
+                </div>
+                <div class="rightSize">
+                  邮箱：
+                  <span>{{ userInfo.email }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </el-card>
+      </div> -->
+
+    <!-- 折叠面板 -->
+    <el-collapse v-model="activeNames" style="width: 50%">
+      <el-collapse-item title="价值观" name="1">
+        <div v-if="eventInfoList == null || eventInfoList.length == 0">
+          <el-icon style="margin-top: 85px; font-size: 50px"><Calendar /></el-icon>
+          <div>暂无待办事件</div>
+        </div>
+        <div v-else>
+          <div
+            v-if="$store.state.role == 'HRMANAGER'"
+            style="display: flex; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid #ebeef5"
+          >
+            <div style="margin-right: 5vw; font-size: 25px; padding-bottom: 20px">
+              {{ $store.state.number }} <span style="font-weight: normal; font-size: 12px">待审批数</span>
+              <div style="font-weight: normal; font-size: 13px; text-align: center; min-width: 200px">
+                <div
+                  v-if="($store.state.role == 'DEPT' || $store.state.role == 'DEPTMANAGER') && showValueApprovalTime"
+                >
+                  请在<span style="color: #409eff">{{ year }}年{{ nextMonth }}月5日</span>前完成审批
+                </div>
+                <div v-if="($store.state.role == 'HR' || $store.state.role == 'HRMANAGER') && showValueApprovalTime">
+                  请在<span style="color: #409eff">{{ year }}年{{ nextMonth }}月15日</span>前完成审批
+                </div>
+              </div>
+            </div>
+            <!-- <div style="display: flex; align-items: center; justify-content: space-between; justify-items: center"> -->
+            <el-form style="display: flex; align-items: center">
+              <el-form-item label="部门" prop="deptId" style="width: 120px">
+                <el-select clearable placeholder="请选择" v-model="deptId">
+                  <el-option
+                    v-for="item in deptOptions"
+                    :key="item.deptId"
+                    :label="item.deptName"
+                    :value="item.deptId"
+                  />
+                </el-select>
+              </el-form-item>
+              <el-button style="margin-left: 10px; margin-bottom: 18px" @click="selectValueByDept" type="primary"
+                >筛选</el-button
+              >
+            </el-form>
+          </div>
+          <!-- </div> -->
+
+          <!-- <div v-for="item in eventInfoList1" :key="item">
+            <div style="display: flex; align-items: center; border-bottom: 1px solid #ebeef5; padding: 5px 0">
+              <div>
+              </div>
+              <div
+                style="
+                  margin-left: 20px;
+                  width: 100%;
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                "
+              >
+                <div style="font-size: 14px; text-align: left">
+                  <span style="margin-right: 20px">{{ item.name }}</span>
+                  <div
+                    v-if="item.deptFlowState == 0 && item.hrFlowState == 0"
+                    style="font-size: 12px; margin-top: 10px"
+                  >
+                    请在{{ new Date().getFullYear() }}年{{ month }}月{{ endDay }}日前完成填写。
+                  </div>
+                </div>
+                <div
+                  v-if="item.deptFlowState == 0 && item.hrFlowState == 0"
+                  style="
+                    font-size: 12px;
+                    text-align: left;
+
+                    margin-right: 20px;
+                  "
+                >
+                  <router-link to="/writeValue" style="color: #ebeef5; text-decoration: none">
+                    <el-button type="success">
+                      <el-icon><Edit /></el-icon></el-button
+                  ></router-link>
+                </div>
+                <div v-else style="font-size: 12px; text-align: left; margin-right: 20px">
+                  <el-button type="success" circle @click="reviewPush(item.userId, item.deptFlowState)">
+                    <el-icon><Edit /></el-icon>
+                  </el-button>
+                </div>
+              </div>
+            </div>
+          </div> -->
+          <el-table :data="eventInfoList1" class="aboutViewTableStyle" :show-header="false">
+            <el-table-column prop="name"></el-table-column>
+            <el-table-column>
+              <template #default="{ row }">
+                <div
+                  v-if="row.deptFlowState == 0 && row.hrFlowState == 0"
+                  style="
+                    font-size: 12px;
+                    text-align: right;
+
+                    margin-right: 20px;
+                  "
+                >
+                  <router-link to="/writeValue" style="color: #ebeef5; text-decoration: none">
+                    <el-button type="success">
+                      <el-icon><Edit /></el-icon></el-button
+                  ></router-link>
+                </div>
+                <div v-else style="font-size: 12px; text-align: right; margin-right: 15px">
+                  <el-button type="success" circle @click="reviewPush(row.userId, row.deptFlowState)">
+                    <el-icon><Edit /></el-icon>
+                    <!-- <span style="color: #fff"> 去审批</span> -->
+                  </el-button>
+                </div>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </el-collapse-item>
+      <el-collapse-item
+        title="业绩"
+        name="2"
+        v-if="
+          $store.state.role == 'HRMANAGER' ||
+          ($store.state.role == 'DEPTMANAGER' && $store.state.name != '温上凯') ||
+          $store.state.role == 'HR'
+        "
+      >
+        <div v-if="eventPerformanceList == null || eventPerformanceList.length == 0" class="scroll">
+          <el-icon style="margin-top: 85px; font-size: 50px"><Calendar /></el-icon>
+          <div>暂无待办事件</div>
+        </div>
+        <div v-else>
+          <div style="margin-right: 5vw; font-size: 25px; padding-bottom: 20px; width: 200px; padding: 0 20px">
+            {{ $store.state.number2 - $store.state.number }}
+            <span style="font-weight: normal; font-size: 12px">待审批数</span>
+            <div style="font-weight: normal; font-size: 13px; text-align: center; min-width: 160px">
+              <div v-if="$store.state.role == 'DEPTMANAGER' && eventPerformanceList.length > 0">
+                请在<span style="color: #409eff">{{ year }}年{{ nextMonth }}月5日</span>前录入指标数据
+              </div>
+              <div
+                v-if="
+                  ($store.state.role == 'HR' || $store.state.role == 'HRMANAGER') && eventPerformanceList.length > 0
+                "
+              >
+                请在<span style="color: #409eff">{{ year }}年{{ nextMonth }}月15日</span>前完成审批
+              </div>
+            </div>
+          </div>
+          <el-table :data="eventPerformanceList" class="aboutViewTableStyle" :show-header="false">
+            <el-table-column prop="deptName"></el-table-column>
+            <el-table-column>
+              <template #default="{ row }">
+                <div style="font-size: 12px; margin-right: 20px; text-align: right">
+                  <el-button type="success" circle @click="reviewPerformance(row.deptId, row.deptName)">
+                    <el-icon><Edit /></el-icon
+                  ></el-button></div></template
+            ></el-table-column>
+          </el-table>
+        </div>
+      </el-collapse-item>
+    </el-collapse>
+
+    <!-- 旧版本，两个卡片 -->
+    <!-- <div style="display: flex; justify-content: space-around">
+      <el-card shadow="never" style="width: 45%; border-radius: 15px">
+        <template #header>
+          <div class="card-header">
+            价值观
+            <div v-if="($store.state.role == 'DEPT' || $store.state.role == 'DEPTMANAGER') && showValueApprovalTime">
+              请在<span style="color: #409eff">{{ year }}年{{ nextMonth }}月5日</span>前完成审批
+            </div>
+            <div v-if="($store.state.role == 'HR' || $store.state.role == 'HRMANAGER') && showValueApprovalTime">
+              请在<span style="color: #409eff">{{ year }}年{{ nextMonth }}月15日</span>前完成审批
+            </div>
+          </div>
+        </template>
+        <div v-if="eventInfoList == null || eventInfoList.length == 0" class="scroll">
+          <el-icon style="margin-top: 85px; font-size: 50px"><Calendar /></el-icon>
+          <div>暂无待办事件</div>
+        </div>
+        <div v-else class="scroll">
+          <div
+            v-if="$store.state.role == 'HRMANAGER'"
+            style="display: flex; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid #ebeef5"
+          >
+            <div style="margin-right: 5vw; font-size: 25px; padding-bottom: 20px">
+              {{ $store.state.number }}
+              <div style="font-weight: normal; font-size: 11px; text-align: center; width: 48px">待审批数</div>
+            </div>
+            <el-form style="display: flex; align-items: center">
+              <el-form-item label="部门" prop="deptId" style="width: 100px">
+                <el-select clearable placeholder="请选择" v-model="deptId" size="small" style="width: 80%">
+                  <el-option
+                    v-for="item in deptOptions"
+                    :key="item.deptId"
+                    :label="item.deptName"
+                    :value="item.deptId"
+                  />
+                </el-select>
+              </el-form-item>
+              <el-button
+                style="margin-left: 20px; margin-bottom: 18px"
+                @click="selectValueByDept"
+                size="small"
+                type="primary"
+                >筛选</el-button
+              >
+            </el-form>
+          </div>
+          <div v-for="item in eventInfoList1" :key="item">
+            <div style="display: flex; align-items: center; border-bottom: 1px solid #ebeef5; padding: 5px 0">
+              <div>
+              </div>
+              <div
+                style="
+                  margin-left: 20px;
+                  width: 100%;
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                "
+              >
+                <div style="font-size: 14px; text-align: left">
+                  <span style="margin-right: 20px">{{ item.name }}</span>
+                  <div
+                    v-if="item.deptFlowState == 0 && item.hrFlowState == 0"
+                    style="font-size: 12px; margin-top: 10px"
+                  >
+                    请在{{ new Date().getFullYear() }}年{{ month }}月{{ endDay }}日前完成填写。
+                  </div>
+                </div>
+                <div
+                  v-if="item.deptFlowState == 0 && item.hrFlowState == 0"
+                  style="
+                    font-size: 12px;
+                    text-align: left;
+
+                    margin-right: 20px;
+                  "
+                >
+                  <router-link to="/writeValue" style="color: #ebeef5; text-decoration: none">
+                    <el-button type="success">
+                      <el-icon><Edit /></el-icon></el-button
+                  ></router-link>
+                </div>
+                <div v-else style="font-size: 12px; text-align: left; margin-right: 20px">
+                  <el-button type="success" circle @click="reviewPush(item.userId, item.deptFlowState)">
+                    <el-icon><Edit /></el-icon>
+                  </el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+       
+      </el-card>
+      <el-card
+        shadow="never"
+        style="width: 45%; border-radius: 15px"
+        v-if="
+          $store.state.role == 'HRMANAGER' ||
+          ($store.state.role == 'DEPTMANAGER' && $store.state.name != '温上凯') ||
+          $store.state.role == 'HR'
+        "
+      >
+        <template #header>
+          <div class="card-header">
+            业绩指标
+            <div v-if="$store.state.role == 'DEPTMANAGER' && eventPerformanceList.length > 0">
+              请在<span style="color: #409eff">{{ year }}年{{ nextMonth }}月5日</span>前录入指标数据
+            </div>
+            <div
+              v-if="($store.state.role == 'HR' || $store.state.role == 'HRMANAGER') && eventPerformanceList.length > 0"
+            >
+              请在<span style="color: #409eff">{{ year }}年{{ nextMonth }}月15日</span>前完成审批
+            </div>
+          </div>
+        </template>
+        <div v-if="eventPerformanceList == null || eventPerformanceList.length == 0" class="scroll">
+          <el-icon style="margin-top: 85px; font-size: 50px"><Calendar /></el-icon>
+          <div>暂无待办事件</div>
+        </div>
+        <div v-else class="scroll">
+          <div v-for="item in eventPerformanceList" :key="item">
+            <div style="display: flex; align-items: center; border-bottom: 1px solid #ebeef5; padding: 15px 0">
+              <div>
+                <span>
+                  <el-button type="warning" circle size="large"
+                    ><el-icon><Document /></el-icon
+                  ></el-button>
+                
+                </span>
+              </div>
+              <div
+                style="
+                  margin-left: 20px;
+                  width: 100%;
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                "
+              >
+                <div style="text-align: left; font-size: 14px">
+              
+                  <span style="margin-right: 15px; font-size: 17px">{{ item.deptName }}</span>
+                  <span v-if="$store.state.role == 'DEPTMANAGER'">
+                    <el-tag v-if="day < 6 && $store.state.month != month">还剩{{ 5 - day }}天截止</el-tag>
+                    <el-tag v-if="day > 5 && day < 16 && $store.state.month != month" type="danger"
+                      >已超时{{ day - 5 }}天，请尽快审批</el-tag
+                    >
+                    <el-tag v-if="$store.state.month == month">还剩{{ endDay - day + 5 }}天截止</el-tag></span
+                  >
+                  <span v-if="$store.state.role == 'HR' || $store.state.role == 'HRMANAGER'">
+                    <el-tag v-if="$store.state.month != month">还剩{{ 15 - day }}天截止</el-tag>
+                    <el-tag v-if="$store.state.month == month">还剩{{ endDay - day + 15 }}天截止</el-tag>
+                  </span>
+                </div>
+
+                <div style="font-size: 12px; margin-right: 20px">
+                  <el-button type="warning" size="small" @click="reviewPerformance(item.deptId, item.deptName)"
+                    >去审批</el-button
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </el-card>
+    </div> -->
+    <!-- </div> -->
+    <!-- <el-dialog v-model="editUser" title="修改信息" width="500px">
+      <el-form :model="userInfo" label-width="120px" style="width: 400px">
+        <el-form-item label="姓名" popp="name">
+          <el-input v-model="userInfo.name" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="账号" popp="username">
+          <el-input v-model="userInfo.username" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="部门" popp="deptName">
+          <el-input v-model="userInfo.deptName" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="号码" popp="phone"><el-input v-model="userInfo.phone"></el-input></el-form-item>
+        <el-form-item label="邮箱" popp="email"><el-input v-model="userInfo.email" disabled></el-input></el-form-item>
+        <el-form-item>
+          <el-button @click="cancelSubmit">取消</el-button>
+          <el-button type="primary" @click="submitForm">确定</el-button>
+        </el-form-item>
+      </el-form>
+    </el-dialog> -->
+  </div>
+</template>
+
+<script>
+import router from "@/router";
+import store from "@/store";
+import { getEventNumber, selectPerformanceInfo } from "@/api/about/index";
+// import emitter from "@/utils/eventbus.js";
+// import { ElMessage } from "element-plus";
+import { Edit } from "@element-plus/icons-vue";
+// import { getInfo, changeInfo } from "@/api/userlist/index";
+import { Calendar } from "@element-plus/icons-vue";
+
+export default {
+  components: { Edit, Calendar },
+  data() {
+    return {
+      eventInfoList: [],
+      eventInfoList1: [], //价值观数据副本
+      eventPerformanceList: [],
+      number: null,
+      sumnumber: null,
+      year: "",
+      month: "",
+      day: "",
+      endDay: "",
+      criticalMonth: "",
+      nextMonth: "", //下一个月
+      activeName: "first",
+      // userInfo: [],
+      editUser: false,
+      phone: "",
+      deptId: null, //人事负责人筛选部门条件
+      deptOptions: {},
+      eventPerformanceByUserId: [], //业绩审批的数据，用来提取userId
+      deptOptionName: [], //存储的部门信息
+      showValueApprovalTime: false, //判断是否显示价值观的审批截止时间
+      activeNames: ["1", "2"], //默认展开的折叠面板
+    };
+  },
+  // created() {
+  //   //创建，将这个函数传给审批页面，提交完后刷新
+  //   emitter.emit("callBPageMethod", this.getEventNumber);
+  //   emitter.emit("callAbout", this.selectPerformanceInfo);
+  // },
+  mounted() {
+    let newDate = new Date();
+    //临界月份，以15号为界限
+    if (0 < newDate.getDate() && newDate.getDate() < 16) {
+      this.criticalMonth = newDate.getMonth() + 1;
+    } else {
+      this.criticalMonth = newDate.getMonth() + 2;
+    }
+    //当前时间
+    this.month = newDate.getMonth() + 1;
+
+    this.year = newDate.getFullYear();
+    this.day = newDate.getDate();
+    this.nextMonth = Number(store.state.month) + 1;
+    if (this.nextMonth === 13 || (store.state.month == 12 && this.month == 12)) {
+      this.year = newDate.getFullYear() + 1;
+      this.nextMonth = 1;
+    }
+    // console.log(this.day);
+    this.getLastDay(this.year, this.month);
+    this.deptOptionName = JSON.parse(localStorage.getItem("deptOptions"));
+    // this.getUserInfo();
+    // console.log(store.state.role);
+    if (store.state.number !== 0) {
+      // if (store.state.role == "HRMANAGER" || store.state.role == "HR" || store.state.role == "DEPTMANAGER") {
+      //   this.activeName = "second";
+      // }
+      this.getEventNumber();
+    }
+    if (store.state.sumnumber !== 0) {
+      this.selectPerformanceInfo();
+    }
+    // if (this.$route.query.activeName) {
+    //   this.activeName = this.$route.query.activeName;
+    // }
+  },
+  methods: {
+    getLastDay(year, month) {
+      // this.endDay = new Date(
+      //   new Date(`${month < 12 ? year : ++year}-${month == 12 ? 1 : ++month} 00:00`).getTime() - 1,
+      // ).getDate();
+      // 创建一个 Date 对象，设置为下个月的第一天（0号）
+      const nextMonthDate = new Date(year, month, 0);
+
+      // 获取当前月份的最后一天
+      this.endDay = nextMonthDate.getDate();
+    },
+    async getEventNumber() {
+      await getEventNumber()
+        .then((res) => {
+          if (res.data.code == 0) {
+            ((this.eventInfoList = []), (this.eventInfoList1 = [])), (this.number = null);
+            this.deptOptions = res.data.data.result.reduce((acc, item) => {
+              const deptName = this.deptOptionName.find((dept) => dept.deptId === item.deptId);
+
+              if (deptName && !acc.some((dept) => dept.deptId === item.deptId)) {
+                acc.push({ deptId: item.deptId, deptName: deptName.deptName });
+              }
+
+              return acc;
+            }, []);
+
+            // const colors = ["#f8e3c5", "#f5dab1", "#f3d09e", "#f0c78a", "#eebe77", "#ebb563", "#e9ab50", "#e6a23c"]; // 颜色数组
+
+            // this.eventInfoList = res.data.data.result.map((item) => {
+            //   const color = colors[item.deptId - 1];
+            //   return {
+            //     ...item,
+            //     color: color, // 添加颜色字段
+            //   };
+            // });
+            // console.log(res.data.data.result);
+            // console.log(this.eventInfoList);
+            this.eventInfoList = res.data.data.result;
+            // console.log(this.eventInfoList.some((item) => !(item.deptFlowState == 0 && item.hrFlowState == 0)));
+            if (this.eventInfoList.some((item) => !(item.deptFlowState == 0 && item.hrFlowState == 0))) {
+              //价值观分为填写和审批，只显示审批的截止时间
+              this.showValueApprovalTime = true;
+            }
+
+            this.eventInfoList1 = this.eventInfoList;
+
+            this.number = res.data.data.uncompletedEventNumber;
+            // console.log("价值观刷新", 111111);
+          }
+          store.commit("changeNumber", this.number);
+          store.commit("changeNumber2", this.sumnumber);
+          store.commit("changeValueResult", res.data.data.result);
+
+          // console.log(this.number, this.sumnumber);
+        })
+        .catch((e) => {
+          console.log(e);
+          // ElMessage.error("请求失败");
+        });
+    },
+    async selectPerformanceInfo() {
+      await selectPerformanceInfo().then((res) => {
+        if (res.data.code == 0) {
+          this.sumnumber = res.data.data.uncompletedEventNumber;
+          this.eventPerformanceByUserId = res.data.data.result;
+
+          this.eventPerformanceList = res.data.data.result.reduce((acc, item) => {
+            const deptName = this.deptOptionName.find((dept) => dept.deptId === item.deptId);
+
+            if (deptName && !acc.some((dept) => dept.deptId === item.deptId)) {
+              acc.push({ deptId: item.deptId, deptName: deptName.deptName });
+            }
+
+            return acc;
+          }, []);
+
+          // console.log(this.eventPerformanceList);
+          // this.activeName = "second";
+        }
+        store.commit("changeNumber2", this.sumnumber);
+        // console.log("业绩刷新", 2222);
+      });
+    },
+    // async getEventInfoList() {
+    //   try {
+    //     this.eventInfoList = await this.$store.state.todoList;
+    //     console.log(this.eventInfoList);
+    //   } catch (error) {
+    //     console.error("Error fetching eventInfoList:", error);
+    //   }
+    // },
+    reviewPush(userId, state) {
+      router.push({ name: "reviewByUserId" });
+      store.commit("currentUserId", userId);
+      store.commit("currentDeptFlow", state);
+      // console.log(typeof userId, 111);
+      // console.log(store.state.currentUserId);
+    },
+    //业绩审批，单独一条用户
+    // reviewPerformance(userId, name1) {
+    //   router.replace({ name: "reviewPerformance" });
+    //   store.commit("currentUserId", userId);
+    //   store.commit("currentName", name1);
+    // },
+    //批量审批
+    reviewPerformance(deptId, deptName) {
+      const userId = this.eventPerformanceByUserId.filter((item) => item.deptId == deptId).map((item1) => item1.userId);
+      // console.log(userId);
+      // router.replace({ name: "reviewPerformance" });
+
+      store.commit("currentUserIdList", userId);
+      // console.log(store.state.currentUserId);
+      store.commit("currentName", deptName);
+      // store.commit("changeRole", store.state.role);
+      // console.log("跳转前", store.state.role);
+      router.push({ name: "inputTarget" });
+    },
+    //部门筛选
+    selectValueByDept() {
+      if (this.deptId !== "" && this.deptId !== null) {
+        this.eventInfoList1 = this.eventInfoList.filter((item) => item.deptId == this.deptId);
+      } else {
+        this.eventInfoList1 = this.eventInfoList;
+      }
+    },
+    // getUserInfo() {
+    //   getInfo().then((res) => {
+    //     if (res.data && res.data.code == 0) {
+    //       this.userInfo = res.data.data;
+    //       this.phone = this.userInfo.phone;
+    //       console.log("用户姓名", this.userInfo.name);
+    //     }
+    //   });
+    // },
+    // editUserPhone() {
+    //   this.editUser = true;
+    // },
+    // submitForm() {
+    //   if (this.userInfo.phone.length == 11) {
+    //     const data = {
+    //       phone: this.userInfo.phone,
+    //     };
+    //     changeInfo(data);
+    //     this.editUser = false;
+    //   } else {
+    //     ElMessage.error("手机号码长度不为11位，请重新输入");
+    //   }
+    // },
+    // cancelSubmit() {
+    //   this.userInfo.phone = this.phone;
+    //   this.editUser = false;
+    // },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.userAbout {
+  padding: 20px 20px;
+  background-color: #fff;
+  height: 93%;
+  // height: 84vh;
+  border-radius: 10px;
+}
+.userAbout-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  padding: 15px 0;
+}
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: large;
+  // font-weight: 700;
+  div {
+    font-size: small;
+  }
+}
+
+.box-card {
+  width: 30vw;
+}
+.scroll {
+  height: 65vh;
+  // height: 30%;
+  display: block;
+  overflow-y: auto;
+}
+.scroll::-webkit-scrollbar {
+  width: 5px;
+}
+/*定义滚动条轨道*/
+.scroll::-webkit-scrollbar-track {
+  border-radius: 5px;
+}
+/*定义滑块*/
+.scroll::-webkit-scrollbar-thumb {
+  border-radius: 5px;
+  background: rgba(195, 197, 199, 0.5);
+}
+
+.boder-img {
+  width: 60px;
+  height: 60px;
+  background-position: 50%;
+  border-radius: 50%;
+  background-size: cover;
+  overflow: hidden;
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  transform-origin: 95% 40%;
+  transition: all 0.3s ease-in-out;
+}
+.boder-img:hover {
+  transform: rotate(-90deg);
+}
+.rightSize {
+  font-size: 14px;
+  color: #777;
+  margin-top: 15px;
+}
+</style>

@@ -1,0 +1,182 @@
+<template>
+  <div class="userlist">
+    <div class="userlist-title">
+      用户列表
+      <!-- <el-button type="primary" @click="addUser">新增</el-button> -->
+      <el-button @click="getUserList">刷新数据</el-button>
+    </div>
+    <el-table :data="userListData" height="40rem" style="width: 100%; text-align: center" stripe type="index">
+      <el-table-column type="index" label="序号" width="100" />
+      <el-table-column prop="userId" label="ID" />
+      <el-table-column prop="name" label="姓名" />
+      <el-table-column prop="roleName" label="角色" />
+      <el-table-column prop="deptName" label="部门" />
+      <el-table-column prop="phone" label="手机号码" />
+      <el-table-column fixed="right" label="操作">
+        <template #default="{ row }">
+          <el-button type="danger" size="small" @click="deleteRow(row)">删除</el-button>
+          <el-button type="primary" size="small" @click="changeRow(row)">重置密码</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+    <div class="demo-pagination-block">
+      <el-pagination
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        :page-sizes="[10, 20, 30, 40]"
+        :disabled="disabled"
+        background
+        layout="total,sizes, prev, pager, next"
+        :total="total"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+      />
+    </div>
+    <Dialog
+      v-if="dialogShow"
+      v-model:dialogShow="dialogShow"
+      :rowInfo="rowInfo"
+      :title="title"
+      :arrayNum="userListData.length"
+      @addRow="addRow"
+      @editRow="editRow"
+    />
+  </div>
+</template>
+
+<script>
+import { onMounted, reactive, toRefs } from "vue";
+import { ElMessageBox, ElMessage } from "element-plus";
+import Dialog from "./DialogView.vue";
+import axios from "axios";
+import { userList, resetpsw } from "@/api/userlist/index";
+
+export default {
+  components: { Dialog },
+  setup() {
+    const data = reactive({
+      dialogShow: false, // 新增/编辑弹框
+      detailShow: false, // 详情弹窗
+      rowInfo: {}, // 新增/编辑的数据
+      title: "", // 是新建还是修改
+      //列表渲染数据的table
+      userListData: [
+        {
+          userID: "",
+          name: "",
+          deptName: "",
+          phone: "",
+        },
+      ],
+      currentPage: 1,
+      pageSize: 10,
+      total: 100,
+    });
+    onMounted(() => {
+      method.getUserList();
+    });
+    const method = reactive({
+      getUserList() {
+        const userdata = {
+          length: data.pageSize,
+          page: data.currentPage,
+        };
+        userList(userdata)
+          .then((res) => {
+            data.userListData = res.data.data.list;
+            data.total = res.data.data.totalCount;
+            console.log(res.data.data.list);
+          })
+          .catch(function (err) {
+            console.log(err);
+          });
+      },
+      handleSizeChange(newSize) {
+        data.pageSize = newSize;
+        method.getUserList();
+      },
+      handleCurrentChange(newPage) {
+        data.currentPage = newPage;
+        method.getUserList();
+      },
+      addUser() {
+        data.title = "新增";
+        data.rowInfo = {};
+        data.dialogShow = true;
+      },
+      changeRow(val) {
+        data.title = "修改";
+        data.dialogShow = true;
+        data.rowInfo = val;
+      },
+      deleteRow(val) {
+        ElMessageBox.confirm("你确定删除这个学生的信息吗?", "提示", {
+          confirmButtonText: "确认",
+          cancelButtonText: "取消",
+          type: "warning",
+        })
+          .then(() => {
+            axios({
+              url: "http://192.168.60.108:8989/ifi-personal/user/deleteUserByIds",
+              method: "post",
+              data: { userIds: val.userId },
+            }).then((res) => {
+              method.handleSure(val);
+              if (res.data.code == 0) return ElMessage.success("删除成功");
+              ElMessage.error("删除失败");
+            });
+          })
+          .catch(() => {
+            // catch error
+          });
+      },
+      handleSure(val) {
+        this.dialogVisible = false;
+        const index = data.userListData.findIndex((item) => item.userID === val.userID);
+        data.userListData.splice(index, 1);
+        method.getUserList();
+      },
+      // 添加行
+      addRow(val) {
+        data.userListData.push(val);
+      },
+      // 编辑行
+      editRow(val) {
+        console.log(val);
+        let index = data.userListData.findIndex((item) => item.id === val.id);
+        data.userListData.splice(index, 1, val);
+        const resetData = {
+          newPassword: val.newPassword,
+          userId: val.userId,
+        };
+        resetpsw(resetData);
+      },
+    });
+    return { ...toRefs(data), ...method };
+  },
+};
+</script>
+
+<style lang="scss">
+.userlist {
+  padding: 20px;
+  background-color: #fff;
+
+  .userlist-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left;
+    padding: 16px;
+  }
+  .el-table__header-wrapper th {
+    text-align: center;
+  }
+  .el-table__cell {
+    text-align: center;
+  }
+}
+.demo-pagination-block {
+  margin: 16px;
+}
+</style>

@@ -1,0 +1,27 @@
+import { createStore } from "vuex";
+// import { getToken, saveToken } from "@/utils/storage";
+
+export default createStore({
+  state: {
+    registerIdentifyUuid: "",
+    userId: localStorage.getItem("userid") ? localStorage.getItem("userid") : "",
+    token: localStorage.getItem("token") ? localStorage.getItem("token") : "",
+  },
+  getters: {},
+  mutations: {
+    changeUuid(state, payload) {
+      state.registerIdentifyUuid = payload;
+      // console.log(state.registerIdentifyUuid);
+    },
+    changeUserId(state, payload) {
+      state.userId = payload;
+      localStorage.setItem("userid", payload);
+    },
+    changeToken(state, payload) {
+      state.token = payload;
+      localStorage.setItem("token", payload);
+      // saveToken(payload);
+    },
+  },
+  actions: {},
+});

@@ -1,0 +1,9 @@
+import axios from "@/utils/http";
+
+export function getKpiList(data) {
+  return axios({
+    url: "/api/ifi-personal/performance/searchPerformanceFinalData",
+    method: "post",
+    data,
+  });
+}

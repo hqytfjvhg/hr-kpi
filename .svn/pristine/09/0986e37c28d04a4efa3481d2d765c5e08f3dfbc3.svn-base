@@ -1,0 +1,78 @@
+import { createRouter, createWebHashHistory } from "vue-router";
+import HomeView from "../views/HomeView.vue";
+import LoginView from "../views/login/LoginView.vue";
+
+const routes = [
+  {
+    path: "/",
+    redirect: "/login",
+  },
+  {
+    path: "/home",
+    name: "home",
+    component: HomeView,
+    children: [
+      {
+        path: "/userlist",
+        name: "userlist",
+        component: () => import("../views/userlist/UserList.vue"),
+      },
+      {
+        path: "/valueUser",
+        name: "valueUser",
+        component: () => import("../views/values/ValueUser.vue"),
+      },
+      {
+        path: "/writeValue",
+        name: "writeValue",
+        component: () => import("../views/values/WriteValue.vue"),
+      },
+      {
+        path: "/valueDept",
+        name: "valueDept",
+        component: () => import("../views/values/ValueDept.vue"),
+      },
+    ],
+  },
+  {
+    path: "/about",
+    name: "about",
+    // route level code-splitting
+    // this generates a separate chunk (about.[hash].js) for this route
+    // which is lazy-loaded when the route is visited.
+    component: () => import(/* webpackChunkName: "about" */ "../views/AboutView.vue"),
+  },
+  {
+    path: "/login",
+    name: "login",
+    component: LoginView,
+  },
+  {
+    path: "/register",
+    name: "register",
+    component: () => import("../views/register/RegisterView.vue"),
+  },
+];
+
+const router = createRouter({
+  history: createWebHashHistory(),
+  routes,
+});
+
+router.beforeEach((to, from, next) => {
+  //准备跳到登录页放行
+  // if (to.path === "/login") return next();
+  // if (to.path === "/register") return next();
+  let token = localStorage.getItem("token");
+  //未登录，没有token
+  if (token == "" || token == null) {
+    if (to.path == "/login" || to.path == "/register") return next();
+    console.log("请先登录");
+    next("/login");
+    // next({ name: "login" });
+  } else {
+    next();
+  }
+});
+
+export default router;

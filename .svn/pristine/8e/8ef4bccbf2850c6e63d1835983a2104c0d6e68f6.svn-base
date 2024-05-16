@@ -1,0 +1,333 @@
+import { createRouter, createWebHashHistory } from "vue-router";
+import HomeView from "../views/HomeView.vue";
+import LoginView from "../views/login/LoginView.vue";
+import LoginView2 from "../views/login/LoginView2.vue";
+import InputTarget from "@/views/performance/InputTarget.vue";
+
+const routes = [
+  {
+    path: "/",
+    redirect: "/login",
+  },
+
+  {
+    path: "/login",
+    name: "login",
+    component: LoginView,
+  },
+
+  {
+    path: "/register",
+    name: "register",
+    component: () => import("../views/register/RegisterView.vue"),
+  },
+  {
+    path: "/homeView",
+    name: "homeView",
+    component: HomeView,
+    meta: {
+      info: "首页",
+      keepAlive: true,
+    },
+    children: [
+      //管理员主页
+      {
+        path: "/mainHome",
+        name: "mainHome",
+        component: () => import("@/components/main/MainHome.vue"),
+        meta: { requireAuth: true, visiable: true, roles: ["ROOT", "HR"], info: "主页", keepAlive: false },
+      },
+      //部门负责人主页
+      {
+        path: "/frontView",
+        name: "frontView",
+        component: () => import("@/components/main/FrontView.vue"),
+        meta: { requireAuth: true, visiable: true, roles: ["ROOT", "HR"], info: "主页", keepAlive: false },
+      },
+      //员工主页
+      {
+        path: "/employeeView",
+        name: "employeeView",
+        component: () => import("@/components/main/EmployeeView.vue"),
+        meta: { requireAuth: true, visiable: true, roles: ["ROOT", "HR"], info: "主页", keepAlive: false },
+      },
+      //温总主页
+      {
+        path: "/specialView",
+        name: "specialView",
+        component: () => import("@/components/main/SpecialView.vue"),
+        meta: { requireAuth: true, visiable: true, info: "主页", keepAlive: false },
+      },
+      {
+        path: "/userList",
+        name: "UserList",
+        component: () => import("../views/userlist/UserList.vue"),
+        meta: { requireAuth: true, visiable: true, roles: ["ROOT", "HR"], info: "用户列表" },
+      },
+
+      {
+        path: "/aboutInfo",
+        name: "aboutInfo",
+        // route level code-splitting
+        // this generates a separate chunk (about.[hash].js) for this route
+        // which is lazy-loaded when the route is visited.
+        component: () => import(/* webpackChunkName: "about" */ "../views/values/AboutView.vue"),
+        meta: { info: "待办事项", keepAlive: false },
+      },
+
+      {
+        path: "/userInfo",
+        name: "userInfo",
+        // route level code-splitting
+        // this generates a separate chunk (about.[hash].js) for this route
+        // which is lazy-loaded when the route is visited.
+        component: () => import(/* webpackChunkName: "about" */ "../views/userlist/UserInfo.vue"),
+        meta: { info: "个人信息" },
+      },
+
+      {
+        path: "/deptCommon",
+        name: "deptCommon",
+        component: () => import("../views/userlist/DeptCommon.vue"),
+        meta: { requireAuth: true, visiable: true, roles: ["ROOT", "HR"], info: "部门审批流程" },
+      },
+      {
+        path: "/hrCommon",
+        name: "hrCommon",
+        component: () => import("../views/userlist/HrCommon.vue"),
+        meta: { requireAuth: true, visiable: true, roles: ["ROOT", "HR"], info: "人事审批流程" },
+      },
+      //弃用
+      {
+        path: "/valueUser",
+        name: "valueUser",
+        component: () => import("../views/values/ValueUser.vue"),
+        meta: { info: "查询个人价值观" },
+      },
+      {
+        path: "/valueDeptDetails",
+        name: "valueDeptDetails",
+        component: () => import("../views/values/ValueDeptDetails.vue"),
+        meta: {
+          requireAuth: true,
+          visiable: true,
+          roles: ["ROOT", "HR", "MANAGER"],
+          info: "查询个人价值观详情",
+        },
+      },
+      //弃用
+      {
+        path: "/valueDept",
+        name: "valueDept",
+        component: () => import("../views/values/ValueDept.vue"),
+        meta: {
+          requireAuth: true,
+          visiable: true,
+          roles: ["ROOT", "HR", "MANAGER"],
+          info: "查询部门价值观得分",
+        },
+      },
+
+      {
+        path: "/createModel",
+        name: "createModel",
+        component: () => import("../views/values/CreateModel.vue"),
+        meta: { requireAuth: true, visiable: true, roles: ["ROOT", "HR"], info: "事件发布" },
+      },
+      {
+        path: "/publishEvent",
+        name: "publishEvent",
+        component: () => import("../views/publish/PublishEvent.vue"),
+        meta: { info: "事件发布" },
+      },
+      {
+        path: "/publishHistory",
+        name: "publishHistory",
+        component: () => import("../views/publish/PublishHistory.vue"),
+        meta: {
+          requireAuth: true,
+          visiable: true,
+          roles: ["ROOT", "HR"],
+          info: "发布历史与流程详情",
+        },
+      },
+      {
+        path: "/valueManage",
+        name: "valueManage",
+        component: () => import("@/views/values/ValueManagement.vue"),
+        meta: { info: "价值观管理" },
+      },
+      {
+        path: "/writeValue",
+        name: "writeValue",
+        component: () => import("../views/values/WriteValueCopy.vue"),
+        meta: { info: "填写价值观", keepAlive: false },
+      },
+
+      {
+        path: "/reviewByUserId",
+        name: "reviewByUserId",
+        component: () => import("../views/values/ReviewByUserIdCopy.vue"),
+        meta: {
+          requireAuth: true,
+          visiable: true,
+          roles: ["ROOT", "HR", "MANAGER"],
+          info: "审批价值观",
+          keepAlive: false,
+        },
+      },
+      {
+        path: "/searchLog",
+        name: "SearchLog",
+        component: () => import("../views/log/SearchLog.vue"),
+        meta: { info: "查询操作日志" },
+      },
+      {
+        path: "/targetList",
+        name: "targetList",
+        component: () => import("@/views/performance/TargetList.vue"),
+        meta: { info: "指标列表" },
+      },
+      {
+        path: "/targetApproval",
+        name: "targetApproval",
+        component: () => import("@/views/performance/ApprovalProcess.vue"),
+        meta: { info: "指标审批流程" },
+      },
+      {
+        path: "/reviewPerformance",
+        name: "reviewPerformance",
+        component: () => import("@/views/performance/ReviewPerformance.vue"),
+        meta: { info: "业绩审批", keepAlive: false },
+      },
+      {
+        path: "/tagView",
+        name: "tagView",
+        component: () => import("@/components/header/HeaderTagview.vue"),
+        meta: { info: "多页签" },
+      },
+      {
+        path: "/performanceDeptDetails",
+        name: "performanceDeptDetails",
+        component: () => import("@/views/performance/PerformanceDeptDetails.vue"),
+        meta: { info: "查询个人业绩详情" },
+      },
+      //弃用
+      {
+        path: "/performanceDept",
+        name: "performanceDept",
+        component: () => import("@/views/performance/PerformanceDept.vue"),
+        meta: { info: "查询部门业绩得分" },
+      },
+      {
+        path: "/kpiDept",
+        name: "kpiDept",
+        component: () => import("@/views/kpi/KpiDept.vue"),
+        meta: { info: "计算KPI数值" },
+      },
+      {
+        path: "/kpiHistory",
+        name: "kpidHistory",
+        component: () => import("@/views/kpi/KpiHistory.vue"),
+        meta: { info: "奖金系数", keepAlive: false },
+      },
+      {
+        path: "/kpiScore",
+        name: "kpiScore",
+        component: () => import("@/views/kpi/KpiScore.vue"),
+        meta: { info: "KPI得分", keepAlive: false },
+      },
+      {
+        path: "/personalAssessment",
+        name: "personalAssessment",
+        component: () => import("@/views/kpi/PersonalAssessment.vue"),
+        meta: { info: "个人绩效月考评表" },
+      },
+      {
+        path: "/rootDataVisual",
+        name: "rootDataVisual",
+        component: () => import("@/views/visualization/RootDataVisual.vue"),
+        meta: { info: "数据展示" },
+      },
+      {
+        path: "/tableDataVisual",
+        name: "tableDataVisual",
+        component: () => import("@/views/visualization/TableDataVisual.vue"),
+        meta: { info: "部门考核汇总表" },
+      },
+      {
+        path: "/signatureVisual",
+        name: "signatureVisual",
+        component: () => import("@/views/visualization/SignatureVisual.vue"),
+        meta: { info: "绩效确认" },
+      },
+      {
+        path: "/bonusCoefficient",
+        name: "bonusCoefficient",
+        component: () => import("@/views/annualAverage/BonusCoefficient.vue"),
+        meta: { info: "奖金系数详情", keepAlive: false },
+      },
+      {
+        path: "/KPIScoreDetail",
+        name: "KPIScoreDetail",
+        component: () => import("@/views/annualAverage/KPIScore.vue"),
+        meta: { info: "KPI得分详情", keepAlive: false },
+      },
+      {
+        path: "/valueScore",
+        name: "valueScore",
+        component: () => import("@/views/annualAverage/ValueScore.vue"),
+        meta: { info: "价值观详情", keepAlive: false },
+      },
+      {
+        path: "/targetLibrary",
+        name: "targetLibrary",
+        component: () => import("@/views/kpi/TargetLibrary.vue"),
+        meta: { info: "指标库" },
+      },
+      {
+        path: "/inputTarget",
+        name: "inputTarget",
+        component: InputTarget,
+        meta: { info: "录入指标", keepAlive: false },
+      },
+      {
+        path: "/404",
+        name: "404",
+        component: () => import("../views/404.vue"),
+      },
+    ],
+  },
+  {
+    path: "/loginView2",
+    name: "loginView2",
+    component: LoginView2,
+  },
+];
+
+// export const asyncRoutes=[{
+
+// }]
+
+const router = createRouter({
+  history: createWebHashHistory(),
+  routes,
+});
+
+router.beforeEach((to, from, next) => {
+  //准备跳到登录页放行
+  // if (to.path === "/login") return next();
+  // if (to.path === "/register") return next();
+  let token = localStorage.getItem("token");
+  //未登录，没有token
+  if (token == "" || token == null) {
+    if (to.path == "/login" || to.path == "/register") return next();
+    console.log("请先登录");
+    next("/login");
+    // next({ name: "login" });
+  } else {
+    next();
+  }
+});
+
+export default router;

@@ -1,0 +1,28 @@
+import axios from "axios";
+import { ElMessage } from "element-plus";
+import router from "@/router";
+
+export function register(data) {
+  axios({
+    url: "http://192.168.60.108:8989/ifi-personal/user/register",
+    method: "post",
+    data,
+  })
+    .then(function (res) {
+      if (res.status !== 200) {
+        return ElMessage.error("注册失败！");
+      } else if (res.data.code == 3) {
+        return ElMessage.error(res.data.message);
+      } else {
+        ElMessage.success("注册成功!");
+        router.push("/login");
+      }
+    })
+    .catch(() => {});
+}
+
+export function deptList() {
+  return axios({
+    url: "http://192.168.60.108:8989/ifi-personal/dept/getDeptList",
+  });
+}

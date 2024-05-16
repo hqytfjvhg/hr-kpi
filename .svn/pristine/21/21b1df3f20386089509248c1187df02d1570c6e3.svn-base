@@ -1,0 +1,150 @@
+<template>
+  <div class="valuesTable">
+    <div class="valuesTableTitle">查询个人价值观</div>
+    <el-form :rules="rules">
+      <el-form-item label="年份" prop="year">
+        <el-select clearable placeholder="请选择年份" v-model="year">
+          <el-option v-for="item in yearOptions" :key="item" :label="item" :value="item" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="月份" prop="month">
+        <el-select clearable placeholder="请选择月份" v-model="month">
+          <el-option v-for="item in monthOptions" :key="item.monthId" :label="item.month" :value="item.monthId" />
+        </el-select>
+      </el-form-item>
+      <el-button @click="getVlauesTable">查询</el-button>
+    </el-form>
+    <el-table
+      :data="tableData"
+      :span-method="objectSpanMethod"
+      border
+      height="40rem"
+      show-summary
+      sum-text="总分"
+      style="width: 100%"
+    >
+      <el-table-column label="序号" type="index" width="80"></el-table-column>
+      <el-table-column label="价值观" prop="valuDescription"></el-table-column>
+      <el-table-column label="行为" prop="actionDescription"></el-table-column>
+      <el-table-column label="案例" prop="example"></el-table-column>
+      <el-table-column label="自评" prop="selfScore" width="80"></el-table-column>
+    </el-table>
+  </div>
+</template>
+
+<script>
+import store from "@/store";
+import axios from "axios";
+import { ElMessage } from "element-plus";
+export default {
+  data() {
+    return {
+      year: "",
+      month: "",
+      tableData: [],
+      yearOptions: [],
+      monthOptions: [
+        { monthId: 1, month: "一月" },
+        { monthId: 2, month: "二月" },
+        { monthId: 3, month: "三月" },
+        { monthId: 4, month: "四月" },
+        { monthId: 5, month: "五月" },
+        { monthId: 6, month: "六月" },
+        { monthId: 7, month: "七月" },
+        { monthId: 8, month: "八月" },
+        { monthId: 9, month: "九月" },
+        { monthId: 10, month: "十月" },
+        { monthId: 11, month: "十一月" },
+        { monthId: 12, month: "十二月" },
+      ],
+      rules: {
+        year: [{ required: true }],
+        // month: [{ required: true }],
+      },
+    };
+  },
+  created() {
+    // this.getVlauesTable();
+    this.nowtime();
+  },
+  methods: {
+    nowtime() {
+      let nowDate = new Date();
+
+      this.year = nowDate.getFullYear();
+      this.month = nowDate.getMonth() + 1;
+      for (let i = 2021; i <= this.year; i++) {
+        this.yearOptions.push(i);
+      }
+    },
+    getVlauesTable() {
+      axios({
+        url: "http://192.168.60.108:8989/ifi-personal/value/searchOneselfValueData",
+        method: "post",
+        data: {
+          year: this.year,
+          month: this.month,
+        },
+      }).then((res) => {
+        if (res.data.code == 0 && JSON.stringify(res.data.data) !== "{}") {
+          const key = String(this.year) + String(this.month) + store.state.userId;
+          console.log(key);
+          const tableData = res.data.data[key];
+          this.tableData = tableData.map((item) => {
+            return {
+              valuDescription: item.valuDescription,
+              actionDescription: item.actionDescription,
+              selfScore: item.selfScore,
+              example: item.example,
+            };
+          });
+        } else {
+          ElMessage.error("查询数据为空！");
+        }
+
+        // let valueIdOne = tableData.filter((obj) => obj.valueId === 1).map((obj) => obj.actionDescription);
+        // let valueIdTwo = tableData.filter((obj) => obj.valueId === 2).map((obj) => obj.actionDescription);
+        // let result = [...valueIdOne, ...valueIdTwo];
+        // console.log(result);
+      });
+    },
+    objectSpanMethod({ columnIndex, row, rowIndex }) {
+      if (columnIndex === 1) {
+        const sameDates = this.tableData.filter((data) => data.valuDescription === row.valuDescription);
+        if (rowIndex % 4 === 0) {
+          return {
+            rowspan: sameDates.length,
+            colspan: 1,
+          };
+        } else {
+          return {
+            rowspan: 0,
+            colspan: 0,
+          };
+        }
+      }
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.valuesTable {
+  padding: 1rem;
+  background-color: #fff;
+}
+.valuesTableTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  padding: 1rem;
+}
+.el-form {
+  display: flex;
+  justify-content: space-around;
+  .el-table .el-table__cell {
+    text-align: center;
+  }
+}
+</style>

@@ -1,0 +1,61 @@
+import axios from "axios";
+import store from "@/store";
+import { ElMessage } from "element-plus";
+import router from "@/router";
+
+export function userList(data) {
+  return axios({
+    url: "http://192.168.60.108:8989/ifi-personal/user/searchByPage",
+    method: "post",
+    headers: {
+      token: store.state.token,
+    },
+    data,
+  });
+}
+// 添加响应拦截器
+axios.interceptors.response.use(
+  function (response) {
+    if (response.data.code == 5) {
+      localStorage.removeItem("userId");
+      localStorage.removeItem("token");
+      ElMessage.error("token失效，请重新登录！");
+      router.push("/login");
+    }
+    return response;
+  },
+  function (error) {
+    console.log(error);
+  },
+);
+
+export function resetpsw(data) {
+  axios({
+    url: "http://192.168.60.108:8989/ifi-personal/user/resetPassword",
+    method: "post",
+    data,
+  }).then(function (res) {
+    if (res.status !== 200) {
+      return ElMessage.error("重置失败！");
+    } else if (res.data.code != 0) {
+      return ElMessage.error(res.data.message);
+    } else {
+      ElMessage.success("重置成功!");
+    }
+  });
+}
+
+export function deleteUser(data) {
+  return axios({
+    url: "http://192.168.60.108:8989/ifi-personal/user/deleteUserByIds",
+    method: "post",
+    data,
+  });
+}
+
+export function roleList(data) {
+  return axios({
+    url: "http://192.168.60.108:8989/ifi-personal/dept/getRoleNameList",
+    data,
+  });
+}

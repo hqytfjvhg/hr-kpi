@@ -1,0 +1,812 @@
+<template>
+  <div class="mainHome">
+    <div style="display: flex; justify-content: space-between; height: 350px">
+      <div style="width: 24%; text-align: left">
+        <el-card style="text-align: center; border-radius: 15px" shadow="never">
+          <template #header><div class="card-header">新增事件</div> </template>
+          <div style="padding: 20px 0; height: 210px">
+            <el-button circle type="success" size="large" style="width: 100px; height: 100px" @click="getModelList">
+              <el-icon style="font-size: 50px"><Plus /></el-icon>
+            </el-button>
+            <div style="margin-top: 10px; color: gray">点击新增事件</div>
+          </div>
+        </el-card>
+      </div>
+      <div style="width: 24%">
+        <el-card shadow="never" style="border-radius: 15px">
+          <template #header
+            ><div class="card-header">
+              <span>事件进度</span>
+              <span
+                ><span style="color: #909399; font-size: small" v-if="newestEventInfo.length > 0"
+                  >{{ newestEventInfo[0].eventPublishMonth }}月</span
+                >
+                <span style="margin-left: 8px; color: #e6a23c">
+                  <el-tooltip effect="light" placement="top" content="刷新">
+                    <i class="fa fa-repeat" aria-hidden="true" @click="getNewestEventInfo" /></el-tooltip
+                ></span>
+              </span>
+            </div>
+          </template>
+          <RouterLink to="/kpi/KpiScore"> <div id="EchartDashBoard" style="height: 250px"></div></RouterLink>
+        </el-card>
+      </div>
+      <!-- 奖金系数大于120%人员 -->
+      <div style="width: 24%">
+        <el-card shadow="never" style="border-radius: 15px">
+          <template #header
+            ><div class="card-header">
+              <span>奖金系数≥120%人员</span>
+              <span>
+                <span style="color: #909399; font-size: small" v-if="newestEventInfo.length > 0"
+                  >{{ newestEventInfo[0].eventPublishMonth }}月</span
+                >
+                <span style="margin-left: 8px; color: #e6a23c">
+                  <el-tooltip effect="light" placement="top" content="刷新">
+                    <i class="fa fa-repeat" aria-hidden="true" @click="getBonusCoefficient" /></el-tooltip></span
+              ></span></div
+          ></template>
+          <div>
+            <el-table :data="bonusCoefficientData" height="250px"
+              ><el-table-column label="部门" prop="deptName"> </el-table-column
+              ><el-table-column label="姓名" prop="userName">
+                <template #default="scope">
+                  <router-link to="/kpi/KpiScore" style="text-decoration: none; color: #606260">
+                    <span>{{ scope.row.userName }}</span></router-link
+                  >
+                </template>
+              </el-table-column>
+              <el-table-column label="系数" prop="bonusCoefficient">
+                <template #default="scope">{{ scope.row.bonusCoefficient }}%</template>
+              </el-table-column></el-table
+            >
+          </div>
+        </el-card>
+      </div>
+      <div style="width: 24%">
+        <el-card shadow="never" style="border-radius: 15px">
+          <template #header
+            ><div class="card-header">
+              <span>价值观状态</span>
+              <span>
+                <span style="color: #909399; font-size: small">{{ noWriteValueList.length }}人未填</span>
+                <span style="margin-left: 8px; color: #e6a23c">
+                  <el-tooltip effect="light" placement="top" content="刷新">
+                    <i class="fa fa-repeat" aria-hidden="true" @click="getNoWriteValueList" /></el-tooltip></span
+              ></span></div
+          ></template>
+          <div>
+            <el-table :data="noWriteValueList" height="250px"
+              ><el-table-column label="部门" prop="deptName"></el-table-column
+              ><el-table-column label="姓名" prop="name"></el-table-column
+            ></el-table>
+          </div>
+        </el-card>
+      </div>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; height: 350px; margin-top: 20px">
+      <div style="min-width: 32%">
+        <el-card style="text-align: center; border-radius: 15px" shadow="never">
+          <template #header
+            ><div class="card-header">
+              <span> {{ bonusCoefficientYear }}年奖金系数</span
+              ><span>
+                <el-tooltip effect="light" placement="top" content="查看详情">
+                  <i
+                    class="fa fa-arrows-alt"
+                    aria-hidden="true"
+                    @click="$router.push({ name: 'bonusCoefficient' })"
+                    style="color: #e6a23c"
+                  ></i>
+                </el-tooltip>
+              </span>
+            </div>
+          </template>
+          <div class="bonusStyle">
+            <div>
+              <div v-for="item in bonusCoefficientAllYear" :key="item" class="bonusCoefficient">
+                <div class="bonusCoefficient-value">{{ item.averageData }}<span>%</span></div>
+                <div class="bonusCoefficient-month">
+                  <span style="color: #5470c6">{{ item.month }}</span>
+                </div>
+              </div>
+            </div>
+            <div v-if="bonusCoefficientAllYear.length > 0" class="bonusCoefficient-compare">
+              <div>
+                <i
+                  class="fa fa-caret-down"
+                  aria-hidden="true"
+                  style="color: #f56c6c; font-size: 50px; margin-right: 10px"
+                  v-if="bonusCoefficientAllYear[0].averageData - bonusCoefficientAllYear[1].averageData < 0"
+                ></i>
+
+                <i
+                  class="fa fa-caret-up"
+                  aria-hidden="true"
+                  style="color: #67c23a; font-size: 50px; margin-right: 10px"
+                  v-else
+                ></i>
+
+                {{
+                  Math.abs(
+                    ((bonusCoefficientAllYear[0].averageData - bonusCoefficientAllYear[1].averageData) /
+                      bonusCoefficientAllYear[1].averageData) *
+                      100,
+                  ).toFixed(2)
+                }}%
+              </div>
+              <div style="font-size: 20px; margin-left: 45px">同比上月</div>
+            </div>
+          </div>
+        </el-card>
+      </div>
+      <div style="min-width: 32%">
+        <el-card style="text-align: center; border-radius: 15px" shadow="never">
+          <template #header
+            ><div class="card-header">
+              <span> {{ KPIYear }}年KPI得分</span
+              ><span>
+                <el-tooltip effect="light" placement="top" content="查看详情">
+                  <i
+                    class="fa fa-arrows-alt"
+                    aria-hidden="true"
+                    @click="$router.push({ name: 'KPIScoreDetail', params: { year: KPIYear } })"
+                    style="color: #e6a23c"
+                  ></i>
+                </el-tooltip>
+              </span>
+            </div>
+          </template>
+
+          <div id="kpiScore" style="height: 320px"></div>
+        </el-card>
+      </div>
+      <div style="min-width: 32%; height: 100%">
+        <el-card style="text-align: center; border-radius: 15px" shadow="never">
+          <template #header
+            ><div class="card-header">
+              <span> {{ valueYear }}年价值观得分</span
+              ><span>
+                <el-tooltip effect="light" placement="top" content="查看详情">
+                  <i
+                    class="fa fa-arrows-alt"
+                    aria-hidden="true"
+                    @click="$router.push({ name: 'valueScore', params: { year: valueYear } })"
+                    style="color: #e6a23c"
+                  ></i>
+                </el-tooltip>
+              </span>
+            </div>
+          </template>
+          <div id="valueScore" style="height: 320px"></div>
+        </el-card>
+      </div>
+    </div>
+
+    <!-- 选择模板创建事件 -->
+    <el-dialog v-model="isModel" title="选择模板" width="50%">
+      <el-table
+        border
+        stripe
+        :data="modelTableData"
+        @selection-change="handleSelectionChange"
+        @expand-change="selectValue"
+        style="height: 25rem"
+        ref="multipleModel"
+      >
+        <el-table-column type="selection" width="55" />
+        <el-table-column label="模板名称" prop="templateName"></el-table-column>
+        <el-table-column label="是否使用">
+          <template #default="scope">
+            <span v-if="scope.row.useState == 0" style="color: #67c23a">未使用</span>
+            <span v-if="scope.row.useState == 1" style="color: #f56c6c">使用中</span>
+          </template>
+        </el-table-column>
+      </el-table>
+      <div style="margin-top: 1rem; text-align: right">
+        <el-button plain @click="isModel = false">取消</el-button>
+        <el-button type="success" plain @click="sureCreateAction">确定</el-button>
+      </div>
+    </el-dialog>
+
+    <!-- 创建事件的窗口 -->
+    <el-dialog v-model="dialogVisible" title="事件名称">
+      <el-input v-model="valueTitle" style="width: 25rem"></el-input>
+      <div style="margin-top: 20px">
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button @click="create">确定</el-button>
+      </div>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+import { Plus } from "@element-plus/icons-vue";
+import { ElMessage } from "element-plus";
+import { getModel, createEvent } from "@/api/values/index";
+import { getNewestEventInfo, getrUncompletedNumber, selectNoSignUser } from "@/api/visualization/index";
+import { getValueDeptScore } from "@/api/values/index.js";
+import { deptList } from "@/api/register/index";
+import store from "@/store";
+
+import {
+  getBonusCoefficientData,
+  getBonusCoefficientAllYear,
+  getKPIAllYear,
+  getValueAllYear,
+} from "@/api/visualization/index";
+import * as echarts from "echarts";
+
+export default {
+  components: { Plus },
+  data() {
+    return {
+      isModel: false, //控制选择模板的弹窗
+      dialogVisible: false, //控制命名的弹窗
+      modelDetil: [],
+      multipleSelection: [], //选择模板
+      valueTitle: "", //命名的名字
+      criticalMonth: "", //临界月份
+      newestEventInfo: [], //最新月份的数据
+      noWriteValueList: [], //未填写价值观名单
+      deptOptions: [],
+      uncompletedNumber: [], //人员剩余待办事件数量
+      deptId: 7, //绑定的部门id
+      year: "",
+      xAxisData: [],
+      yAxisData: [],
+      newestEventNoInfo: false, //判断最新月份是否有数据
+      noSignUserList: [], //未签名的名单
+      yearOptions: [],
+      bonusCoefficientData: [], //奖金系数大于120的人
+      bonusCoefficientYear: "",
+      bonusCoefficientAllYear: [], //全年的奖金系数
+      KPIYear: "",
+      KPIAllYear: [], //全年的kpi得分
+      valueYear: "",
+      valueAllYear: [], //全年价值观得分
+    };
+  },
+  async mounted() {
+    await deptList()
+      .then((res) => {
+        if (res.data.code == 0) {
+          this.deptOptions = res.data.data;
+          store.commit("saveDeptOptions", this.deptOptions);
+        }
+      })
+      .catch(() => {
+        ElMessage.error("请求失败");
+      });
+
+    let nowDate = new Date();
+    this.year = nowDate.getFullYear();
+    this.bonusCoefficientYear = nowDate.getFullYear();
+    this.KPIYear = nowDate.getFullYear();
+    this.valueYear = nowDate.getFullYear();
+    if (0 < nowDate.getDate() && nowDate.getDate() <= 15) {
+      this.criticalMonth = nowDate.getMonth();
+      if (this.criticalMonth == 0) {
+        this.criticalMonth = 12;
+        this.year = nowDate.getFullYear() - 1;
+        this.bonusCoefficientYear = nowDate.getFullYear() - 1;
+        this.KPIYear = nowDate.getFullYear() - 1;
+        this.valueYear = nowDate.getFullYear() - 1;
+      }
+    } else if (15 < nowDate.getDate() && nowDate.getDate() < 32) {
+      this.criticalMonth = nowDate.getMonth() + 1;
+    }
+    for (let i = 2021; i <= nowDate.getFullYear(); i++) {
+      this.yearOptions.push(i);
+    }
+    store.commit("saveYear", this.year);
+    store.commit("saveCriticalMonth", this.criticalMonth);
+    store.commit("saveYearOptions", this.yearOptions);
+    this.getNewestEventInfo();
+
+    this.getBonusCoefficient();
+    this.getBonusCoefficientAllYear(this.bonusCoefficientYear);
+    this.getKPIAllYear(this.KPIYear);
+    this.getValueAllYear(this.valueYear);
+  },
+  methods: {
+    getModelList() {
+      getModel()
+        .then((res) => {
+          if (res.data && res.data.code == 0) {
+            this.isModel = true;
+            this.modelTableData = res.data.data;
+          }
+        })
+        .catch((err) => {
+          console.log(err);
+        });
+    },
+    handleSelectionChange(val) {
+      this.multipleSelection = val;
+    },
+    toggleSelection() {
+      this.$refs.multipleModel.clearSelection();
+    },
+    sureCreateAction() {
+      if (this.multipleSelection.length > 0) {
+        this.dialogVisible = true;
+      } else {
+        ElMessage.error("请选择模板");
+      }
+    },
+    async create() {
+      //创建事件
+
+      if (this.valueTitle !== null && this.valueTitle.split(" ").join("").length !== 0) {
+        // 选中的所有模板id
+        const modelId = this.multipleSelection.map((item) => {
+          return item.templateId;
+        });
+        // 向后端返回的参数
+        const modelList = {
+          tempIdList: modelId,
+          eventName: this.valueTitle,
+        };
+        await createEvent(modelList);
+        this.toggleSelection();
+        this.valueTitle = "";
+        this.dialogVisible = false;
+        this.isModel = false;
+        this.$router.push({ name: "createModel" });
+      } else {
+        ElMessage.error("请输入事件标题");
+      }
+    },
+    //获取最新月份的事件进度
+    async getNewestEventInfo() {
+      await getNewestEventInfo().then((res) => {
+        if (res.data.code == 0 && res.data.data.length > 0) {
+          this.newestEventInfo = res.data.data;
+          store.commit("saveMonth", res.data.data[0].eventPublishMonth);
+          this.getNoWriteValueList();
+          this.getEventDashBoard();
+          // console.log("最新事件信息", this.newestEventInfo);
+        }
+      });
+    },
+    //事件的仪表盘
+    getEventDashBoard() {
+      let EchartDashBoard = echarts.init(document.getElementById("EchartDashBoard"));
+      EchartDashBoard.clear();
+      let option = {
+        series: [
+          {
+            //类型仪表盘
+            type: "gauge",
+            startAngle: 180,
+            endAngle: 0,
+            min: 0,
+            max: 100,
+            splitNumber: 1,
+            center: ["50%", "60%"], // 调整中心点位置，接近容器底部
+            radius: "100%",
+            itemStyle: {
+              // color: "#58D9F9",
+              shadowColor: "rgba(0,138,255,0.45)",
+              shadowBlur: 8,
+              shadowOffsetX: 2,
+              shadowOffsetY: 2,
+            },
+            //进度条
+            progress: {
+              show: true,
+              roundCap: false,
+              width: 40,
+            },
+            //表盘指针
+            pointer: {
+              icon: "path://M2090.36389,615.30999 L2090.36389,615.30999 C2091.48372,615.30999 2092.40383,616.194028 2092.44859,617.312956 L2096.90698,728.755929 C2097.05155,732.369577 2094.2393,735.416212 2090.62566,735.56078 C2090.53845,735.564269 2090.45117,735.566014 2090.36389,735.566014 L2090.36389,735.566014 C2086.74736,735.566014 2083.81557,732.63423 2083.81557,729.017692 C2083.81557,728.930412 2083.81732,728.84314 2083.82081,728.755929 L2088.2792,617.312956 C2088.32396,616.194028 2089.24407,615.30999 2090.36389,615.30999 Z",
+              length: "60%",
+              width: 10,
+              offsetCenter: [0, "5%"],
+            },
+            //轴线配置，阴影低下的一层
+            axisLine: {
+              roundCap: false,
+              lineStyle: {
+                width: 40,
+              },
+            },
+            //指针的圈
+            anchor: {
+              show: true,
+              showAbove: true,
+              size: 15,
+              itemStyle: {
+                borderWidth: 8,
+              },
+            },
+            //中间分割线，刻度
+            axisTick: {
+              show: false,
+            },
+            //分割线样式
+            splitLine: {
+              length: 0,
+              // distance: -30,
+              lineStyle: {
+                width: 0,
+                color: "#999",
+              },
+            },
+            //刻度数字
+            axisLabel: {
+              show: false,
+            },
+            title: {
+              show: false,
+            },
+            detail: {
+              backgroundColor: "#fff",
+              width: "60%",
+              lineHeight: 40,
+              height: 40,
+
+              offsetCenter: [10, "40%"],
+              valueAnimation: true,
+              formatter: function (value) {
+                return "{value|" + value.toFixed(0) + "}{unit|%}";
+              },
+              rich: {
+                value: {
+                  fontSize: 40,
+                  fontWeight: "bolder",
+                  // color: "#777",
+                },
+                unit: {
+                  fontSize: 20,
+                  // color: "#777",
+                  padding: [0, 0, 0, 10],
+                },
+              },
+            },
+            data: [
+              {
+                value: this.newestEventInfo[0].completionProgress,
+              },
+            ],
+          },
+        ],
+        // 添加全局图形元素，用于放置文本
+        graphic: {
+          elements: [
+            // 左侧文本
+            {
+              type: "text",
+              left: "13%", // 根据容器宽度调整左侧距离
+              top: "65%", // 控制文本距离底部的距离，假设这里是容器高度的80%
+              style: {
+                text: "0",
+                color: "#777",
+                fontSize: 18,
+                textAlign: "left",
+                fontWeight: "bolder",
+              },
+            },
+            // 右侧文本
+            {
+              type: "text",
+              right: "9%", // 根据容器宽度调整右侧距离
+              top: "65%",
+              style: {
+                text: "100",
+                color: "#777",
+                fontSize: 18,
+                textAlign: "right",
+                fontWeight: "bolder",
+              },
+            },
+          ],
+        },
+      };
+      option && EchartDashBoard.setOption(option);
+      // window.onresize = EchartDashBoard.resize;
+      window.addEventListener("resize", function () {
+        EchartDashBoard.resize();
+      });
+    },
+    //获取价值观未填写名单
+    getNoWriteValueList() {
+      getValueDeptScore({ year: this.year, month: this.newestEventInfo[0].eventPublishMonth }).then((res) => {
+        if (res.data.code == 0) {
+          this.noWriteValueList = res.data.data.filter((item) => !item.valueWrite);
+          this.noWriteValueList = this.noWriteValueList.map((item) => {
+            const deptOption = this.$store.state.deptOptions.find((item1) => item1.deptId == item.deptId);
+            if (deptOption) {
+              return { ...item, deptName: deptOption.deptName };
+            } else {
+              return item;
+            }
+          });
+        }
+      });
+    },
+    //获取待办数量
+    getrUncompletedNumber() {
+      getrUncompletedNumber().then((res) => {
+        if (res.data.code == 0) {
+          this.uncompletedNumber = Object.keys(res.data.data).map((item) => {
+            return {
+              name: item.split("@")[0],
+              deptId: item.split("@")[1],
+              number: res.data.data[item],
+            };
+          });
+          this.uncompletedNumber = this.uncompletedNumber.map((item) => {
+            const deptOption = this.deptOptions.find((item1) => item1.deptId == item.deptId);
+            if (deptOption) {
+              return { ...item, deptName: deptOption.deptName };
+            } else {
+              return item;
+            }
+          });
+        }
+      });
+    },
+    //获取未签名确认的名单
+    selectNoSignUser() {
+      selectNoSignUser().then((res) => {
+        if (res.data.code == 0 && res.data.data.length > 0) {
+          this.noSignUserList = res.data.data;
+        }
+      });
+    },
+    //查询奖金系数大于120
+    getBonusCoefficient() {
+      getBonusCoefficientData().then((res) => {
+        if (res.data.code == 0) {
+          this.bonusCoefficientData = res.data.data;
+          this.bonusCoefficientData = this.bonusCoefficientData.map((item) => {
+            const deptOption = this.$store.state.deptOptions.find((item1) => item1.deptId == item.deptId);
+            if (deptOption) {
+              return { ...item, deptName: deptOption.deptName };
+            } else {
+              return item;
+            }
+          });
+        }
+      });
+    },
+    //查询一年每月的平均奖金系数
+    getBonusCoefficientAllYear(newVal) {
+      getBonusCoefficientAllYear({ year: newVal }).then((res) => {
+        if (res.data.code == 0 && res.data.data[0].month != null) {
+          this.bonusCoefficientAllYear = res.data.data;
+          this.bonusCoefficientAllYear.map((item) => {
+            if (item.month === -1) {
+              item.month = "全年平均";
+            } else if (item.month !== null) {
+              item.month = item.month + "月";
+            }
+          });
+        }
+      });
+    },
+    //查询一年每月的kpi得分
+    async getKPIAllYear(newVal) {
+      await getKPIAllYear({ year: newVal }).then((res) => {
+        if (res.data.code == 0 && res.data.data[0].month != null) {
+          res.data.data.sort((a, b) => a.month - b.month);
+          this.KPIAllYear = res.data.data;
+          this.KPIAllYear.map((item) => {
+            if (item.month === -1) {
+              item.month = "全年平均";
+            } else {
+              item.month = item.month + "月";
+            }
+          });
+        }
+      });
+      this.getEchartKPIScore();
+    },
+    //kpi得分图表
+    getEchartKPIScore() {
+      let EchartKPIScore = echarts.init(document.getElementById("kpiScore"));
+      EchartKPIScore.clear();
+      let option = {
+        tooltip: {
+          trigger: "axis",
+          axisPointer: {
+            type: "shadow",
+          },
+        },
+        legend: {},
+        grid: {
+          left: "3%",
+          // right: "4%",
+          bottom: "3%",
+          top: "3%",
+          containLabel: true,
+        },
+        xAxis: {
+          type: "value",
+          boundaryGap: [0, 0.01],
+          axisLabel: { show: false },
+          splitLine: { show: false },
+        },
+        yAxis: {
+          type: "category",
+          data: this.KPIAllYear.map((item) => item.month),
+          axisTick: { show: false },
+          axisLine: { show: false },
+          axisLabel: {
+            fontSize: 16,
+            color: "black",
+          },
+        },
+        series: [
+          {
+            type: "bar",
+            data: this.KPIAllYear.map((item) => item.averageData),
+            label: {
+              show: true,
+              position: "inside",
+              //每个数据显示出来，位置在底部里面，旋转了90度，c是y轴的数值，b是x轴的数值，a没有内容
+              formatter: "{c}",
+              //文字大小
+              fontSize: 30,
+              color: "#fff",
+            },
+            itemStyle: {
+              color: function (params) {
+                const colors = [" #5470c6", " #91cc75", " #fac858"];
+                return colors[params.dataIndex % colors.length];
+              },
+            },
+          },
+        ],
+      };
+      option && EchartKPIScore.setOption(option);
+      window.addEventListener("resize", function () {
+        EchartKPIScore.resize();
+      });
+    },
+    //获取价值观得分
+    async getValueAllYear(newVal) {
+      await getValueAllYear({ year: newVal }).then((res) => {
+        if (res.data.code == 0 && res.data.data[0].month != null) {
+          // res.data.data.sort((a, b) => b.month - a.month);
+          this.valueAllYear = res.data.data.slice(0, 2);
+          this.valueAllYear.map((item, index) => {
+            if (item.month === -1) {
+              console.log(item, index);
+              this.valueAllYear.splice(index, 1);
+            }
+          });
+        }
+      });
+      this.getEchartValueScore();
+    },
+    getEchartValueScore() {
+      let EchartValueScore = echarts.init(document.getElementById("valueScore"));
+      EchartValueScore.clear();
+      let option = {
+        tooltip: {
+          trigger: "axis",
+          axisPointer: {
+            type: "shadow",
+          },
+        },
+        // 外面颜色的标记，默认是top-center，不设置data也有数据，前提是series有设置name属性
+        legend: {
+          data: this.valueAllYear.map((item) => item.month + "月"),
+        },
+        xAxis: [
+          {
+            type: "category",
+            axisTick: { show: false }, //刻度线
+            data: this.valueAllYear.map((item) => item.month + "月"),
+            splitLine: { show: false },
+            axisLine: { show: false },
+            axisLabel: {
+              fontSize: 16,
+              color: "black",
+            },
+          },
+        ],
+        yAxis: [
+          {
+            type: "value",
+            axisLabel: { show: false }, //刻度线
+            splitLine: { show: false },
+          },
+        ],
+        series: {
+          data: this.valueAllYear.map((item) => item.averageData),
+          type: "bar",
+          label: {
+            show: true,
+            position: "inside",
+            //每个数据显示出来，位置在底部里面，旋转了90度，c是y轴的数值，b是x轴的数值，a没有内容
+            formatter: "{c}",
+            //文字大小
+            fontSize: 30,
+            color: "#fff",
+          },
+          itemStyle: {
+            color: function (params) {
+              const colors = [" #5470c6", " #91cc75"];
+              return colors[params.dataIndex % colors.length];
+            },
+          },
+        },
+        grid: {
+          left: "3%",
+          right: "4%",
+          bottom: "3%",
+          top: "3%",
+          containLabel: true,
+        },
+      };
+      option && EchartValueScore.setOption(option);
+      window.addEventListener("resize", function () {
+        EchartValueScore.resize();
+      });
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.mainHome {
+  .mainHome-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left;
+    padding: 1rem;
+  }
+}
+.formStyle {
+  display: flex;
+  .formStyle-item {
+    padding-right: 12px;
+    margin-bottom: 0px;
+  }
+}
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  justify-items: center;
+  font-weight: 700;
+  color: "#777";
+}
+
+.bonusStyle {
+  display: flex;
+  grid: 1rem;
+  font-size: 30px;
+  font-weight: 700;
+  align-items: center;
+  justify-content: space-around;
+  height: 320px;
+  .bonusCoefficient-compare {
+    align-items: center;
+  }
+}
+.bonusCoefficient {
+  height: 80px;
+  width: 100%;
+  text-align: left;
+  margin: 20px 0;
+  font-weight: 700;
+  .bonusCoefficient-value {
+    font-size: 45px;
+
+    span {
+      font-size: 30px;
+    }
+  }
+  .bonusCoefficient-month {
+    font-size: 18px;
+  }
+}
+</style>

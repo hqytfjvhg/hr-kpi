@@ -1,0 +1,61 @@
+<template>
+  <div class="values">
+    <div class="values-title">价值观</div>
+    <el-button @click="getValuesData"></el-button>
+    <el-table :data="valuesData" height="30rem">
+      <el-table-column
+        :prop="`actionList.${index}.actionDescription`"
+        :label="item"
+        v-for="(item, index) in valuesDataTitle"
+        :key="index"
+      ></el-table-column>
+      <el-table-column prop="selfScore" label="自评"></el-table-column>
+    </el-table>
+  </div>
+</template>
+
+<script>
+import { values } from "../api/values/index";
+export default {
+  data() {
+    return {
+      valuesData: [],
+      valuesDataTitle: [],
+      valuesDataAction: [],
+    };
+  },
+  onMounted() {
+    this.getValuesData();
+  },
+  methods: {
+    getValuesData() {
+      const that = this;
+      values().then(function (res) {
+        that.valuesData = res.data.data;
+        console.log(res.data.data);
+        console.log(res.data.data.length);
+        for (let i = 0; i < res.data.data.length; i++) {
+          that.valuesDataTitle.push(res.data.data[i].valueDescription);
+          console.log(that.valuesDataTitle);
+          // that.valuesDataAction = res.data.data[i].actionList;
+        }
+        console.log(that.valuesDataTitle);
+      });
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.values {
+  padding: 20px;
+  background-color: #fff;
+}
+.values-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  padding: 16px;
+}
+</style>

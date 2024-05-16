@@ -1,0 +1,17 @@
+import store from "@/store";
+
+const rootPermission = {
+  isRootRead() {
+    if (store.state.role === "ROOT") {
+      const purview = store.state.userInfo.permissions;
+      //角色和权限相等就不是只读的
+      if (purview.includes("ROOT")) {
+        return false;
+      } else {
+        return true;
+      }
+    }
+  },
+};
+
+export default rootPermission;

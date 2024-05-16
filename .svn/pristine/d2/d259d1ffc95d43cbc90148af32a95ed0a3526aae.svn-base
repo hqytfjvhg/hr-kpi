@@ -1,0 +1,35 @@
+import axios from "@/utils/http";
+import { ElMessage } from "element-plus";
+
+export function getKpiList(data) {
+  return axios({
+    url: "/api/ifi-personal/performance/searchPerformanceFinalData",
+    method: "post",
+    data,
+  });
+}
+export function saveKPIData() {
+  return axios({
+    url: "/api/ifi-personal/performance/synchronizationKPisnapshotData",
+  })
+    .then((res) => {
+      if (res.data.code == 0) {
+        ElMessage.success("保存成功");
+      }
+    })
+    .catch();
+}
+export function selectKpiHistory(data) {
+  return axios({
+    url: "/api/ifi-personal/performance/searchKpiHistorySnapshotData",
+    method: "post",
+    data,
+  });
+}
+export function previewKpiHistory(data) {
+  return axios({
+    url: "/api/ifi-personal/performance/searchMonthlyPerformanceEvaluationForm",
+    method: "post",
+    data,
+  });
+}

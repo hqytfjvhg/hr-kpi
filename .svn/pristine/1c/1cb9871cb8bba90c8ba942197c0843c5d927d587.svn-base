@@ -1,0 +1,310 @@
+<template>
+  <div class="common-layout">
+    <el-container>
+      <el-aside :width="isCollapse == false ? '12rem' : '4rem'" class="aside">
+        <div class="logo">
+          <img src="~@/assets/logo.png" alt="" />
+          <h2 class="title" :style="{ display: isCollapse == false ? '' : 'none' }">HR</h2>
+        </div>
+
+        <el-menu
+          unique-opened
+          default-active="this.$route.path"
+          :collapse="isCollapse"
+          :collapse-transition="false"
+          @open="handleOpen"
+          @close="handleClose"
+          @select="handleSelect"
+          :router="true"
+        >
+          <!-- <el-sub-menu index="3">
+            <template #title>
+              <el-icon><Document /></el-icon>
+              <span>查看类型</span>
+            </template>
+
+            <el-menu-item index="3-2">项目考核</el-menu-item>
+            <el-menu-item index="3-3">绩点</el-menu-item>
+            <el-menu-item index="3-4">KPI</el-menu-item>
+          </el-sub-menu> -->
+
+          <!-- <el-sub-menu index="4">
+            <template #title>
+              <el-icon><Setting /></el-icon>
+              <span>时间</span>
+            </template>
+            <el-menu-item index="4-1">年</el-menu-item>
+            <el-menu-item index="4-2">季</el-menu-item>
+            <el-menu-item index="4-3">月</el-menu-item>
+          </el-sub-menu> -->
+          <el-menu-item index="/mainHome" v-if="$store.state.role == 'ROOT'">
+            <el-icon><Coordinate /></el-icon>
+            <template #title> <span>主页</span></template>
+          </el-menu-item>
+          <el-menu-item index="/frontView" v-if="$store.state.role !== 'ROOT'">
+            <el-icon><Coordinate /></el-icon>
+            <template #title> <span>主页</span></template>
+          </el-menu-item>
+          <el-menu-item index="/aboutInfo" v-if="$store.state.role !== 'ROOT'">
+            <el-icon><Calendar /></el-icon>
+            <template #title> <span>个人中心</span></template>
+          </el-menu-item>
+          <el-menu-item index="/rootDataVisual" v-if="$store.state.role == 'ROOT'">
+            <el-icon><Calendar /></el-icon>
+            <template #title> <span>数据可视化</span></template>
+          </el-menu-item>
+          <el-sub-menu index="kpi" v-if="$store.state.role == 'ROOT'">
+            <template #title>
+              <el-icon style="color: #e6a23c"><StarFilled /></el-icon>
+              <span>KPI管理</span>
+            </template>
+            <el-menu-item index="/kpiHistory" v-if="$store.state.role == 'ROOT'">查询奖金系数</el-menu-item>
+
+            <el-menu-item index="/valueDept">查询价值观得分</el-menu-item>
+            <el-menu-item index="/performanceDept">查询业绩得分</el-menu-item>
+            <!-- <el-menu-item index="/kpiDept" v-if="$store.state.role == 'ROOT'">计算最新KPI数值</el-menu-item> -->
+          </el-sub-menu>
+          <el-sub-menu index="event" v-if="$store.state.role == 'ROOT'">
+            <template #title>
+              <el-icon style="color: #e6a23c"><StarFilled /></el-icon>
+              <span>事件管理</span>
+            </template>
+            <el-menu-item index="/createModel" v-if="$store.state.role == 'ROOT'">事件发布</el-menu-item>
+            <el-menu-item index="/publishHistory" v-if="$store.state.role == 'ROOT'">发布历史与流程详情</el-menu-item>
+          </el-sub-menu>
+          <!-- <el-sub-menu index="1" v-if="$store.state.role == 'ROOT'">
+            <template #title>
+              <el-icon><Orange /></el-icon>
+              <span>数据类型</span>
+            </template>
+            <el-menu-item index="1-1">Excel表格</el-menu-item>
+            <el-menu-item index="/frontView">柱状图</el-menu-item>
+            <el-menu-item index="1-3">饼图</el-menu-item>
+            <el-menu-item index="1-4">散点图</el-menu-item>
+          </el-sub-menu> -->
+          <el-sub-menu index="6" v-if="$store.state.role == 'ROOT'">
+            <template #title>
+              <el-icon><SetUp /></el-icon>
+              <span>价值观管理</span>
+            </template>
+
+            <el-menu-item index="/deptCommon">常用部门审批流程</el-menu-item>
+            <el-menu-item index="/hrCommon">常用人事审批流程</el-menu-item>
+            <el-menu-item index="/valueManage">价值观管理</el-menu-item>
+
+            <el-menu-item index="/valueDeptDetails">查询部门价值观详情</el-menu-item>
+          </el-sub-menu>
+          <el-menu-item index="/valueUser" v-if="$store.state.role != 'ROOT'">
+            <el-icon><List /></el-icon>
+            <template #title> <span>查询个人价值观</span></template>
+          </el-menu-item>
+
+          <el-sub-menu index="7" v-if="$store.state.role == 'ROOT'">
+            <template #title>
+              <el-icon><ScaleToOriginal /></el-icon>
+              <span>业绩管理</span>
+            </template>
+            <el-menu-item index="/targetList">指标列表</el-menu-item>
+            <el-menu-item index="/targetApproval">业绩审批流程</el-menu-item>
+
+            <el-menu-item index="/performanceDeptDetails">查询部门业绩详情</el-menu-item>
+            <!-- <el-menu-item index="/download">下载模板</el-menu-item> -->
+          </el-sub-menu>
+          <el-sub-menu index="5" v-if="$store.state.role == 'ROOT'">
+            <template #title>
+              <el-icon><User /></el-icon>
+              <span>用户管理</span>
+            </template>
+            <el-menu-item index="/userList">用户列表</el-menu-item>
+          </el-sub-menu>
+          <el-menu-item index="/searchLog" v-if="$store.state.role == 'ROOT'">
+            <el-icon><Tickets /></el-icon>
+            <template #title> <span>查询操作日志</span></template>
+          </el-menu-item>
+        </el-menu>
+      </el-aside>
+      <el-container class="mainHeight">
+        <el-header>
+          <div class="siderOpen">
+            <el-icon :size="20" v-if="isCollapse === false" @click="isCollapse = !isCollapse"><Expand /></el-icon>
+            <el-icon :size="20" v-if="isCollapse === true" @click="triggerSidebarOpened"><Fold /></el-icon>
+          </div>
+          <Header></Header>
+        </el-header>
+        <Tagview></Tagview>
+        <el-main>
+          <router-view v-slot="{ Component }">
+            <component :is="Component" v-if="!$route.meta.keepAlive" :key="$route.name" />
+
+            <keep-alive>
+              <component :is="Component" :key="$route.name" v-if="$route.meta.keepAlive" />
+            </keep-alive>
+          </router-view>
+        </el-main>
+      </el-container>
+    </el-container>
+  </div>
+</template>
+
+<script>
+import {
+  User,
+  Expand,
+  Fold,
+  Tickets,
+  List,
+  Coordinate,
+  Calendar,
+  StarFilled,
+  Stamp,
+  SetUp,
+  Orange,
+  ScaleToOriginal,
+} from "@element-plus/icons-vue";
+import Header from "@/components/header/HeaderView.vue";
+import Tagview from "@/components/header/HeaderTagview";
+// import Main from "@/components/main/MainHome.vue";
+// import store from "@/store";
+
+export default {
+  components: {
+    Header,
+    User,
+    Expand,
+    Fold,
+    Tickets,
+    List,
+    Coordinate,
+    Tagview,
+    Calendar,
+    StarFilled,
+    Stamp,
+    ScaleToOriginal,
+    SetUp,
+    Orange,
+  },
+  data() {
+    return {
+      isCollapse: false,
+      width: "200px",
+      currentRouteInfo: {},
+      collapsed: {
+        type: Boolean,
+      },
+    };
+  },
+  methods: {
+    handleOpen(key, keyPath) {
+      console.log(key, keyPath);
+    },
+    handleClose(key, keyPath) {
+      console.log(key, keyPath);
+    },
+    handleSelect(key, keyPath) {
+      console.log(keyPath);
+      let currentPath = key;
+      let routes = this.$router.options.routes[3].children;
+      // if (currentPath == "/frontView" || currentPath == "/mainHome") {
+      //   return;
+      // }
+      for (let i = routes.length - 1; i >= 0; i--) {
+        if (routes[i].path === currentPath) {
+          // console.log(routes[i]);
+          const val = {
+            info: routes[i].meta.info,
+            path: routes[i].path,
+            name: routes[i].name,
+          };
+          this.$store.commit("pushtags", val);
+        }
+      }
+    },
+    triggerSidebarOpened() {
+      this.isCollapse = !this.isCollapse;
+    },
+
+    //点击把菜单的名字传出去
+    clickMenu(name, path) {
+      const val = {
+        name: name,
+        path: path,
+      };
+      this.$store.commit("pushtags", val);
+    },
+  },
+};
+</script>
+<style lang="scss">
+.el-main {
+  background-color: #f5f5f5;
+  padding: 17px;
+}
+.common-layout {
+  height: 100vh;
+}
+.title {
+  margin-left: 10px;
+}
+
+.logo {
+  // width: 200/16rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 3.75rem;
+  line-height: 3.75rem;
+  // background-color: #fff;
+  img {
+    height: 2rem;
+  }
+  h2 {
+    color: rgb(191, 203, 217);
+  }
+}
+.el-menu-vertical-demo:not(.el-menu--collapse) {
+  width: 12rem;
+}
+.aside {
+  height: 100vh;
+  background-color: #304156;
+  color: rgb(191, 203, 217);
+}
+.mainHeight {
+  height: 100vh;
+}
+.el-menu {
+  border-right: 0 !important;
+  .el-sub-menu__title,
+  .el-menu-item,
+  .el-menu-item .el-menu-tooltip__trigger {
+    background-color: #304156;
+    color: rgb(191, 203, 217);
+  }
+  .el-menu-item:hover {
+    background-color: rgb(38, 52, 69);
+  }
+  .el-sub-menu__title:hover {
+    background-color: rgb(38, 52, 69);
+  }
+}
+
+// .el-menu-item {
+//   background-color: #304156;
+//   color: rgb(191, 203, 217);
+// }
+.el-header {
+  background-color: #fff;
+  display: flex;
+  align-items: center;
+  .siderOpen {
+    margin-top: 0.25rem;
+    padding-right: 0.5rem;
+  }
+}
+.el-header {
+  --el-header-height: 52px;
+}
+.el-footer {
+  font-size: 0.5rem;
+}
+</style>

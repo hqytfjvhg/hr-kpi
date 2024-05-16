@@ -1,0 +1,200 @@
+<template>
+  <div>
+    <el-dialog :model-value="true" title="目前进度" width="30%">
+      <el-timeline style="text-align: left">
+        <el-timeline-item
+          v-for="(activity, index) in activities"
+          :key="index"
+          :icon="activity.icon"
+          :color="activity.color"
+          :size="activity.size"
+          :content="activity.content"
+          :timestamp="activity.timestamp"
+        >
+          {{ activity.content }}
+        </el-timeline-item>
+      </el-timeline>
+      <div style="margin-top: 20px; text-align: right">
+        <el-button @click="handleClose">确定</el-button>
+      </div>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+import { getUserApproval } from "@/api/values/index";
+import { SuccessFilled, MoreFilled, Close } from "@element-plus/icons-vue";
+export default {
+  props: {
+    userApproval: {
+      type: Boolean,
+      default: false,
+    },
+    publishHistoryValueRow: {
+      type: Object,
+    },
+    currentName: {
+      type: String,
+    },
+    year: {
+      type: String,
+    },
+    month: {
+      type: Number,
+    },
+  },
+  data() {
+    return {
+      activities: [], //价值观审批时间线的数据
+    };
+  },
+  mounted() {
+    this.selectHistory();
+  },
+  methods: {
+    //关闭弹窗
+    handleClose() {
+      this.$emit("update:userApproval", false);
+    },
+    selectHistory() {
+      let year;
+      let month;
+      if (this.publishHistoryValueRow.publishTime) {
+        const time = new Date(this.publishHistoryValueRow.publishTime);
+        year = time.getFullYear();
+        month = time.getMonth() + 1; // getMonth()方法返回的月份是从0开始的，所以需要加1
+      } else {
+        year = this.year;
+        month = this.month;
+      }
+
+      const data = {
+        year: year,
+        month: month,
+        userId: this.publishHistoryValueRow.userId,
+      };
+      getUserApproval(data).then((res) => {
+        if (res.data.code == 0) {
+          // console.log(res.data.data.current);
+          let data = res.data.data;
+          const length = data.deptSequenceFlowContent.length + data.hrSequenceFlowContent.length + 2;
+          // console.log(data.deptSequenceFlowContent.length + data.hrSequenceFlowContent.length + 2);
+          // console.log(this.activities);
+          this.activities = Array(data.deptSequenceFlowContent.length + data.hrSequenceFlowContent.length + 2).fill({});
+
+          // 重置this.activities数组中每个对象的属性
+          this.activities = this.activities.map(() => {
+            return {
+              size: "default",
+              color: "#e4e7ed",
+              icon: MoreFilled,
+            };
+          });
+          this.activities[0] = { content: this.currentName };
+          this.activities[length - 1] = { content: "已结束" };
+          // console.log(this.activities);
+
+          //对状态进行调整，图标
+          if (res.data.data.current["start"] != null) {
+            this.activities[0].size = "large";
+            this.activities[0].color = "#E6A23C";
+            this.activities[0].icon = Close;
+            this.activities[0].content = this.currentName;
+            // console.log(this.activities);
+          } else if (res.data.data.current["deptFlowState"] != null) {
+            const index = res.data.data.current["deptFlowState"];
+
+            // console.log(index);
+            for (let i = 0; i <= index; i++) {
+              // console.log(i);
+              this.activities[i].size = "large";
+              this.activities[i].color = "#67C23A";
+              this.activities[i].icon = SuccessFilled;
+              this.activities[index].icon = Close;
+              this.activities[index].color = "#E6A23C";
+            }
+          } else if (res.data.data.current["hrFlowState"] != null) {
+            const index = data.deptSequenceFlowContent.length + res.data.data.current["hrFlowState"];
+            for (let i = 0; i <= index; i++) {
+              this.activities[i].size = "large";
+              this.activities[i].color = "#67C23A";
+              this.activities[i].icon = SuccessFilled;
+              this.activities[index].icon = Close;
+              this.activities[index].color = "#E6A23C";
+            }
+          } else if (res.data.data.current["complete"] != null) {
+            for (let i = 0; i < length; i++) {
+              this.activities[i].size = "large";
+              this.activities[i].color = "#67C23A";
+              this.activities[i].icon = SuccessFilled;
+            }
+          }
+          //审批人
+          const content = data.deptSequenceFlowContent.map((item) => {
+            return "部门审批：" + item.name;
+          });
+          for (let i = 1; i < data.deptSequenceFlowContent.length + 1; i++) {
+            this.activities[i].content = content[i - 1];
+          }
+
+          const content1 = data.hrSequenceFlowContent.map((item) => {
+            return "人事审批：" + item.name;
+          });
+          // console.log(content1);
+          for (
+            let i = data.deptSequenceFlowContent.length + 1;
+            i < data.deptSequenceFlowContent.length + data.hrSequenceFlowContent.length + 1;
+            i++
+          ) {
+            // console.log(data.deptSequenceFlowContent.length + 1);
+            this.activities[i].content = content1[i - (data.deptSequenceFlowContent.length + 1)];
+          }
+          //时间线
+          if (res.data.data.flowTime !== null) {
+            // console.log(data.flowTime);
+            // console.log(res.data.data.flowTime);
+            // for (let key in data.flowTime) {
+            //   if (key.startsWith("written")) {
+            //     this.activities[0].timestamp = data.flowTime[key];
+            //     // console.log(this.activities[0].timestamp);
+            //   }
+            //   if (key.startsWith("dept")) {
+            //     for (let i = 0; i < data.deptSequenceFlowContent.length; i++) {
+            //       if (data.deptSequenceFlowContent[i].userId === parseInt(key.replace("dept", ""))) {
+            //         // 将找到的 sequence 赋给 activities[sequence]
+            //         this.activities[data.deptSequenceFlowContent[i].sequence].timestamp = data.flowTime[key];
+            //       }
+            //     }
+            //   }
+            //   if (key.startsWith("hr")) {
+            //     for (let i = 0; i < data.hrSequenceFlowContent.length; i++) {
+            //       if (data.hrSequenceFlowContent[i].userId === parseInt(key.replace("hr", ""))) {
+            //         console.log(data.hrSequenceFlowContent[i].sequence + data.deptSequenceFlowContent.length);
+            //         this.activities[
+            //           data.hrSequenceFlowContent[i].sequence + data.deptSequenceFlowContent.length
+            //         ].timestamp = data.flowTime[key];
+            //       }
+            //     }
+            //   }
+            // }
+
+            const activities = Object.entries(data.flowTime).map(([key, value]) => ({
+              id: key,
+              timestamp: new Date(value),
+              timestampCn: value,
+            }));
+            activities.sort((a, b) => a.timestamp - b.timestamp);
+
+            for (let i = 0; i < activities.length; i++) {
+              // 根据实际情况调整这里的索引(index+i)，这里假设按顺序插入
+              this.activities[i].timestamp = activities[i].timestampCn;
+            }
+          }
+        }
+      });
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped></style>

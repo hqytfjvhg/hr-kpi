@@ -1,0 +1,198 @@
+<template>
+  <div class="valuesTable">
+    <el-form :rules="rules">
+      <el-form-item label="年份" prop="year">
+        <el-select placeholder="请选择年份" v-model="year">
+          <el-option v-for="item in yearOptions" :key="item" :label="item" :value="item" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="月份" prop="month">
+        <el-select placeholder="请选择月份" v-model="month">
+          <el-option v-for="item in monthOptions" :key="item.monthId" :label="item.month" :value="item.monthId" />
+        </el-select>
+      </el-form-item>
+      <el-button @click="getVlauesTable">查询</el-button>
+    </el-form>
+    <el-table :data="tableData" height="70vh" :span-method="objectSpanMethod" border show-summary sum-text="总分">
+      <el-table-column label="序号" type="index" width="80"></el-table-column>
+      <el-table-column label="价值观" prop="valuDescription"></el-table-column>
+      <el-table-column label="行为" prop="actionDescription"></el-table-column>
+      <el-table-column label="案例" prop="example"></el-table-column>
+      <el-table-column label="自评" prop="selfScore" width="80"></el-table-column>
+      <el-table-column label="部门" prop="leaderScore" width="80"></el-table-column>
+      <el-table-column label="人事" prop="hrScore" width="80"></el-table-column>
+      <el-table-column label="部门审批备注">
+        <template #default="scope">
+          <el-popover placement="top" :width="300" trigger="hover">
+            <div v-if="scope.row.deptRemark != null">{{ scope.row.deptRemark.replace(/\$/g, "。") }}</div>
+            <template #reference>
+              <div v-if="scope.row.deptRemark != null" style="font-size: 10px; color: gray">
+                <span v-for="(item, index) in scope.row.deptRemark.split('$')" :key="index" class="myNote">
+                  {{ item }}
+                  <br v-if="index !== scope.row.deptRemark.split('$').length - 1" />
+                </span>
+              </div>
+            </template>
+          </el-popover>
+        </template>
+      </el-table-column>
+      <el-table-column label="人事审批备注">
+        <template #default="scope">
+          <el-popover placement="top" :width="300" trigger="hover">
+            <div v-if="scope.row.hrRemark != null">{{ scope.row.hrRemark.replace(/\$/g, "。") }}</div>
+            <template #reference>
+              <div v-if="scope.row.hrRemark != null" style="font-size: 10px; color: gray">
+                <span v-for="(item, index) in scope.row.hrRemark.split('$')" :key="index" class="myNote">
+                  {{ item }}
+                  <br v-if="index !== scope.row.hrRemark.split('$').length - 1" />
+                </span>
+              </div>
+            </template>
+          </el-popover>
+        </template>
+      </el-table-column>
+    </el-table>
+  </div>
+</template>
+
+<script>
+import store from "@/store";
+import axios from "axios";
+import { ElMessage } from "element-plus";
+export default {
+  name: "valueUser",
+  data() {
+    return {
+      year: "",
+      month: "",
+      tableData: [],
+      yearOptions: [],
+      monthOptions: [
+        { monthId: 1, month: "一月" },
+        { monthId: 2, month: "二月" },
+        { monthId: 3, month: "三月" },
+        { monthId: 4, month: "四月" },
+        { monthId: 5, month: "五月" },
+        { monthId: 6, month: "六月" },
+        { monthId: 7, month: "七月" },
+        { monthId: 8, month: "八月" },
+        { monthId: 9, month: "九月" },
+        { monthId: 10, month: "十月" },
+        { monthId: 11, month: "十一月" },
+        { monthId: 12, month: "十二月" },
+      ],
+      rules: {
+        year: [{ required: true }],
+        // month: [{ required: true }],
+      },
+    };
+  },
+  created() {
+    // this.getVlauesTable();
+    this.nowtime();
+  },
+  methods: {
+    nowtime() {
+      let nowDate = new Date();
+
+      this.year = nowDate.getFullYear();
+      this.month = nowDate.getMonth() + 1;
+      for (let i = 2021; i <= this.year; i++) {
+        this.yearOptions.push(i);
+      }
+    },
+    getVlauesTable() {
+      axios({
+        url: "/api/ifi-personal/valueData/searchOneselfValueData",
+        method: "post",
+        headers: {
+          token: store.state.token,
+        },
+        data: {
+          year: this.year,
+          month: this.month,
+        },
+      })
+        .then((res) => {
+          if (res.data.code == 0 && JSON.stringify(res.data.data) !== "{}") {
+            const key = String(this.year) + String(this.month) + store.state.userId;
+            // console.log(key);
+            const tableData = res.data.data[key];
+            this.tableData = tableData.map((item) => {
+              return {
+                valuDescription: item.valuDescription,
+                actionDescription: item.actionDescription,
+                selfScore: item.selfScore,
+                example: item.example,
+                leaderScore: item.leaderScore,
+                hrScore: item.hrScore,
+                deptRemark: item.deptRemark,
+                hrRemark: item.hrRemark,
+              };
+            });
+          } else if (res.data.code == 0 && JSON.stringify(res.data.data) == "{}") {
+            this.tableData = [];
+            ElMessage.error("查询数据为空！");
+          }
+        })
+        .catch(() => {
+          ElMessage.error("请求失败");
+        });
+    },
+
+    objectSpanMethod({ columnIndex, row, rowIndex }) {
+      if (columnIndex === 1) {
+        if (rowIndex === 0 || row.valuDescription != this.tableData[rowIndex - 1].valuDescription) {
+          let rowspan = 0;
+          this.tableData.forEach((element) => {
+            if (element.valuDescription === row.valuDescription) {
+              rowspan++;
+            }
+          });
+          return [rowspan, 1];
+        } else {
+          return [0, 0];
+        }
+      }
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.valuesTable {
+  padding: 1rem;
+  background-color: #fff;
+  height: 95%;
+  border-radius: 10px;
+}
+.valuesTableTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  padding: 1rem;
+}
+.el-form {
+  display: flex;
+  justify-content: space-around;
+}
+.el-table .el-table__cell {
+  text-align: center;
+}
+.el-table--border th.el-table__cell {
+  font-size: 15px;
+}
+
+.el-table .el-table__cell {
+  font-weight: normal;
+  color: #606260;
+}
+.myNote {
+  display: -webkit-box;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+</style>

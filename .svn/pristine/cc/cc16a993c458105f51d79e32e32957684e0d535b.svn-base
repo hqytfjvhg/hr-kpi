@@ -1,0 +1,619 @@
+<template>
+  <div class="publishHistory">
+    <!-- <div class="publishHistory-title">发布历史与流程详情</div> -->
+    <!-- <el-tabs type="border-card" v-model="activeName" class="demo-tabs"> -->
+    <!-- 历史 -->
+    <!-- <el-tab-pane name="history"> -->
+    <el-form class="titleForm">
+      <el-form-item label="起始时间">
+        <el-date-picker v-model="startTime" type="date" placeholder="请选择" />
+      </el-form-item>
+      <el-form-item label="结束时间">
+        <el-date-picker v-model="endTime" type="date" placeholder="请选择" />
+      </el-form-item>
+      <el-button @click="getEventHistory" type="primary">查询</el-button>
+    </el-form>
+
+    <el-table
+      border
+      :data="eventHistoryTableData"
+      @expand-change="selectEvent"
+      :height="tableHeight"
+      style="width: 100%"
+      :row-class-name="tableRowClassName"
+    >
+      <el-table-column type="expand" width="55">
+        <template #default="scope">
+          <div style="display: flex; margin-left: 55px">
+            <div style="width: 50%; padding: 10px">
+              <el-card shadow="hover">
+                <template #header>
+                  <div class="card-header">
+                    <span>价值观审批状态</span>
+                  </div>
+                </template>
+                <div class="scroll">
+                  <el-table v-if="joinUserList[scope.row.eventId]" :data="joinUserList[scope.row.eventId].list">
+                    <el-table-column label="姓名" prop="name"></el-table-column>
+                    <el-table-column label="状态">
+                      <template #default="scope">
+                        <span v-if="scope.row.activityState" style="color: #f56c6c">被移除</span>
+                        <span v-else>
+                          <span style="color: #67c23a" v-if="scope.row.complete">已完成</span>
+                          <span style="color: #e6a23c" v-else>未完成</span>
+                        </span>
+                      </template>
+                    </el-table-column>
+                    <el-table-column label="操作">
+                      <template #default="scope">
+                        <el-button size="small" type="primary" @click="selectCurrentState(scope.row)">
+                          流程详情
+                        </el-button>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                  <span v-else>暂无数据</span>
+                </div>
+              </el-card>
+            </div>
+            <div style="width: 50%; padding: 10px">
+              <el-card shadow="hover">
+                <template #header>
+                  <div class="card-header">
+                    <span>业绩审批状态</span>
+                  </div>
+                </template>
+                <div class="scroll">
+                  <el-table
+                    v-if="targetJoinUserList[scope.row.eventId]"
+                    :data="targetJoinUserList[scope.row.eventId].list"
+                  >
+                    <el-table-column label="姓名" prop="name"></el-table-column>
+                    <el-table-column label="状态">
+                      <template #default="scope">
+                        <span style="color: #f56c6c" v-if="scope.row.activityState">被移除</span>
+                        <span v-else>
+                          <span style="color: #67c23a" v-if="scope.row.complete">已完成</span>
+                          <span style="color: #e6a23c" v-else>未完成</span>
+                        </span>
+                      </template>
+                    </el-table-column>
+                    <el-table-column label="操作">
+                      <template #default="scope">
+                        <el-button size="small" type="primary" @click="selectCurrentPerformance(scope.row)">
+                          流程详情
+                        </el-button>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                  <span v-else>暂无数据</span>
+                </div>
+              </el-card>
+            </div>
+          </div>
+        </template>
+      </el-table-column>
+
+      <!-- <el-table-column label="ID" prop="id" width="55"></el-table-column> -->
+      <el-table-column label="事件名称" prop="eventName"></el-table-column>
+      <el-table-column label="发布时间" prop="publishTime"></el-table-column>
+    </el-table>
+    <div style="padding: 1rem">
+      <el-pagination
+        v-model:current-page="currentPage"
+        v-model:page-size="length"
+        :page-sizes="[10, 20, 30, 40, 50]"
+        :disabled="disabled"
+        background
+        layout="total,sizes, prev, pager, next"
+        :total="total"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+      />
+    </div>
+    <!-- </el-tab-pane> -->
+    <!-- </el-tabs> -->
+    <!-- 目前进度的弹窗 -->
+    <el-dialog v-model="userApproval" title="目前进度" :currentName="currentName">
+      <el-timeline style="text-align: left">
+        <el-timeline-item
+          v-for="(activity, index) in activities"
+          :key="index"
+          :icon="activity.icon"
+          :color="activity.color"
+          :size="activity.size"
+          :content="activity.content"
+          :timestamp="activity.timestamp"
+        >
+          {{ activity.content }}
+        </el-timeline-item>
+      </el-timeline>
+      <div style="margin-top: 20px; text-align: right">
+        <el-button @click="userApproval = false">确定</el-button>
+      </div>
+    </el-dialog>
+    <!-- 业绩目前进度的弹窗 -->
+    <el-dialog v-model="performanceApproval" title="目前进度" :currentPerformanceName="currentPerformanceName">
+      <el-timeline style="text-align: left">
+        <el-timeline-item
+          v-for="(activity, index) in performanceActivities"
+          :key="index"
+          :icon="activity.icon"
+          :color="activity.color"
+          :size="activity.size"
+          :content="activity.content"
+          :timestamp="activity.timestamp"
+        >
+          {{ activity.content }}
+        </el-timeline-item>
+      </el-timeline>
+      <div style="margin-top: 20px; text-align: right">
+        <el-button @click="performanceApproval = false">确定</el-button>
+      </div>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+import { getEventHistory, getEventJoinUser, getUserApproval } from "@/api/values/index";
+import { ElMessage } from "element-plus";
+import { getTargetJoinPeople, getPerformancePeople } from "@/api/performance/index";
+// import store from "@/store";
+import { SuccessFilled, MoreFilled, Warning } from "@element-plus/icons-vue";
+export default {
+  name: "publishHistory",
+  components: {},
+  data() {
+    return {
+      activeName: "history",
+      userApproval: false, //控制某人的审批流程的弹窗
+      isTargetShow: false, //控制业绩设置参数弹窗
+      performanceApproval: false, //控制业绩审批进度的弹窗
+
+      eventHistoryTableData: [], //查询发布历史表格的数据
+      eventReleaseData: {}, //事件发布的数据
+      tempList: [], //审批返回的测试数据
+      joinUserList: [], //发布历史某事件参与的人
+      targetJoinUserList: [], //业绩参与的人
+      year: "", //查询历史某人的年
+      month: "", //月
+
+      activities: [], //价值观审批时间线的数据
+      currentName: "", //发布历史价值观当前人的进度的名字
+      performanceActivities: [], //业绩审批时间线
+      currentPerformanceName: "", //业绩当前人进度的名字
+      startTime: null,
+      endTime: null,
+      eventName: "",
+      length: 10,
+      currentPage: 1,
+
+      tableHeight: null,
+    };
+  },
+  mounted() {
+    this.getEventHistory();
+    this.$nextTick(() => {
+      // 根据浏览器高度设置初始高度
+      this.tableHeight = window.innerHeight - 260;
+      // 监听浏览器高度变化，改变表格高度
+      window.onresize = () => {
+        this.tableHeight = window.innerHeight - 260;
+      };
+    });
+  },
+  methods: {
+    getEventHistory() {
+      // console.log(this.startTime, this.endTime);
+      let start;
+      let end;
+      let date;
+      if (this.startTime != null) {
+        date = new Date(this.startTime);
+        let year = date.getFullYear();
+        let month = date.getMonth() + 1; // 月份是从 0 开始的，所以需要加 1
+        let day = date.getDate();
+
+        start = `${year}-${month < 10 ? "0" + month : month}-${day < 10 ? "0" + day : day}`;
+      } else {
+        start = null;
+      }
+
+      if (this.endTime != null) {
+        date = new Date(this.endTime);
+        date.setDate(date.getDate() + 1);
+        let year = date.getFullYear();
+        let month = date.getMonth() + 1; // 月份是从 0 开始的，所以需要加 1
+        let day = date.getDate();
+
+        end = `${year}-${month < 10 ? "0" + month : month}-${day < 10 ? "0" + day : day}`;
+      } else {
+        end = null;
+      }
+
+      if ((this.startTime != null && this.endTime == null) || (this.startTime == null && this.endTime != null)) {
+        ElMessage.info("查询条件无效");
+      } else {
+        const historyData = {
+          startDate: start,
+          endDate: end,
+          length: this.length,
+          page: this.currentPage,
+        };
+        // console.log(historyData);
+
+        getEventHistory(historyData)
+          .then((res) => {
+            if (res.data.code == 0) {
+              this.eventHistoryTableData = res.data.data.list;
+              this.total = res.data.data.totalCount;
+              // console.log(this.eventHistoryTableData);
+            }
+          })
+          .catch(() => {
+            ElMessage.error("请求失败");
+          });
+      }
+    },
+    handleSizeChange(newSize) {
+      this.length = newSize;
+      this.getEventHistory();
+    },
+    handleCurrentChange(newPage) {
+      this.currentPage = newPage;
+      this.getEventHistory();
+    },
+    //查询某历史的事件参与的人
+    selectEvent(row, expandedRows) {
+      if (expandedRows.includes(row)) {
+        // console.log(row.eventId, row.publishTime);
+        const date = new Date(row.publishTime);
+        this.year = date.getFullYear();
+        this.month = date.getMonth() + 1; // getMonth()方法返回的月份是从0开始的，所以需要加1
+        // console.log(this.year, this.month);
+        const sendData = {
+          year: this.year,
+          month: this.month,
+          eventId: row.eventId,
+        };
+
+        getEventJoinUser(sendData)
+          .then((res) => {
+            if (res.data && res.data.code == 0) {
+              const tableData = res.data.data;
+              //给tableData加上eventId字段
+              tableData.forEach((obj) => {
+                obj["eventId"] = row.eventId;
+              });
+              // console.log(tableData);
+
+              let result = tableData.reduce((acc, curr) => {
+                if (!acc[curr.eventId]) {
+                  acc[curr.eventId] = {
+                    list: [],
+                  };
+                }
+                acc[curr.eventId].list.push({
+                  name: curr.name,
+                  deptName: curr.deptName,
+                  userId: curr.userId,
+                  complete: curr.complete,
+                  publishTime: row.publishTime,
+                  activityState: curr.activityState,
+                });
+                return acc;
+              }, {});
+              //每点击一次将新的数据存入对象中，确保每一次的数据不会替换
+
+              for (let key in result) {
+                this.joinUserList[key] = result[key];
+              }
+
+              // console.log(this.joinUserList);
+              // console.log(this.joinUserList[row.eventId]);
+            }
+          })
+          .catch((err) => {
+            console.log(err);
+          });
+        getTargetJoinPeople(sendData)
+          .then((res) => {
+            if (res.data.code == 0) {
+              // console.log(res.data.data);
+              const tableData = res.data.data;
+              //给tableData加上eventId字段
+              tableData.forEach((obj) => {
+                obj["eventId"] = row.eventId;
+              });
+              // console.log(tableData);
+
+              let result = tableData.reduce((acc, curr) => {
+                if (!acc[curr.eventId]) {
+                  acc[curr.eventId] = {
+                    list: [],
+                  };
+                }
+                acc[curr.eventId].list.push({
+                  name: curr.name,
+                  deptName: curr.deptName,
+                  userId: curr.userId,
+                  complete: curr.complete,
+                  activityState: curr.activityState,
+                });
+                return acc;
+              }, {});
+              //每点击一次将新的数据存入对象中，确保每一次的数据不会替换
+
+              for (let key in result) {
+                this.targetJoinUserList[key] = result[key];
+              }
+            }
+          })
+          .catch((err) => {
+            console.log(err);
+          });
+      }
+    },
+    //查询历史事件价值观参与的某人的状态
+    selectCurrentState(row) {
+      // console.log(row);
+      this.userApproval = true;
+      this.currentName = "填写人：" + row.name;
+      const date = new Date(row.publishTime);
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1; // getMonth()方法返回的月份是从0开始的，所以需要加1
+
+      const data = {
+        year: year,
+        month: month,
+        userId: row.userId,
+      };
+      getUserApproval(data).then((res) => {
+        if (res.data.code == 0) {
+          // console.log(res.data.data.current);
+          let data = res.data.data;
+          const length = data.deptSequenceFlowContent.length + data.hrSequenceFlowContent.length + 2;
+          // console.log(data.deptSequenceFlowContent.length + data.hrSequenceFlowContent.length + 2);
+          // console.log(this.activities);
+          this.activities = Array(data.deptSequenceFlowContent.length + data.hrSequenceFlowContent.length + 2).fill({});
+
+          // 重置this.activities数组中每个对象的属性
+          this.activities = this.activities.map(() => {
+            return {
+              size: "default",
+              color: "#e4e7ed",
+              icon: MoreFilled,
+            };
+          });
+          this.activities[0] = { content: this.currentName };
+          this.activities[length - 1] = { content: "已结束" };
+          // console.log(this.activities);
+
+          //对状态进行调整，图标
+          if (res.data.data.current["start"] != null) {
+            this.activities[0].size = "large";
+            this.activities[0].color = "#E6A23C";
+            this.activities[0].icon = Warning;
+            this.activities[0].content = this.currentName;
+            // console.log(this.activities);
+          } else if (res.data.data.current["deptFlowState"] != null) {
+            const index = res.data.data.current["deptFlowState"];
+
+            // console.log(index);
+            for (let i = 0; i <= index; i++) {
+              // console.log(i);
+              this.activities[i].size = "large";
+              this.activities[i].color = "#67C23A";
+              this.activities[i].icon = SuccessFilled;
+              this.activities[index].icon = Warning;
+              this.activities[index].color = "#E6A23C";
+            }
+          } else if (res.data.data.current["hrFlowState"] != null) {
+            const index = data.deptSequenceFlowContent.length + res.data.data.current["hrFlowState"];
+            for (let i = 0; i <= index; i++) {
+              this.activities[i].size = "large";
+              this.activities[i].color = "#67C23A";
+              this.activities[i].icon = SuccessFilled;
+              this.activities[index].icon = Warning;
+              this.activities[index].color = "#E6A23C";
+            }
+          } else if (res.data.data.current["complete"] != null) {
+            for (let i = 0; i < length; i++) {
+              this.activities[i].size = "large";
+              this.activities[i].color = "#67C23A";
+              this.activities[i].icon = SuccessFilled;
+            }
+          }
+          //审批人
+          const content = data.deptSequenceFlowContent.map((item) => {
+            return "部门审批：" + item.name;
+          });
+          for (let i = 1; i < data.deptSequenceFlowContent.length + 1; i++) {
+            this.activities[i].content = content[i - 1];
+          }
+
+          const content1 = data.hrSequenceFlowContent.map((item) => {
+            return "人事审批：" + item.name;
+          });
+          // console.log(content1);
+          for (
+            let i = data.deptSequenceFlowContent.length + 1;
+            i < data.deptSequenceFlowContent.length + data.hrSequenceFlowContent.length + 1;
+            i++
+          ) {
+            // console.log(data.deptSequenceFlowContent.length + 1);
+            this.activities[i].content = content1[i - (data.deptSequenceFlowContent.length + 1)];
+          }
+          //时间线
+          if (res.data.data.flowTime !== null) {
+            // console.log(data.flowTime);
+            // console.log(res.data.data.flowTime);
+            for (let key in data.flowTime) {
+              if (key.startsWith("written")) {
+                this.activities[0].timestamp = data.flowTime[key];
+                // console.log(this.activities[0].timestamp);
+              }
+              if (key.startsWith("dept")) {
+                for (let i = 0; i < data.deptSequenceFlowContent.length; i++) {
+                  if (data.deptSequenceFlowContent[i].userId === parseInt(key.replace("dept", ""))) {
+                    // 将找到的 sequence 赋给 activities[sequence]
+                    this.activities[data.deptSequenceFlowContent[i].sequence].timestamp = data.flowTime[key];
+                  }
+                }
+              }
+              if (key.startsWith("hr")) {
+                for (let i = 0; i < data.hrSequenceFlowContent.length; i++) {
+                  if (data.hrSequenceFlowContent[i].userId === parseInt(key.replace("hr", ""))) {
+                    this.activities[
+                      data.hrSequenceFlowContent[i].sequence + data.deptSequenceFlowContent.length
+                    ].timestamp = data.flowTime[key];
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
+    },
+    //查询发布历史业绩审批流程
+    selectCurrentPerformance(row) {
+      this.performanceApproval = true;
+      // console.log(row);
+      this.currentPerformanceName = row.name;
+      const data = {
+        year: this.year,
+        month: this.month,
+        userId: row.userId,
+        eventId: 0,
+      };
+      getPerformancePeople(data)
+        .then((res) => {
+          if (res.data.code == 0) {
+            let data = res.data.data;
+            // console.log(data);
+            const length = data.performanceFlowContent.length + 1;
+            this.performanceActivities = Array(length).fill({});
+
+            // 重置this.activities数组中每个对象的属性
+            this.performanceActivities = this.performanceActivities.map(() => {
+              return {
+                size: "default",
+                color: "#e4e7ed",
+                icon: MoreFilled,
+              };
+            });
+            // console.log(this.performanceActivities);
+            // this.performanceActivities[0] = { content: this.currentPerformanceName };
+            // this.performanceActivities[data.performanceFlowContent.length] = { content: "已结束" };
+            // console.log(this.performanceActivities);
+            // if (data.current == 0) {
+            //   this.performanceActivities[0].size = "large";
+            //   this.performanceActivities[0].color = "#E6A23C";
+            //   this.performanceActivities[0].icon = Warning;
+            //   this.performanceActivities[0].content = this.currentPerformanceName;
+            // } else
+            if (data.current <= data.performanceFlowContent.length) {
+              const index = data.current - 1;
+              for (let i = 0; i <= index; i++) {
+                // console.log(i);
+                this.performanceActivities[i].size = "large";
+                this.performanceActivities[i].color = "#67C23A";
+                this.performanceActivities[i].icon = SuccessFilled;
+                this.performanceActivities[index].icon = Warning;
+                this.performanceActivities[index].color = "#E6A23C";
+              }
+            } else if (data.current > data.performanceFlowContent.length) {
+              for (let i = 0; i < length; i++) {
+                this.performanceActivities[i].size = "large";
+                this.performanceActivities[i].color = "#67C23A";
+                this.performanceActivities[i].icon = SuccessFilled;
+              }
+            }
+            //审批人
+            const content = data.performanceFlowContent.map((item) => {
+              return "审批人：" + item.name;
+            });
+            for (let i = 0; i < data.performanceFlowContent.length + 1; i++) {
+              this.performanceActivities[i].content = content[i];
+              this.performanceActivities[data.performanceFlowContent.length].content = "已结束";
+            }
+            //时间线
+            if (data.flowTime !== null) {
+              // console.log(data.flowTime);
+              const keys = Object.keys(data.flowTime).map((key) => key.split("@")[0]);
+              // 遍历flowTime的key，找到匹配的name并获取对应的sequence
+              const matchingSequences = keys.map((name) => {
+                const matchingItem = data.performanceFlowContent.find((item) => item.name === name);
+
+                return matchingItem.sequence;
+              });
+              // console.log(matchingSequences);
+
+              for (let i = 0; i < matchingSequences.length; i++) {
+                // console.log(matchingSequences[i]);
+
+                this.performanceActivities[matchingSequences[i] - 1].timestamp = Object.values(data.flowTime)[i];
+              }
+            }
+          }
+        })
+        .catch((err) => {
+          console.log(err);
+        });
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.publishHistory {
+  padding: 1rem;
+  background-color: #fff;
+  height: 95%;
+  border-radius: 10px;
+  .publishHistory-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left;
+    padding: 1rem;
+  }
+}
+.titleForm {
+  display: flex;
+  justify-content: end;
+  width: 50%;
+  margin-left: auto;
+}
+
+.table-style {
+  .el-table-column--selection.is-leaf .el-checkbox {
+    display: none;
+  }
+}
+/* ---el-table滚动条公共样式--- */
+.el-scrollbar .el-scrollbar__bar.is-vertical .el-scrollbar__thumb {
+  height: 45px !important;
+}
+.el-upload-list__item {
+  width: 120%;
+}
+.scroll {
+  max-height: 40vh;
+  // height: 30%;
+  display: block;
+  overflow-y: auto;
+}
+.scroll::-webkit-scrollbar {
+  width: 5px;
+}
+/*定义滚动条轨道*/
+.scroll::-webkit-scrollbar-track {
+  border-radius: 5px;
+}
+/*定义滑块*/
+.scroll::-webkit-scrollbar-thumb {
+  border-radius: 5px;
+  background: rgba(195, 197, 199, 0.5);
+}
+</style>

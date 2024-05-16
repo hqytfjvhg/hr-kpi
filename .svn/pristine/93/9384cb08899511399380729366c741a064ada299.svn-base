@@ -1,0 +1,349 @@
+<template>
+  <div class="commonApproval">
+    <!-- <div class="common-title">人事常用审批流程</div> -->
+    <div style="text-align: right; margin-bottom: 10px">
+      <el-tooltip content="新增审批流程" placement="top" effe ct="light">
+        <el-button type="success" @click="addCommon">
+          <el-icon><Plus /></el-icon>新增
+        </el-button>
+      </el-tooltip>
+      <el-tooltip content="刷新审批列表" placement="top" effect="light">
+        <el-button type="primary" @click="getCommonHr">
+          <el-icon><Refresh /></el-icon>刷新
+        </el-button>
+      </el-tooltip>
+    </div>
+
+    <div>
+      <el-table :data="transformed" border :height="tableHeight" style="width: 100%; text-align: center" type="index">
+        <el-table-column type="index" label="序号" width="100" />
+        <el-table-column label="流程名称">
+          <template #default="scope">
+            <span v-if="scope.row.hrFlowId !== null">{{ scope.row.hrFlowName }}</span>
+            <el-input
+              v-else
+              v-model="scope.row.hrFlowName"
+              placeholder="请输入该流程名称"
+              clearable
+              style="width: 50%"
+            ></el-input>
+          </template>
+        </el-table-column>
+        <el-table-column label="流程">
+          <template #default="scope">
+            <!-- deptUserName后面接的是数字，例如deptUserName1，deptUserName2等,deptUserName开头的key对应的value长度需要大于0 -->
+            <span v-if="scope.row.hrFlowId != null && scope.row.hrFlowName != ''">
+              <span v-for="(value, key, index) in scope.row" :key="key">
+                <span v-if="key.startsWith('hrUserName')">
+                  {{ value }}
+                  <span v-if="index !== Object.keys(scope.row).length - 1">
+                    <!-- <i class="fa fa-arrow-right"></i> -->
+                    →
+                  </span>
+                </span>
+              </span>
+            </span>
+            <span v-else>
+              <!-- 使用v-for来动态创建输入框 -->
+              <span v-for="(value, key, index) in scope.row" :key="index">
+                <el-select clearable style="width: 10rem" v-model="scope.row[key]" v-if="key.startsWith('hrUserName')">
+                  <el-option
+                    v-for="item in addHrFlow"
+                    :key="item.name"
+                    :label="item.name"
+                    :value="item.name"
+                    placeholder="请选择审批人"
+                  ></el-option>
+                </el-select>
+                <span v-if="index !== 0 && index !== 1 && index !== Object.keys(scope.row).length - 1">
+                  <!-- <i class="fa fa-arrow-right"></i> -->
+                  →
+                </span>
+              </span>
+            </span>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="是否使用" width="150">
+          <template #default="scope">
+            <span v-if="scope.row.useState == false" style="color: #67c23a">未使用</span>
+            <span v-if="scope.row.useState == true" style="color: #f56c6c">使用中</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作">
+          <template #default="scope">
+            <div class="operateStyle">
+              <el-button
+                type="danger"
+                size="small"
+                plain
+                @click="deleteRow(scope.row)"
+                v-if="scope.row.hrFlowId != null && scope.row.hrFlowName != ''"
+              >
+                <el-icon><Delete /></el-icon>删除
+              </el-button>
+
+              <el-button
+                type="success"
+                size="small"
+                plain
+                @click="addApprovalPeople(scope.row)"
+                v-if="scope.row.hrFlowId == null"
+              >
+                <el-icon><Plus /></el-icon> 新增审批人
+              </el-button>
+              <el-button
+                type="primary"
+                size="small"
+                plain
+                @click="saveVal(scope.row)"
+                v-if="scope.row.hrFlowId == null || scope.row.hrFlowName == ''"
+              >
+                <el-icon><DocumentCopy /></el-icon>保存
+              </el-button>
+              <span @click="deleteNull(scope.row)" v-if="scope.row.hrFlowId == null" style="margin-left: 10px">
+                <i class="fa fa-times-circle-o" style="font-size: 17px; color: gray"></i>
+              </span>
+            </div>
+          </template>
+        </el-table-column>
+      </el-table>
+    </div>
+  </div>
+</template>
+
+<script>
+import { getCommonHr, saveCommonHr, deleteHrCommon, getHrFlow } from "@/api/userlist/index";
+import { ElMessage, ElMessageBox } from "element-plus";
+import { Refresh, Plus, Delete, DocumentCopy } from "@element-plus/icons-vue";
+export default {
+  name: "hrCommon",
+  components: { Refresh, Plus, Delete, DocumentCopy },
+  data() {
+    return {
+      commonList: [],
+      transformed: [],
+      addHrFlow: [],
+      tableHeight: null,
+    };
+  },
+  mounted() {
+    this.getCommonHr();
+    getHrFlow()
+      .then((res) => {
+        // console.log(res);
+        if (res.data.code == 0) {
+          this.addHrFlow = res.data.data;
+        }
+      })
+      .catch(() => {
+        ElMessage.error("请求失败");
+      });
+    this.$nextTick(() => {
+      // 根据浏览器高度设置初始高度
+      this.tableHeight = window.innerHeight - 190;
+      // 监听浏览器高度变化，改变表格高度
+      window.onresize = () => {
+        this.tableHeight = window.innerHeight - 190;
+      };
+    });
+  },
+  methods: {
+    getCommonHr() {
+      getCommonHr()
+        .then((res) => {
+          if (res.data.code == 0) {
+            //给初始值赋空
+            this.commonList = [];
+
+            Object.values(res.data.data).map((item) => {
+              this.commonList.push(item);
+            });
+            // console.log("获取到的数据", this.commonList);
+            const transformed1 = {};
+
+            this.commonList.forEach((item) => {
+              item.map((item1) => {
+                const { hrFlowName, hrFlowId, name, sequence, useState } = item1;
+                //检测transformed对象中是否已经存在deptFlowName作为键的对象
+
+                if (!transformed1[hrFlowName]) {
+                  transformed1[hrFlowName] = {
+                    hrFlowId,
+                    hrFlowName,
+                    useState,
+                  };
+                }
+                //顺序不同
+                transformed1[hrFlowName]["hrUserName" + sequence] = name;
+              });
+            });
+            // console.log(transformed1);
+            // this.transformed = [];
+            this.transformed = Object.values(transformed1);
+            this.transformed.sort(function (a, b) {
+              return b.hrFlowId - a.hrFlowId;
+            });
+            // console.log(this.transformed);
+          }
+        })
+        .catch(() => {
+          ElMessage.error("请求失败");
+        });
+    },
+    addCommon() {
+      this.transformed.unshift({
+        hrFlowId: null,
+        hrFlowName: "",
+      });
+      //   console.log(this.transformed);
+    },
+    addApprovalPeople(row) {
+      // 获取当前已有的输入框数量
+      const inputCount = Object.keys(row).filter((key) => key.startsWith("hrUserName")).length;
+      if (
+        inputCount != 0 &&
+        Object.keys(row).filter((key) => key.startsWith("hrUserName") && row[key] == "").length > 0
+      ) {
+        // console.log(row);
+        ElMessage.error("审批人数据为空，无法新增");
+      } else {
+        // 添加新的输入框，并将数据绑定到新的deptUserName字段上
+        row[`hrUserName${inputCount + 1}`] = "";
+        // console.log(row);
+      }
+      // this.$set(row, `deptUserName${inputCount + 1}`, "");
+    },
+    deleteRow(row) {
+      // console.log(row);
+      ElMessageBox.confirm("确定删除此信息吗?", "提示", {
+        confirmButtonText: "确认",
+        cancelButtonText: "取消",
+        type: "warning",
+      })
+        .then(() => {
+          const data = { deptHRIdList: [row.hrFlowId] };
+          deleteHrCommon(data)
+            .then((res) => {
+              if (res && res.data && res.data.code == 0) {
+                ElMessage.success("删除成功");
+                // this.transformed.splice(row.index, 1);
+                setTimeout(() => {
+                  this.getCommonHr();
+                }, 200);
+              }
+            })
+            .catch(() => {
+              ElMessage.error("请求失败");
+            });
+        })
+        .catch(() => {
+          ElMessage.info("取消删除");
+        });
+    },
+    saveVal(row) {
+      // console.log(row);
+      if (row.hrFlowName == "" || row.hrFlowName.split(" ").join("").length == 0) {
+        ElMessage.error("流程名字不能为空");
+      } else {
+        const userSequenceInFlowList = [];
+        let sequence = 1;
+        let canSave = true;
+        let hasError = 0;
+        for (const key in row) {
+          if (key.startsWith("hrUserName")) {
+            const userData = this.addHrFlow.filter((item) => item.name == row[key]);
+            //没有审批人
+
+            if (userData.length == 0) {
+              ElMessage.error("请选择审批人");
+              canSave = false;
+            } else {
+              userSequenceInFlowList.push({
+                sequence,
+                userId: userData[0].userId,
+              });
+              sequence++;
+            }
+            hasError = 0;
+          } else {
+            hasError++;
+          }
+        }
+        if (hasError == 2) {
+          ElMessage.error("请添加审批人");
+        }
+
+        if (userSequenceInFlowList.length !== 0) {
+          // console.log(userSequenceInFlowList);
+          const userIds = new Set(); // 用于存储唯一的userId
+
+          userSequenceInFlowList.forEach((item) => {
+            const userId = item.userId;
+            if (userIds.has(userId)) {
+              ElMessage.error("审批人重复");
+              canSave = false;
+            } else {
+              userIds.add(userId);
+            }
+          });
+
+          const data1 = {
+            name: row.hrFlowName,
+            userSequenceInFlowList: userSequenceInFlowList,
+          };
+          if (canSave) {
+            saveCommonHr(data1)
+              .then((res) => {
+                if (res && res.data && res.data.code == 0) {
+                  this.getCommonHr();
+                  ElMessage.success("保存成功");
+                }
+              })
+              .catch(() => {
+                ElMessage.error("请求失败");
+              });
+          }
+        }
+      }
+    },
+    deleteNull(val) {
+      // this.transformed.shift();
+      const index = this.transformed.findIndex((item) => item.hrFlowName === val.hrFlowName);
+      this.transformed.splice(index, 1);
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.commonApproval {
+  padding: 1rem;
+  background-color: #fff;
+  height: 95%;
+  border-radius: 10px;
+}
+.common-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  padding: 1rem;
+  background-color: #fff;
+}
+// .el-table th.el-table__cell.is-leaf {
+//   // text-align: center;
+//   font-size: 14px;
+// }
+// .el-table .el-table__cell {
+//   // text-align: center;
+//   font-size: 12px;
+// }
+.operateStyle {
+  display: flex;
+  align-items: center;
+}
+.el-icon {
+  margin-right: 5px;
+}
+</style>

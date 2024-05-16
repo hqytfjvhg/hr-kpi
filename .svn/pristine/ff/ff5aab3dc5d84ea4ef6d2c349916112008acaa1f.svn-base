@@ -1,0 +1,220 @@
+<template>
+  <div>
+    <!-- 选择人员弹窗 -->
+    <el-dialog :model-value="true" @close="handleClose" :show-close="false" :close-on-click-modal="false" align-center>
+      <el-form class="titleForm">
+        <el-form-item label="部门">
+          <el-select clearable placeholder="请选择" v-model="deptName">
+            <el-option v-for="item in deptOptions" :key="item.deptId" :label="item.deptName" :value="item.deptName" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="姓名">
+          <el-input placeholder="请输入" v-model="name"></el-input>
+        </el-form-item>
+        <el-button v-if="userListData2.length == 0" @click="getUserList" type="primary">查询</el-button>
+        <el-button v-if="userListData2.length !== 0" @click="getUser" type="primary">查询</el-button>
+      </el-form>
+      <el-table
+        :data="userList"
+        style="width: 100%"
+        height="60vh"
+        stripe
+        type="index"
+        @selection-change="handleSelectionUser"
+        ref="multipleTable"
+        row-key="userId"
+      >
+        <el-table-column type="selection" :selectable="selectEnable" :reserve-selection="true" />
+        <el-table-column type="index" label="序号" width="100" />
+        <el-table-column prop="name" label="姓名"></el-table-column>
+        <el-table-column label="状态">
+          <template #default="scope">
+            <span style="color: #67c23a" v-if="scope.row.state == true">已选</span>
+            <span style="color: #f56c6c" v-if="scope.row.state == false">未选</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="deptName" label="部门" />
+      </el-table>
+      <div style="margin-top: 20px; text-align: right">
+        <el-button @click="handleClose">取消</el-button>
+        <el-button @click="srueSeleteUser" type="primary">确定</el-button>
+      </div>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+import { getUser } from "@/api/values/index";
+import { ElMessage } from "element-plus";
+import store from "@/store";
+
+export default {
+  props: {
+    dialogUser: {
+      type: Boolean,
+      default: false,
+    },
+    userSelectionUser: {
+      type: Array,
+      default() {
+        return [];
+      },
+    },
+    modelData: {
+      type: Object,
+      default() {
+        return {
+          templateName: "",
+        };
+      },
+    },
+  },
+
+  data() {
+    return {
+      userListData: [], //初始元数据
+      userListData2: store.state.userList[this.modelData.eventId] ? store.state.userList[this.modelData.eventId] : [], //部门和名字过滤,添加字段
+      userList: [],
+      //   userListData4: this.userListDate2, //添加字段的用户列表
+      deptOptions: store.state.deptList ? store.state.deptList : [],
+      deptName: "",
+      name: "",
+      userSelection: [],
+      currentUserSelectName: [],
+      userAllSelection: [],
+    };
+  },
+  mounted() {
+    const userList = this.$store.state.userList.find((item) => item[this.modelData.eventId]);
+
+    if (userList) {
+      this.userListData2 = userList[this.modelData.eventId];
+    }
+    this.userList = this.userListData2;
+  },
+  watch: {
+    userList: {
+      handler(newValue) {
+        this.$nextTick(() => {
+          newValue.forEach((row) => {
+            if (row.state && row.eventId == this.modelData.eventId && row.templateId == this.modelData.templateId) {
+              this.$refs.multipleTable.toggleRowSelection(row, true);
+            }
+          });
+        });
+      },
+      deep: true, // 注意这里需要设置deep，因为userList是一个数组，Vue需要深度观察这个数组的变化。
+    },
+  },
+  methods: {
+    getUserList() {
+      getUser()
+        .then((res) => {
+          if (res.data.code == 0) {
+            this.userListData = res.data.data;
+            this.userListData2 = res.data.data;
+            this.userListData2 = this.userListData2.map((item) => {
+              return {
+                ...item,
+                state: false,
+                eventId: null,
+                templateId: null,
+              };
+            });
+
+            this.userList = this.userListData2;
+
+            store.commit("userList", { [this.modelData.eventId]: this.userListData2 });
+          }
+        })
+        .catch((e) => {
+          ElMessage.error("请求失败");
+          console.log(e);
+        });
+    },
+
+    getUser() {
+      if (this.name) {
+        this.userList = this.userListData2.filter((item) => {
+          return item.name.indexOf(this.name) !== -1;
+        });
+      } else if (this.deptName) {
+        this.userList = this.userListData2.filter((item) => item.deptName == this.deptName);
+      } else if (!this.name && !this.deptName) {
+        this.userList = this.userListData2;
+      } else {
+        this.userList = this.userListData2.filter((item) => item.deptName == this.deptName && item.name == this.name);
+      }
+    },
+    handleSelectionUser(val) {
+      this.userAllSelection = val;
+
+      this.userSelection = val.map((item) => {
+        return item.userId;
+      });
+      this.currentUserSelectName = val.map((item) => {
+        return item.name;
+      });
+
+      //需要存储中一个事件下参与的人
+    },
+    handleClose() {
+      this.$emit("update:dialogUser", false);
+    },
+    srueSeleteUser() {
+      if (this.userSelection.length == 0) {
+        ElMessage.error("请选择参与人");
+      } else {
+        this.userListData2.map((item) => {
+          let found = this.userSelection.find((item1) => item1 == item.userId);
+
+          if (found) {
+            item.state = true;
+            (item.eventId = this.modelData.eventId), (item.templateId = this.modelData.templateId);
+          }
+
+          let select = this.userSelectionUser.filter((item2) => !this.userSelection.includes(item2));
+
+          if (select.length > 0) {
+            let found = select.find((item2) => item2 == item.userId);
+            if (found) {
+              item.state = false;
+              item.eventId = null;
+              item.templateId = null;
+            }
+          }
+        });
+
+        this.$emit("update:dialogUser", false);
+        const data = {
+          userSelection: this.userSelection,
+          userSelectName: this.currentUserSelectName,
+          userList: this.userAllSelection,
+        };
+        this.$emit("userSelectList", data);
+      }
+    },
+    //禁用
+    selectEnable(row) {
+      if (
+        !(
+          row.state &&
+          row.eventId == this.modelData.eventId &&
+          row.eventId !== null &&
+          row.templateId !== this.modelData.templateId &&
+          row.templateId !== null
+        )
+      ) {
+        return true;
+      }
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.titleForm {
+  display: flex;
+  justify-content: space-between;
+}
+</style>

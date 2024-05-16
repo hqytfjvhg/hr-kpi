@@ -1,0 +1,156 @@
+<template>
+  <div class="register-body">
+    <div class="register-box">
+      <div class="register-logo">
+        <img src="../assets/logo.png" width="45" />
+        <h1>HR Platform</h1>
+      </div>
+      <el-form :model="RegisterFrom" :rules="Rules" label-position="right" label-width="80px">
+        <el-form-item label="部门" prop="department">
+          <el-input v-model.number="RegisterFrom.department" placeholder="请输入部门ID" clearable></el-input>
+        </el-form-item>
+        <el-form-item label="名字" prop="realname">
+          <el-input v-model="RegisterFrom.realname" placeholder="请输入中文姓名" clearable></el-input>
+        </el-form-item>
+        <el-form-item label="账户" prop="username">
+          <el-input v-model="RegisterFrom.username" placeholder="请输入账号" clearable></el-input>
+        </el-form-item>
+        <el-form-item label="密码" prop="password">
+          <el-input v-model="RegisterFrom.password" type="password" placeholder="请输入密码" show-password></el-input>
+        </el-form-item>
+        <el-form-item label="手机" prop="phone">
+          <el-input v-model="RegisterFrom.phone" placeholder="请输入手机号码" clearable></el-input>
+        </el-form-item>
+        <el-form-item label="性别" prop="sex">
+          <el-radio-group v-model="RegisterFrom.sex">
+            <el-radio-button label="男" name="man"></el-radio-button>
+            <el-radio-button label="女" name="women"></el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+        <!-- <el-form-item label="角色" prop="role">
+          <el-radio-group v-model="RegisterFrom.role">
+            <el-radio label="管理员" name="root"></el-radio>
+            <el-radio label="管理层人员" name="root"></el-radio>
+            <el-radio label="职工" name="root"></el-radio>
+          </el-radio-group>
+        </el-form-item> -->
+        <div class="button">
+          <el-button type="primary" round @click="registerSubmit()">注册</el-button>
+          <router-link to="login"><el-button type="primary" round>登录</el-button></router-link>
+        </div>
+      </el-form>
+    </div>
+  </div>
+</template>
+<script>
+import { ElMessage } from "element-plus";
+import router from "@/router";
+import axios from "axios";
+// import { mapState } from "vuex";
+export default {
+  data() {
+    return {
+      RegisterFrom: {
+        department: null,
+        realname: "",
+        username: "",
+        password: "",
+        phone: "",
+        sex: "",
+      },
+      Rules: {
+        username: [
+          { required: true, message: "请输入用户名", trigger: "blur" },
+          { min: 3, max: 30, message: "长度在 3 到 30 个字符", trigger: "blur" },
+        ],
+        password: [
+          { required: true, message: "请输入密码", trigger: "blur" },
+          { min: 3, max: 30, message: "长度在 3 到 30 个字符", trigger: "blur" },
+        ],
+        department: [{ required: true, message: "请输入数字类型的部门ID", trigger: "blur" }],
+        realname: [{ required: true, message: "请输入中文姓名", trigger: "blur" }],
+        phone: [{ required: true, message: "请输入手机号码", trigger: "blur" }],
+        sex: [{ required: true, message: "请选择性别", trigger: "blur" }],
+      },
+    };
+  },
+  // computed:{...mapState(['registerIdentifyUuid'])},
+  methods: {
+    registerSubmit() {
+      // const RegisterFrom = {
+      //   deptId: this.RegisterFrom.department,
+      //   name: this.RegisterFrom.realname,
+      //   username: this.RegisterFrom.username,
+      //   password: this.RegisterFrom.password,
+      //   phone: this.RegisterFrom.phone,
+      //   sex: this.RegisterFrom.sex,
+      //   uuid: this.$store.state.registerIdentifyUuid,
+      // };
+      axios
+        .post("http://192.168.60.108:8989/ifi-personal/user/register", {
+          // params: {
+          //   data: RegisterFrom,
+          // },
+          deptId: this.RegisterFrom.department,
+          name: this.RegisterFrom.realname,
+          username: this.RegisterFrom.username,
+          password: this.RegisterFrom.password,
+          phone: this.RegisterFrom.phone,
+          sex: this.RegisterFrom.sex,
+          uuid: this.$store.state.registerIdentifyUuid,
+        })
+        .then(function (res) {
+          console.log(res);
+          if (res.status !== 200) {
+            return ElMessage.error("注册失败！");
+          } else if (res.data.code == 3) {
+            return ElMessage.error(res.data.message);
+          } else {
+            ElMessage.success("恭喜你 注册成功!");
+            router.push("/login");
+          }
+        });
+    },
+  },
+};
+</script>
+<style lang="scss" scoped>
+.register-body {
+  width: 100%;
+  height: 100%;
+  background: url(../assets/login.svg);
+  background-size: 100% 100%;
+  position: absolute;
+  overflow: hidden;
+}
+.register-box {
+  width: 40rem;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  position: relative;
+  top: 30%;
+  left: 30%;
+  .register-logo {
+    width: 25rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 2rem;
+    h1 {
+      margin-left: 1rem;
+    }
+  }
+  .el-form {
+    width: 25rem;
+    .button {
+      display: flex;
+      justify-content: space-around;
+    }
+    .el-button {
+      width: 8rem;
+    }
+  }
+}
+</style>

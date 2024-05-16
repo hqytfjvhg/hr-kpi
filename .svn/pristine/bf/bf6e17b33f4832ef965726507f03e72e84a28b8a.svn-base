@@ -1,0 +1,455 @@
+<template>
+  <div class="mainHome">
+    <!-- <div class="mainHome-title"></div> -->
+    <div style="display: flex; justify-content: space-between; height: 350px">
+      <div style="min-width: 20%; text-align: left">
+        <el-card style="border-radius: 10px; text-align: center" shadow="never">
+          <template #header><div class="card-header">新增事件</div> </template>
+          <div style="padding: 20px 0; height: 210px">
+            <el-button circle type="success" size="large" style="width: 100px; height: 100px" @click="getModelList">
+              <el-icon style="font-size: 50px"><Plus /></el-icon>
+            </el-button>
+            <div style="margin-top: 10px; color: gray">点击按钮新增事件</div>
+          </div>
+        </el-card>
+      </div>
+      <div style="min-width: 20%">
+        <el-card style="border-radius: 10px" shadow="never">
+          <template #header
+            ><div class="card-header">
+              <span>事件进度</span>
+              <span
+                ><el-tag type="success">{{ criticalMonth }}月</el-tag>
+                <span style="margin-left: 8px; color: #e6a23c">
+                  <el-tooltip effect="light" placement="top" content="刷新">
+                    <i class="fa fa-repeat" aria-hidden="true" @click="getNewestEventInfo" /></el-tooltip
+                ></span>
+              </span>
+            </div>
+          </template>
+
+          <el-table :data="newestEventInfo" height="250px"
+            ><el-table-column label="事件名称" prop="eventName" width="120"></el-table-column>
+            <el-table-column label="事件进度" prop="completionProgress" width="120"
+              ><template #default="scope">
+                <div>
+                  <el-progress :percentage="scope.row.completionProgress" />
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column width="120">
+              <!-- <span style="color: #409eff" @click="$router.push({ name: 'kpiHistory', params: { eventId: 1 } })"
+                  >详情</span
+                > -->
+              <RouterLink to="/kpiHistory" style="color: #409eff; text-decoration: none">详情</RouterLink>
+            </el-table-column></el-table
+          >
+        </el-card>
+      </div>
+      <div style="min-width: 20%">
+        <el-card style="border-radius: 10px" shadow="never">
+          <template #header
+            ><div class="card-header">
+              <span>价值观未填写名单</span>
+              <span>
+                <el-tag type="primary">条数：{{ noWriteValueList.length }}</el-tag>
+                <span style="margin-left: 8px; color: #e6a23c">
+                  <el-tooltip effect="light" placement="top" content="刷新">
+                    <i class="fa fa-repeat" aria-hidden="true" @click="getNoWriteValueList" /></el-tooltip></span
+              ></span></div
+          ></template>
+          <div>
+            <el-table :data="noWriteValueList" height="250px"
+              ><el-table-column label="部门" prop="deptName"></el-table-column
+              ><el-table-column label="姓名" prop="name"></el-table-column
+            ></el-table>
+          </div>
+        </el-card>
+      </div>
+      <div style="min-width: 20%">
+        <el-card style="border-radius: 10px" shadow="never">
+          <template #header
+            ><div class="card-header">
+              <span>审批人员剩余审批数量</span>
+              <span>
+                <el-tag type="warning">{{ criticalMonth }}月</el-tag>
+                <span style="margin-left: 8px; color: #e6a23c">
+                  <el-tooltip effect="light" placement="top" content="刷新">
+                    <i class="fa fa-repeat" aria-hidden="true" @click="getrUncompletedNumber" /></el-tooltip></span
+              ></span></div
+          ></template>
+          <el-table :data="uncompletedNumber" height="250px">
+            <el-table-column label="部门" prop="deptName"></el-table-column>
+            <el-table-column label="姓名" prop="name"></el-table-column>
+            <el-table-column label="数量" prop="number" align="center"></el-table-column
+          ></el-table>
+        </el-card>
+      </div>
+    </div>
+    <div style="margin-top: 15px">
+      <el-card style="text-align: left; border-radius: 10px" shadow="never">
+        <template #header>
+          <div class="card-header">
+            <span
+              >{{ year }}年<span v-if="newestEventNoInfo"> {{ criticalMonth - 1 }}</span
+              ><span v-else>{{ criticalMonth }}</span
+              >月部门绩效得分情况</span
+            >
+            <el-form class="formStyle">
+              <el-form-item label="部门" class="formStyle-item"
+                ><el-select v-model="deptId" @change="getOneDeptAllUser(this.year, this.criticalMonth)">
+                  <el-option
+                    v-for="item in deptOptions"
+                    :key="item"
+                    :label="item.deptName"
+                    :value="item.deptId"
+                  /> </el-select
+              ></el-form-item>
+            </el-form>
+          </div>
+        </template>
+        <div style="color: #e6a23c; margin-left: 20px; margin-bottom: 8px" v-if="newestEventNoInfo">
+          {{ criticalMonth }}月份的数据暂未保存，仅显示上一月的数据
+        </div>
+        <div id="EChartOneDept" style="width: 100%; height: 310px"></div>
+      </el-card>
+    </div>
+    <!-- 选择模板创建事件 -->
+    <el-dialog v-model="isModel" title="选择模板" width="50%">
+      <el-table
+        border
+        stripe
+        :data="modelTableData"
+        @selection-change="handleSelectionChange"
+        @expand-change="selectValue"
+        style="height: 25rem"
+        ref="multipleModel"
+      >
+        <el-table-column type="selection" width="55" />
+        <el-table-column label="模板名称" prop="templateName"></el-table-column>
+        <el-table-column label="是否使用">
+          <template #default="scope">
+            <span v-if="scope.row.useState == 0" style="color: #67c23a">未使用</span>
+            <span v-if="scope.row.useState == 1" style="color: #f56c6c">使用中</span>
+          </template>
+        </el-table-column>
+      </el-table>
+      <div style="margin-top: 1rem; text-align: right">
+        <el-button plain @click="isModel = false">取消</el-button>
+        <el-button type="success" plain @click="sureCreateAction">确定</el-button>
+      </div>
+    </el-dialog>
+
+    <!-- 创建事件的窗口 -->
+    <el-dialog v-model="dialogVisible" title="事件名称">
+      <el-input v-model="valueTitle" style="width: 25rem"></el-input>
+      <div style="margin-top: 20px">
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button @click="create">确定</el-button>
+      </div>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+import { Plus } from "@element-plus/icons-vue";
+import { ElMessage } from "element-plus";
+import { getModel, createEvent } from "@/api/values/index";
+import { getNewestEventInfo, getrUncompletedNumber } from "@/api/visualization/index";
+import { getValueDeptScore } from "@/api/values/index.js";
+import { deptList } from "@/api/register/index";
+import store from "@/store";
+import { getUserAllYearKPI, getAllUser } from "@/api/kpi/index";
+import * as echarts from "echarts";
+
+export default {
+  components: { Plus },
+  data() {
+    return {
+      isModel: false, //控制选择模板的弹窗
+      dialogVisible: false, //控制命名的弹窗
+      modelDetil: [],
+      multipleSelection: [], //选择模板
+      valueTitle: "", //命名的名字
+      criticalMonth: "", //临界月份
+      newestEventInfo: [], //最新月份的数据
+      noWriteValueList: [], //未填写价值观名单
+      deptOptions: store.state.deptList ? store.state.deptList : [],
+      uncompletedNumber: [], //人员剩余待办事件数量
+      deptId: 7, //绑定的部门id
+      year: "",
+      xAxisData: [],
+      yAxisData: [],
+      newestEventNoInfo: false, //判断最新月份是否有数据
+    };
+  },
+  mounted() {
+    if (store.state.deptList.length == 0) {
+      deptList()
+        .then((res) => {
+          if (res.data.code == 0) {
+            this.deptOptions = res.data.data;
+          }
+        })
+        .catch(() => {
+          ElMessage.error("请求失败");
+        });
+    }
+
+    let nowDate = new Date();
+    this.year = nowDate.getFullYear();
+    if (0 < nowDate.getDate() && nowDate.getDate() <= 10) {
+      this.criticalMonth = nowDate.getMonth();
+    } else if (10 < nowDate.getDate() && nowDate.getDate() < 32) {
+      this.criticalMonth = nowDate.getMonth() + 1;
+      // console.log(this.month);
+    }
+    this.getNewestEventInfo();
+    this.getNoWriteValueList();
+    this.getrUncompletedNumber();
+    this.getOneDeptAllUser(this.year, this.criticalMonth);
+  },
+  methods: {
+    getModelList() {
+      getModel()
+        .then((res) => {
+          if (res.data && res.data.code == 0) {
+            this.isModel = true;
+            // console.log(res, 11111111);
+            this.modelTableData = res.data.data;
+            // console.log(res.data.data);
+          }
+        })
+        .catch((err) => {
+          console.log(err, 22222);
+        });
+    },
+    handleSelectionChange(val) {
+      this.multipleSelection = val;
+      // console.log(this.multipleSelection);
+    },
+    toggleSelection() {
+      this.$refs.multipleModel.clearSelection();
+    },
+    sureCreateAction() {
+      if (this.multipleSelection.length > 0) {
+        this.dialogVisible = true;
+      } else {
+        ElMessage.error("请选择模板");
+      }
+    },
+    async create() {
+      //创建事件
+
+      if (this.valueTitle !== null && this.valueTitle.split(" ").join("").length !== 0) {
+        // 选中的所有模板id
+        const modelId = this.multipleSelection.map((item) => {
+          return item.templateId;
+        });
+        // 向后端返回的参数
+        const modelList = {
+          tempIdList: modelId,
+          eventName: this.valueTitle,
+          // templateUserDataList: templateUserDataList,
+          // userIdList: userIdList,
+        };
+        await createEvent(modelList);
+        this.toggleSelection();
+        this.valueTitle = "";
+        this.dialogVisible = false;
+        this.isModel = false;
+        this.$router.push({ name: "createModel" });
+      } else {
+        ElMessage.error("请输入事件标题");
+      }
+    },
+    //获取最新月份的事件进度
+    getNewestEventInfo() {
+      getNewestEventInfo().then((res) => {
+        if (res.data.code == 0) {
+          this.newestEventInfo = res.data.data;
+          // console.log("最新事件信息", this.newestEventInfo);
+        }
+      });
+    },
+    //获取价值观未填写名单
+    getNoWriteValueList() {
+      getValueDeptScore({ year: new Date().getFullYear(), month: this.criticalMonth }).then((res) => {
+        if (res.data.code == 0) {
+          this.noWriteValueList = res.data.data.filter((item) => !item.valueWrite);
+          this.noWriteValueList = this.noWriteValueList.map((item) => {
+            const deptOption = this.deptOptions.find((item1) => item1.deptId == item.deptId);
+            if (deptOption) {
+              return { ...item, deptName: deptOption.deptName };
+            } else {
+              return item;
+            }
+          });
+          // console.log(this.noWriteValueList);
+        }
+      });
+    },
+    //获取待办数量
+    getrUncompletedNumber() {
+      getrUncompletedNumber().then((res) => {
+        if (res.data.code == 0) {
+          this.uncompletedNumber = Object.keys(res.data.data).map((item) => {
+            return {
+              name: item.split("@")[0],
+              deptId: item.split("@")[1],
+              number: res.data.data[item],
+            };
+          });
+          this.uncompletedNumber = this.uncompletedNumber.map((item) => {
+            const deptOption = this.deptOptions.find((item1) => item1.deptId == item.deptId);
+            if (deptOption) {
+              return { ...item, deptName: deptOption.deptName };
+            } else {
+              return item;
+            }
+          });
+          console.log(this.uncompletedNumber);
+        }
+      });
+    },
+    //获取某部门所有人的数据
+    async getOneDeptAllUser(year, month) {
+      let deptAllUser;
+      await getAllUser().then((res) => {
+        if (res.data.code == 0) {
+          deptAllUser = res.data.data;
+          // console.log(deptAllUser);
+        }
+      });
+      this.xAxisData = ["价值观", "业绩", "KPI"];
+      const userIdList = deptAllUser.filter((item) => item.deptId == this.deptId).map((item) => item.userId);
+
+      let res;
+      res = await getUserAllYearKPI({ year: year, month: month, userIdList: userIdList });
+      if (res.data.code == 0 && res.data.data.length == 0) {
+        this.newestEventNoInfo = true;
+        res = await getUserAllYearKPI({ year: year, month: month - 1, userIdList: userIdList });
+      }
+      console.log(res.data);
+      this.yAxisData = [];
+      res.data.data.map((item) => {
+        this.yAxisData[item.name] = this.yAxisData[item.name] || [];
+        this.yAxisData[item.name].push(item.valueScore);
+        this.yAxisData[item.name].push(item.targetScore);
+        this.yAxisData[item.name].push(item.kpiscore);
+      });
+      this.getEChartOneDept();
+    },
+    //数据可视化
+    getEChartOneDept() {
+      let EChartOneDept = echarts.init(document.getElementById("EChartOneDept"));
+      EChartOneDept.clear();
+      //控制文本的字段
+      const labelOption = {
+        show: true,
+        position: "inside",
+        //每个数据显示出来，位置在底部里面，旋转了90度，c是y轴的数值，b是x轴的数值，a没有内容
+        formatter: "{c}",
+        //文字大小
+        fontSize: 10,
+        rich: {
+          name: {},
+        },
+      };
+      const seriesOption = {
+        type: "bar",
+        barGap: 0, //条间隙
+        label: labelOption,
+        //鼠标触碰的数据的样式，突出当前的颜色，其他的暗下去
+        emphasis: {
+          focus: "series",
+        },
+      };
+      const series = Object.keys(this.yAxisData).map((key) => ({
+        name: key,
+        data: this.yAxisData[key],
+        ...seriesOption,
+      }));
+      let option = {
+        tooltip: {
+          trigger: "axis",
+          axisPointer: {
+            type: "shadow",
+          },
+        },
+        // 外面颜色的标记，默认是top-center，不设置data也有数据，前提是series有设置name属性
+        legend: {
+          data: Object.keys(this.yAxisData),
+        },
+        // 工具box，可以转换数据的样式
+        toolbox: {
+          show: true,
+          orient: "vertical",
+          left: "right",
+          top: "center",
+          feature: {
+            mark: { show: true },
+            //数据视图
+            dataView: { show: true, readOnly: false },
+            //转换数据的类型，折现、柱状、堆叠
+            magicType: { show: true, type: ["bar", "stack"] },
+            //刷新
+            restore: { show: true },
+            //下载
+            saveAsImage: { show: true },
+          },
+        },
+        xAxis: [
+          {
+            type: "category",
+            axisTick: { show: false }, //刻度线
+            data: this.xAxisData,
+          },
+        ],
+        yAxis: [
+          {
+            type: "value",
+          },
+        ],
+        series: series,
+      };
+      option && EChartOneDept.setOption(option);
+      window.addEventListener("resize", function () {
+        EChartOneDept.resize();
+      });
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.mainHome {
+  .mainHome-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left;
+    padding: 1rem;
+  }
+}
+.formStyle {
+  display: flex;
+  align-items: center;
+  // justify-content: start;
+  .formStyle-item {
+    padding-right: 12px;
+    margin-bottom: 0px;
+  }
+}
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  justify-items: center;
+  font-family: -apple-system;
+  // height: 40px;
+}
+.el-card__header {
+  padding: 0 12px;
+}
+</style>

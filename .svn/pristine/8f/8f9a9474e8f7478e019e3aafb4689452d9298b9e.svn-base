@@ -1,0 +1,44 @@
+import axios from "axios";
+import store from "@/store";
+import { ElMessage } from "element-plus";
+import router from "@/router";
+
+export function login(data) {
+  axios({
+    url: "http://192.168.60.108:8989/ifi-personal/user/login",
+    method: "post",
+    data,
+  })
+    .then((res) => {
+      console.log(res);
+      if (res.status !== 200) {
+        return ElMessage.error("用户名或密码错误");
+      } else if (res.data.code != 0) {
+        return ElMessage.error(res.data.message);
+      } else {
+        const userId = res.data.data.userId;
+        const token = res.data.data.token;
+        store.commit("changeUserId", userId);
+        store.commit("changeToken", token);
+        // console.log(token, userId);
+        ElMessage.success("登录成功!");
+        router.push("/home");
+      }
+    })
+    .catch(function (error) {
+      console.log(error);
+    });
+}
+
+export function uuid() {
+  axios
+    .get("http://192.168.60.108:8989/ifi-personal/user/getRegisterIdentificationCode")
+    .then((res) => {
+      const registerIdentifyUuid = res.data.data.registerIdentifyUuid;
+      console.log(registerIdentifyUuid);
+      store.commit("changeUuid", registerIdentifyUuid);
+    })
+    .catch(function (err) {
+      console.log(err);
+    });
+}

@@ -1,0 +1,57 @@
+// import axios from "axios";
+import axios from "@/utils/http";
+import store from "@/store";
+import { ElMessage } from "element-plus";
+import router from "@/router";
+
+export function login(data) {
+  axios({
+    url: "/api/ifi-personal/user/login",
+    method: "post",
+    data,
+  })
+    .then((res) => {
+      if (res.data.code == 0) {
+        const userId = res.data.data.userId;
+        const token = res.data.data.token;
+        const role = res.data.data.roleName;
+        const name = res.data.data.name;
+        const deptId = res.data.data.deptId;
+        store.commit("changeRole", role);
+        store.commit("changeUserId", userId);
+        store.commit("changeToken", token);
+        store.commit("changeName", name);
+        store.commit("changeDeptId", deptId);
+        // console.log(token, userId);
+        ElMessage.success("登录成功!");
+        if (store.state.role == "ROOT") {
+          router.push("/mainHome");
+          store.commit("pushtags", { path: "/mainHome", name: "mainHome", info: "主页" });
+        } else {
+          router.push("/frontView");
+          store.commit("pushtags", { path: "/frontView", name: "frontView", info: "主页" });
+        }
+
+        // _this.isLoading = false;
+      }
+    })
+    .catch(function (error) {
+      ElMessage.error("登录失败");
+      console.log(error.message);
+    });
+}
+
+export function uuid() {
+  axios
+    .get("/api/ifi-personal/user/getRegisterIdentificationCode")
+    .then((res) => {
+      if (res.data.code == 0) {
+        const registerIdentifyUuid = res.data.data.registerIdentifyUuid;
+        console.log(registerIdentifyUuid);
+        store.commit("changeUuid", registerIdentifyUuid);
+      }
+    })
+    .catch(function (err) {
+      console.log(err);
+    });
+}

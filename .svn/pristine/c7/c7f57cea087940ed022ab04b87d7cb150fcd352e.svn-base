@@ -1,0 +1,348 @@
+<template>
+  <div class="performance">
+    <!-- 以人名为维度横向填写 -->
+    <div class="performance-title" v-if="oneDeptPerformanceInfo.length > 0">
+      {{ oneDeptPerformanceInfo[0].deptName }}
+    </div>
+    <el-table
+      border
+      :data="oneDeptPerformanceInfo"
+      :span-method="objectSpanMethod"
+      :height="tableHeight"
+      :header-cell-style="{ backgroundColor: '#F5F7FA' }"
+    >
+      <el-table-column label="序号" prop="index" width="80" align="center"></el-table-column>
+      <el-table-column label="姓名" prop="name"></el-table-column>
+      <el-table-column label="指标名称" prop="targetName"></el-table-column>
+      <el-table-column label="目标值" prop="deliverableRate" align="center">
+        <!-- <template #default="{ row }">
+          {{ row.deliverableRate }} <span v-if="!row.targetIsNumber">%</span> <span v-else>项</span>
+        </template> -->
+      </el-table-column>
+      <el-table-column
+        label="实现值"
+        prop="actualAchievementRateCopy"
+        align="center"
+        v-if="$store.state.role == 'HRMANAGER'"
+      >
+        <template #default="{ row }">
+          {{ row.actualAchievementRateCopy }}
+        </template>
+      </el-table-column>
+      <el-table-column
+        :label="$store.state.role == 'HRMANAGER' ? '最终实现值' : '实现值'"
+        prop="actualAchievementRate"
+        align="center"
+        min-width="100"
+      >
+        <template #default="scope">
+          <el-input
+            v-model="scope.row.actualAchievementRate"
+            placeholder="请输入"
+            @blur="addDecimal(scope.row.actualAchievementRate, scope.$index)"
+            @input="findTargetScore(scope.row.targetId, scope.row.actualAchievementRate, scope.$index)"
+          >
+          </el-input>
+
+          <div v-if="scope.row.maxRate !== null" class="tooltip-style">
+            范围：
+            {{ scope.row.minRate }}~{{ scope.row.maxRate }}
+          </div>
+        </template>
+      </el-table-column>
+      <el-table-column label="指标得分" prop="targetScore"></el-table-column>
+      <el-table-column label="备注">
+        <template #default="scope">
+          <el-input
+            type="textarea"
+            v-model="scope.row.explain"
+            placeholder="请输入"
+            :autosize="{ minRows: 2 }"
+          ></el-input>
+          <div v-if="scope.row.explainCopy" style="text-align: left">
+            <span v-for="(item, index) in scope.row.explainCopy" :key="item"
+              ><span v-if="item.split('：')[1] !== '未填写'">{{ item }}。</span
+              ><br v-if="index != scope.row.explainCopy.length - 1" />
+            </span>
+          </div>
+        </template>
+      </el-table-column>
+    </el-table>
+    <div class="bottom-button">
+      <el-button @click="sendPerformanceData" type="primary">提交</el-button>
+    </div>
+  </div>
+</template>
+
+<script>
+import { getPerformanceByDeptId, getTargetScoreById, sendPerformanceTargetData } from "@/api/performance/index";
+import store from "@/store";
+import { ElMessageBox, ElMessage } from "element-plus";
+export default {
+  data() {
+    return {
+      oneDeptPerformanceInfo: [], //指标的所有信息
+      tableHeight: null,
+      targetScoreInfo: {}, //指标的得分区间
+      isSubmit: true, //是否能提交
+    };
+  },
+  async mounted() {
+    this.getPerformanceByDeptId();
+    this.$nextTick(() => {
+      // 根据浏览器高度设置初始高度
+      this.tableHeight = window.innerHeight - 220;
+      // 监听浏览器高度变化，改变表格高度
+      window.onresize = () => {
+        this.tableHeight = window.innerHeight - 220;
+      };
+    });
+  },
+  methods: {
+    getPerformanceByDeptId() {
+      this.oneDeptPerformanceInfo = [];
+      getPerformanceByDeptId(store.state.currentUserIdList).then((res) => {
+        if (res.data.code == 0 && res.data.data.length > 0) {
+          res.data.data.forEach((item, index) => {
+            item.targetInfoList.map((target) => {
+              if (target.actualAchievementRate !== null) {
+                // 获取所有的键名
+                let keys = Object.keys(JSON.parse(target.actualAchievementRate));
+
+                // 对键名进行排序
+                keys.sort(function (a, b) {
+                  // 使用正则表达式获取时间戳
+                  let timeA = new Date(a.match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/));
+                  let timeB = new Date(b.match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/));
+
+                  // 按照时间戳进行排序
+                  return timeB - timeA;
+                });
+
+                // 创建一个新的对象，并按照排序后的键名填充
+                let sortedData = {};
+                for (let i = 0; i < keys.length; i++) {
+                  sortedData[keys[i]] = JSON.parse(target.actualAchievementRate)[keys[i]];
+                }
+
+                const value = Object.values(sortedData)[0];
+                target.actualAchievementRateCopy = `${value}`;
+                target.actualAchievementRate = `${value}`;
+              } else {
+                target.actualAchievementRateCopy = 0;
+              }
+              if (target.explain !== null) {
+                target.explainCopy = [];
+                // 获取所有的键名
+                let keys = Object.keys(JSON.parse(target.explain));
+
+                // 对键名进行排序
+                keys.sort(function (a, b) {
+                  // 使用正则表达式获取时间戳
+                  let timeA = new Date(a.match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/));
+                  let timeB = new Date(b.match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/));
+
+                  // 按照时间戳进行排序
+                  return timeA - timeB;
+                });
+
+                // 创建一个新的对象，并按照排序后的键名填充
+                let sortedData = {};
+                for (let i = 0; i < keys.length; i++) {
+                  sortedData[keys[i]] = JSON.parse(target.explain)[keys[i]];
+                }
+                for (const [explainKey, explainValue] of Object.entries(sortedData)) {
+                  target.explainCopy.push(`${explainKey.split("@")[0]}：${explainValue}`);
+                }
+
+                target.explain = null;
+              }
+
+              return target;
+            });
+            // }
+
+            //数据扁平化
+            item.targetInfoList.forEach((target) => {
+              const newObj = {
+                userId: item.userId,
+                name: item.name,
+                deptId: item.deptId,
+                deptName: item.deptName,
+                index: index + 1,
+                maxRate: null,
+                minRate: null,
+                month: item.month,
+                ...target,
+              };
+              this.oneDeptPerformanceInfo.push(newObj);
+            });
+          });
+          // console.log(this.oneDeptPerformanceInfo);
+          const data = Array.from(
+            this.oneDeptPerformanceInfo.reduce((acc, item) => {
+              return new Set([...acc, item.targetId]);
+            }, new Set()),
+          );
+
+          getTargetScoreById(data).then((res) => {
+            if (res.data.code == 0) {
+              for (let key in res.data.data) {
+                const arrayToSort = res.data.data[key];
+                arrayToSort.sort((a, b) => a.score - b.score);
+                res.data.data[key] = arrayToSort;
+              }
+              this.targetScoreInfo = res.data.data;
+            }
+          });
+        }
+      });
+    },
+    //找得分
+    findTargetScore(targetId, actualAchievementRate, index) {
+      let isIncrement = false;
+      this.targetScoreInfo[targetId].map((item) => {
+        //数据是递增
+        if (Number(actualAchievementRate) >= Number(item.min) && Number(actualAchievementRate) < Number(item.max)) {
+          this.oneDeptPerformanceInfo[index].targetScore = item.score;
+        } else if (
+          Number(actualAchievementRate) <= Number(item.min) &&
+          Number(actualAchievementRate) > Number(item.max)
+        ) {
+          //递减
+          this.oneDeptPerformanceInfo[index].targetScore = item.score;
+        }
+      });
+      this.oneDeptPerformanceInfo[index].actualAchievementRate = this.oneDeptPerformanceInfo[
+        index
+      ].actualAchievementRate.replace(/\s/g, "");
+      let minRate = this.targetScoreInfo[targetId][0].min;
+      let maxRate = this.targetScoreInfo[targetId][this.targetScoreInfo[targetId].length - 1].max;
+      // const maxScore = this.targetScoreInfo[targetId][this.targetScoreInfo[targetId].length - 1].score;
+      // console.log(minRate, maxRate);
+      //递减
+      if (Number(minRate) > Number(maxRate)) {
+        maxRate = this.targetScoreInfo[targetId][0].min;
+        minRate = this.targetScoreInfo[targetId][this.targetScoreInfo[targetId].length - 1].max;
+        isIncrement = true;
+      }
+
+      //递增
+      if (!isIncrement) {
+        if (Number(actualAchievementRate) >= Number(maxRate) || Number(actualAchievementRate) < Number(minRate)) {
+          this.oneDeptPerformanceInfo[index].targetScore = 0;
+          this.isSubmit = false;
+        } else {
+          this.isSubmit = true;
+        }
+      } else {
+        if (Number(actualAchievementRate) > Number(maxRate) || Number(actualAchievementRate) <= Number(minRate)) {
+          this.oneDeptPerformanceInfo[index].targetScore = 0;
+          this.isSubmit = false;
+        } else {
+          this.isSubmit = true;
+        }
+      }
+
+      this.oneDeptPerformanceInfo[index].maxRate = maxRate;
+      this.oneDeptPerformanceInfo[index].minRate = minRate;
+    },
+    //整数变小数
+    addDecimal(val, index) {
+      if (Number.isInteger(Number(val)) && !val.includes(".")) {
+        this.oneDeptPerformanceInfo[index].actualAchievementRate = `${val}.00`;
+      }
+    },
+    //提交数据
+    sendPerformanceData() {
+      if (
+        this.oneDeptPerformanceInfo.find(
+          (item) => item.actualAchievementRate == "" || item.actualAchievementRate == null,
+        )
+      ) {
+        ElMessageBox.alert("必须填写所有指标的实现值", "警告", {
+          confirmButtonText: "确定",
+          type: "warning",
+        });
+      } else {
+        if (!this.isSubmit) {
+          ElMessageBox.alert("实现值超出得分范围不可提交", "警告", {
+            confirmButtonText: "确定",
+            type: "warning",
+          });
+        } else if (
+          !this.oneDeptPerformanceInfo.every((item) =>
+            /^-?\d+(\.\d{2})?$/.test(item.actualAchievementRate.replace(/\s+$/, "")),
+          )
+        ) {
+          ElMessageBox.alert("请输入指标实现值为数字且保留两位小数的数据", "警告", {
+            confirmButtonText: "确定",
+            type: "warning",
+          });
+        } else {
+          ElMessageBox.confirm("是否确认提交该部门指标数据？", "提示", {
+            confirmButtonText: "确定",
+            cancelButtonText: "取消",
+            type: "warning",
+          }).then(() => {
+            sendPerformanceTargetData(this.oneDeptPerformanceInfo).then((res) => {
+              if (res.data.code == 0) {
+                ElMessage.success("提交成功");
+                this.$router.replace({ name: "aboutInfo", query: { activeName: "second" } });
+              }
+            });
+          });
+        }
+      }
+    },
+    objectSpanMethod({ row, columnIndex, rowIndex }) {
+      if (columnIndex === 1 || columnIndex === 0) {
+        const tableData = this.oneDeptPerformanceInfo.filter((item) => item.userId == row.userId);
+
+        //第一行进入，不是第一行的价值观不等于上一行的价值观
+        if (rowIndex === 0 || row.name != this.oneDeptPerformanceInfo[rowIndex - 1].name) {
+          let rowspan = 0;
+
+          //遇到相同，合并的行数增加
+          if (tableData.length > 0) {
+            tableData.forEach((element) => {
+              if (element.name === row.name || element.index === row.index) {
+                rowspan++;
+              }
+            });
+          }
+
+          return [rowspan, 1];
+        } else {
+          return [0, 0];
+        }
+      }
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.performance {
+  padding: 17px;
+  background-color: #fff;
+  height: 95%;
+  border-radius: 10px;
+}
+.performance-title {
+  text-align: left;
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+.tooltip-style {
+  color: #e6a23c;
+  font-size: 11px;
+  white-space: nowrap;
+  text-align: left;
+}
+.bottom-button {
+  text-align: right;
+  margin: 10px;
+}
+</style>

@@ -1,0 +1,209 @@
+<template>
+  <div class="download">
+    <div class="title">下载Excel模板</div>
+    <div class="content">
+      <!-- <a href="/api/ifi-personal/performance/downloadExcel"> -->
+      <el-button @click="downloadExcel">下载空模板</el-button>
+      <!-- </a> -->
+
+      <el-button @click="downloadLastMonthExcel">下载上个月模板</el-button>
+
+      <el-upload
+        v-model:file-list="fileList"
+        class="upload-demo"
+        action="#"
+        accept="xlsx,xls"
+        multiple
+        :on-preview="handlePreview"
+        :on-remove="handleRemove"
+        :before-remove="beforeRemove"
+        :limit="1"
+        :on-exceed="handleExceed"
+        :on-change="loadFile"
+        :http-request="uploadHttpRequest"
+      >
+        <el-button type="primary">上传文件</el-button>
+        <template #tip>
+          <div class="el-upload__tip">只能上传Excel文件，后缀是xlsx/xls。</div>
+        </template>
+      </el-upload>
+      <!-- <el-button @click="downloadExcel">下载模板</el-button> -->
+      <!-- <el-button>上传文件</el-button> -->
+      <el-table :data="targetList">
+        <el-table-column lable="姓名">
+          <template #default="scope">
+            <span>{{ scope.row[0] }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column lable="指标名称">
+          <template #default="scope">
+            <span>{{ scope.row[1] }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column lable="指标应达成率">
+          <template #default="scope">
+            <span>{{ scope.row[2] }}</span>
+          </template>
+        </el-table-column>
+      </el-table>
+    </div>
+    <el-upload
+      class="upload-demo"
+      action="http://192.168.1.227:8989/ifi-personal/performance/upFile"
+      accept="xlsx,xls"
+      :on-preview="handlePreview"
+      :on-remove="handleRemove"
+      :before-remove="beforeRemove"
+      :limit="1"
+      :on-exceed="handleExceed"
+      :on-change="loadFile"
+      :http-request="uploadHttpRequest"
+    >
+      <el-button type="primary" size="small">上传附件</el-button>
+    </el-upload>
+    <input type="file" @change="changeHandle" />
+    <el-button></el-button>
+    <vue-office-excel :src="src" :options="options" />
+  </div>
+</template>
+
+<script>
+import { ElMessage } from "element-plus";
+
+import { downloadExcel, downloadLastMonthExcel } from "@/api/performance/index";
+import XLSX from "xlsx";
+//引入VueOfficeExcel组件
+import VueOfficeExcel from "@vue-office/excel";
+import axios from "@/utils/http";
+//引入相关样式
+import "@vue-office/excel/lib/index.css";
+
+export default {
+  components: {
+    VueOfficeExcel,
+  },
+  data() {
+    return {
+      uploadFile: "",
+      targetList: [],
+      excel: "http://static.shanhuxueyuan.com/demo/excel.xlsx", //设置文档地址
+      src: "",
+      options: {
+        minColLength: 10,
+        minRowLength: 10,
+        widthOffset: 0, //在默认渲染的列表宽度上再加10px宽
+        heightOffset: 0, //在默认渲染的列表高度上再加10px高
+        transformData: function (workbookData) {
+          //修改workbookData
+          return workbookData;
+        },
+      },
+      file: [],
+    };
+  },
+  methods: {
+    uploadHttpRequest(data) {
+      console.log(data);
+    },
+    loadFile(file, fileList) {
+      console.log(file, fileList);
+      this.uploadFile = file.raw;
+      let formData = new FormData();
+      formData.append("file", this.uploadFile);
+      console.log(formData);
+      axios.post("/api/ifi-personal/performance/upFile", formData).then((res) => {
+        if (res.data.code == 0) {
+          console.log(true);
+        }
+      });
+      const reader = new FileReader();
+      reader.readAsBinaryString(this.uploadFile);
+      //   reader.readAsArrayBuffer(this.uploadFile);
+      reader.onload = (ev) => {
+        try {
+          console.log(ev);
+          const f = ev.target.result;
+          // console.log(f);
+          const u8arr = new Uint8Array(f); // 转换为 Uint8Array
+          const workbook = XLSX.read(u8arr, { type: "array" }); // 使用 Uint8Array 读取
+          const xlsx = require("xlsx");
+          console.log(xlsx);
+          // const workbook = XLSX.read(f, { type: "binary" });
+          console.log(workbook);
+          const wsname = workbook.SheetNames[0];
+          console.log(wsname);
+          let excelData = [];
+          for (let i = 0; i < workbook.SheetNames.length; i++) {
+            const worksheet = workbook.Sheets[workbook.SheetNames[i]];
+
+            // 将sheet转换为json数组
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            console.log(jsonData);
+            excelData.push(jsonData);
+          }
+          console.log(excelData);
+
+          const useridList = excelData[0].map((item) => {
+            const idList = excelData[1].find((item1) => item1[1] == item[0]);
+            const targetidList = excelData[2].find((item1) => item1[1] == item[1]);
+            return Object.assign(
+              {},
+              item,
+              { userId: idList ? idList[0] : null },
+              { targetId: targetidList ? targetidList[0] : null },
+              { deliverableRate: item[2] },
+            );
+          });
+          this.targetList = useridList;
+          console.log(useridList);
+        } catch (e) {
+          console.log(e);
+          ElMessage.error("上传文件类型错误");
+        }
+      };
+    },
+    downloadExcel() {
+      downloadExcel();
+    },
+    downloadLastMonthExcel() {
+      downloadLastMonthExcel();
+    },
+    rendered() {
+      console.log("渲染完成");
+    },
+    changeHandle(event) {
+      console.log(event);
+      this.file = event.target.files[0];
+      let file = event.target.files[0];
+      console.log(file);
+      let fileReader = new FileReader();
+      fileReader.readAsArrayBuffer(file);
+      fileReader.onload = () => {
+        this.src = fileReader.result;
+        console.log(this.src);
+      };
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.download {
+  padding: 1rem;
+  background-color: #fff;
+  height: 95%;
+}
+.title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  padding: 1rem;
+  background-color: #fff;
+}
+.content {
+  display: flex;
+  justify-items: center;
+  text-align: center;
+}
+</style>

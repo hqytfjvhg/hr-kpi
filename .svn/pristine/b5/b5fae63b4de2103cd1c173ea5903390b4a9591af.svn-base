@@ -1,0 +1,302 @@
+<template>
+  <div class="performanceTable">
+    <div class="performanceTableTitle">查询部门业绩</div>
+    <el-form :rules="rules">
+      <el-form-item label="年份" prop="year">
+        <el-select clearable placeholder="请选择年份" v-model="year">
+          <el-option v-for="item in yearOptions" :key="item" :label="item" :value="item" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="月份" prop="month">
+        <el-select clearable placeholder="请选择月份" v-model="month">
+          <el-option v-for="item in monthOptions" :key="item.monthId" :label="item.month" :value="item.monthId" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="部门" prop="deptId">
+        <el-select clearable placeholder="请选择部门" v-model="deptId">
+          <el-option v-for="item in deptOptions" :key="item.deptId" :label="item.deptName" :value="item.deptId" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="姓名"><el-input placeholder="请输入查询的姓名" v-model="name"></el-input></el-form-item>
+      <el-button @click="getperformanceDept">查询</el-button>
+    </el-form>
+
+    <el-table :data="tableData" height="70vh" border>
+      <el-table-column label="序号" type="index" width="80"></el-table-column>
+      <el-table-column label="详情" type="expand" width="80">
+        <template #default="scope">
+          <div style="padding: 10px">
+            <el-table :data="scope.row.list" :span-method="objectSpanMethod" border style="width: 100%">
+              <el-table-column label="序号" type="index" width="50"></el-table-column>
+              <el-table-column label="指标名称" prop="targetName"></el-table-column>
+              <el-table-column label="应达成率" prop="deliverableRate"></el-table-column>
+              <el-table-column label="实达成率" prop="finalSorce"></el-table-column>
+              <!-- <el-table-column label="描述" prop="explain"></el-table-column> -->
+              <el-table-column label="实达成率审批历史" prop="actualAchievementRate" v-if="actualAchievementRate != ''">
+                <template #default="scope">
+                  <span v-if="scope.row.actualAchievementRate == null">未审批</span>
+                  <span v-else v-for="(item, index) in scope.row.actualAchievementRate" :key="index">
+                    {{ index + 1 }}.{{ item }}
+                    <br v-if="index !== scope.row.actualAchievementRate.length - 1" />
+                  </span>
+                </template>
+              </el-table-column>
+              <el-table-column label="描述" v-if="actualAchievementRate != ''">
+                <template #default="scope">
+                  <span v-if="scope.row.explain == null">未审批</span>
+                  <el-popover v-else placement="top" :width="220" trigger="hover">
+                    <span v-for="(item, index) in scope.row.explain" :key="index">{{ item }}。</span>
+                    <template #reference>
+                      <div>
+                        <span v-for="(item, index) in scope.row.explain" :key="index">
+                          {{ item }}
+                          <br v-if="index !== scope.row.explain.length - 1" />
+                        </span>
+                      </div>
+                    </template>
+                  </el-popover>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </template>
+      </el-table-column>
+
+      <el-table-column label="姓名" prop="name"></el-table-column>
+      <el-table-column label="操作">
+        <template #default="scope">
+          <el-tooltip v-if="scope.row.file == null || scope.row.file == ''" content="暂无文件可预览" placement="top">
+            <el-button type="info" size="small">预览业绩文件</el-button>
+          </el-tooltip>
+          <el-button v-else @click="previewExcel(scope.row, true)" size="small">预览业绩文件</el-button>
+          <el-tooltip v-if="scope.row.file == null || scope.row.file == ''" content="暂无文件可下载" placement="top">
+            <el-button type="info" size="small">下载业绩文件</el-button>
+          </el-tooltip>
+          <el-button v-else @click="previewExcel(scope.row, false)" size="small">下载业绩文件</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <el-dialog v-model="isShowExcel" title="预览文件" width="640">
+      <!-- <input type="file" @change="changeHandle" /> -->
+      <vue-office-excel :src="src" :options="options" />
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+import { getperformanceDeptList, previewHistory } from "@/api/performance/index";
+import { deptList } from "@/api/register/index";
+import { ElMessage } from "element-plus";
+import VueOfficeExcel from "@vue-office/excel";
+import "@vue-office/excel/lib/index.css";
+
+export default {
+  components: {
+    VueOfficeExcel,
+  },
+  data() {
+    return {
+      year: "",
+      month: "",
+      deptId: 1,
+      name: "",
+      deptOptions: [],
+      yearOptions: [],
+      tableData: [],
+      src: "",
+      isShowExcel: false,
+
+      monthOptions: [
+        { monthId: 1, month: "一月" },
+        { monthId: 2, month: "二月" },
+        { monthId: 3, month: "三月" },
+        { monthId: 4, month: "四月" },
+        { monthId: 5, month: "五月" },
+        { monthId: 6, month: "六月" },
+        { monthId: 7, month: "七月" },
+        { monthId: 8, month: "八月" },
+        { monthId: 9, month: "九月" },
+        { monthId: 10, month: "十月" },
+        { monthId: 11, month: "十一月" },
+        { monthId: 12, month: "十二月" },
+      ],
+      rules: {
+        year: [{ required: true, message: "请选择年份", trigger: "blur" }],
+        month: [{ required: true, message: "请选择月份", trigger: "blur" }],
+      },
+    };
+  },
+  created() {
+    this.nowtime();
+    // this.getValuesDeptList();
+    deptList()
+      .then((res) => {
+        if (res.data.code == 0) {
+          this.deptOptions = res.data.data;
+        }
+      })
+      .catch(() => {
+        ElMessage.error("请求失败");
+      });
+  },
+  methods: {
+    //获取当前时间
+    nowtime() {
+      let nowDate = new Date();
+      this.year = nowDate.getFullYear();
+      this.month = nowDate.getMonth() + 1;
+      for (let i = 2021; i <= this.year; i++) {
+        this.yearOptions.push(i);
+      }
+    },
+    getperformanceDept() {
+      const data = { year: this.year, month: this.month, deptId: this.deptId, name: this.name };
+      getperformanceDeptList(data)
+        .then((res) => {
+          if (res.data.code == 0 && JSON.stringify(res.data.data) !== "{}") {
+            //重组数据
+            const tableData = Object.values(res.data.data);
+            // console.log(tableData);
+            this.tableData = tableData.map((item) => {
+              // console.log(item);
+              const list = item.map((item) => {
+                if (item.actualAchievementRate !== null) {
+                  let actual = JSON.parse(item.actualAchievementRate);
+                  // console.log(actual);
+
+                  // console.log(Object.keys(actual).map((item) => item.split("@")[1]));
+                  // const sortedKeys = Object.keys(actual)
+                  //   .map((item) => item.split("@")[1])
+                  //   .sort(function (a, b) {
+                  //     return new Date(b) - new Date(a);
+                  //   });
+                  // console.log(sortedKeys);
+                  // const latestKey = sortedKeys[0];
+
+                  // 获取所有的键名
+                  var keys = Object.keys(actual);
+
+                  // 对键名进行排序
+                  keys.sort(function (a, b) {
+                    // 使用正则表达式获取时间戳
+                    var timeA = new Date(a.match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/));
+                    var timeB = new Date(b.match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/));
+
+                    // 按照时间戳进行排序
+                    return timeB - timeA;
+                  });
+
+                  // 创建一个新的对象，并按照排序后的键名填充
+                  var sortedData = {};
+                  for (var i = 0; i < keys.length; i++) {
+                    sortedData[keys[i]] = actual[keys[i]];
+                  }
+
+                  // console.log(sortedData);
+                  // console.log(sortedData[Object.keys(sortedData)[0]]);
+                  item.finalSorce = sortedData[Object.keys(sortedData)[0]];
+
+                  const result = Object.keys(sortedData).map((key) => {
+                    const value = sortedData[key];
+                    const formattedKey = key.split("@")[0]; // 提取@前面的部分
+                    return `${formattedKey}: ${value}`;
+                  });
+                  item.actualAchievementRate = result;
+                  // console.log(result);
+                }
+                if (item.explain !== null) {
+                  let actual2 = JSON.parse(item.explain);
+                  const result2 = Object.keys(actual2).map((key) => {
+                    let value = actual2[key];
+                    const formattedKey = key.split("@")[0]; // 提取@前面的部分
+                    return `${formattedKey}: ${value}`;
+                  });
+                  item.explain = result2;
+                  // console.log(result2);
+                }
+                return {
+                  targetName: item.targetName,
+                  deliverableRate: item.deliverableRate,
+                  actualAchievementRate: item.actualAchievementRate,
+                  explain: item.explain,
+                  // valueTotalScore: item.valueTotalScore,
+                  file: item.file,
+                  finalSorce: item.finalSorce,
+                };
+              });
+              // console.log(list);
+              return {
+                name: item[0].name,
+                file: item[0].file,
+                list: list,
+                year: this.year,
+                month: this.month,
+              };
+            });
+            console.log(this.tableData);
+          } else if (res.data.code == 0 && JSON.stringify(res.data.data) == "{}") {
+            this.tableData = [];
+            ElMessage.error("查询数据为空！");
+          }
+        })
+        .catch((e) => {
+          ElMessage.error("请求失败");
+          console.log(e);
+        });
+    },
+    previewExcel(row, state) {
+      console.log(row);
+      console.log(row.month);
+
+      const data = {
+        fileName: row.file,
+        month: row.month,
+        year: row.year,
+        name: row.name,
+      };
+      console.log(data);
+      //预览
+      if (state) {
+        previewHistory(data, state)
+          .then((res) => {
+            if (res.status == 200) {
+              this.src = res.data;
+              this.isShowExcel = true;
+            }
+          })
+          .catch(() => {
+            ElMessage.error("文件不存在，预览失败");
+          });
+      } else {
+        previewHistory(data, state);
+      }
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.performanceTable {
+  padding: 1rem;
+  background-color: #fff;
+  height: 95%;
+}
+.performanceTableTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  padding: 1rem;
+}
+.el-form {
+  display: flex;
+  justify-content: space-around;
+}
+.vue-office-excel {
+  height: 400px;
+}
+.el-table .el-table__cell {
+  text-align: center;
+}
+</style>

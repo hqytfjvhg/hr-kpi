@@ -1,0 +1,282 @@
+<template>
+  <div class="valuesTable">
+    <el-form class="formStyle">
+      <el-form-item label="年份" prop="year">
+        <el-select placeholder="请选择" v-model="year">
+          <el-option v-for="item in $store.state.yearOptions" :key="item" :label="item" :value="item" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="月份" prop="month">
+        <el-select placeholder="请选" v-model="month">
+          <el-option
+            v-for="item in $store.state.monthOptions"
+            :key="item.monthId"
+            :label="item.month"
+            :value="item.monthId"
+          />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="部门" prop="deptId">
+        <el-select :clearable="$store.state.role == 'ROOT' ? true : false" placeholder="请选择" v-model="deptId">
+          <el-option v-for="item in relatedDept" :key="item.deptId" :label="item.deptName" :value="item.deptId" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="姓名"><el-input placeholder="请输入" v-model="name"></el-input></el-form-item>
+      <el-button @click="getValuesDeptList()" type="primary">{{ $t("inquire") }}</el-button>
+    </el-form>
+
+    <el-table :data="tableData" border :height="tableHeight">
+      <el-table-column label="详情" type="expand" width="100">
+        <template #default="scope">
+          <div style="padding: 20px">
+            <el-table
+              :data="scope.row.list"
+              :span-method="objectSpanMethod"
+              border
+              show-summary
+              sum-text="总分"
+              style="width: 100%"
+            >
+              <el-table-column label="序号" type="index" width="80"></el-table-column>
+              <el-table-column label="价值观" prop="valuDescription"></el-table-column>
+              <el-table-column label="行为" prop="actionDescription">
+                <template #default="{ row }"
+                  ><div v-html="row.actionDescription" style="text-align: left"></div
+                ></template>
+              </el-table-column>
+              <el-table-column label="案例" prop="example"></el-table-column>
+              <el-table-column label="自评" prop="selfScore" width="80"></el-table-column>
+              <el-table-column label="部门" prop="leaderScore" width="80"></el-table-column>
+              <el-table-column label="人事" prop="hrScore" width="80"></el-table-column>
+              <el-table-column label="部门备注">
+                <template #default="scope">
+                  <el-popover
+                    placement="top"
+                    :width="300"
+                    v-if="
+                      scope.row.deptRemark &&
+                      scope.row.deptRemark.split('$').some((item) => item.split('：')[1] !== '未备注' && item !== '')
+                    "
+                  >
+                    <template #reference>
+                      <el-icon style="color: #e6a23c"><InfoFilled /></el-icon>
+                    </template>
+                    <div>{{ scope.row.deptRemark.replace(/\$/g, "。") }}</div>
+                  </el-popover>
+                </template>
+              </el-table-column>
+              <el-table-column label="人事备注">
+                <template #default="scope">
+                  <el-popover
+                    placement="top"
+                    :width="300"
+                    v-if="
+                      scope.row.hrRemark &&
+                      scope.row.hrRemark.split('$').some((item) => item.split('：')[1] !== '未备注' && item !== '')
+                    "
+                  >
+                    <template #reference
+                      ><el-icon style="color: #e6a23c"><InfoFilled /></el-icon>
+                    </template>
+                    <div v-for="(remark, index) in scope.row.hrRemark.split('$')" :key="index">
+                      <span v-if="remark.split('：')[1] !== '未备注' && remark !== ''" style="font-size: 14px"
+                        >{{ remark }}<br v-if="index !== scope.row.hrRemark.split('$').length - 1"
+                      /></span>
+                    </div>
+                  </el-popover>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </template>
+      </el-table-column>
+      <el-table-column label="序号" type="index" width="100"></el-table-column>
+      <el-table-column label="年份" prop="year"></el-table-column>
+      <el-table-column label="月份" prop="month"></el-table-column>
+      <el-table-column label="姓名" prop="name"></el-table-column>
+    </el-table>
+  </div>
+</template>
+
+<script>
+import axios from "@/utils/http";
+import { ElMessage } from "element-plus";
+
+import store from "@/store";
+import { InfoFilled } from "@element-plus/icons-vue";
+
+export default {
+  data() {
+    return {
+      tableData: [],
+      year: "",
+      month: "",
+      deptId: store.state.deptId,
+      name: "",
+      tableHeight: null,
+      relatedDept: [],
+      rules: {
+        year: [{ required: true, message: "请选择年份", trigger: "blur" }],
+        month: [{ required: true, message: "请选择月份", trigger: "blur" }],
+        deptId: [{ message: "请选择部门", trigger: "blur" }],
+      },
+    };
+  },
+  components: {
+    InfoFilled,
+  },
+  created() {
+    this.nowtime();
+    this.getValuesDeptList();
+  },
+  mounted() {
+    setTimeout(() => {}, 100);
+    this.$nextTick(() => {
+      // 根据浏览器高度设置初始高度
+      this.tableHeight = window.innerHeight - 190;
+      // 监听浏览器高度变化，改变表格高度
+      window.onresize = () => {
+        this.tableHeight = window.innerHeight - 190;
+      };
+    });
+
+    if (store.state.role == "ROOT") {
+      this.relatedDept = store.state.deptOptions;
+    } else if (store.state.role == "DEPTMANAGER" || store.state.role == "HRMANAGER") {
+      this.relatedDept = [];
+      // store.state.userInfo.clerkAssociatedDepartmentList.push(store.state.deptId);
+      store.state.userInfo.clerkAssociatedDepartmentList.push(store.state.deptId);
+      this.relatedDept = store.state.deptOptions.filter((item) =>
+        store.state.userInfo.clerkAssociatedDepartmentList.includes(item.deptId),
+      );
+      // store.state.deptOptions.filter(
+      //   (item) => {
+      //     store.state.userInfo.clerkAssociatedDepartmentList.map((item1) => {
+      //       if (item1 == item.deptId) {
+      //         this.relatedDept.push(item);
+      //       }
+      //     });
+      //   },
+      //   // store.state.userInfo.clerkAssociatedDepartmentList.includes(item.deptId),
+      // );
+    }
+  },
+  // computed: {
+  //   relatedDept() {
+  //     if (store.state.role == "ROOT") {
+  //       return store.state.deptOptions;
+  //     } else {
+  //       store.state.userInfo.clerkAssociatedDepartmentList.push(store.state.deptId);
+  //       return store.state.deptOptions.filter((item) =>
+  //         store.state.userInfo.clerkAssociatedDepartmentList.includes(item.deptId),
+  //       );
+  //     }
+  //   },
+  // },
+  methods: {
+    //获取当前时间
+    nowtime() {
+      this.year = store.state.year;
+      this.month = store.state.criticalMonth;
+    },
+    //获取部门价值观列表
+    getValuesDeptList() {
+      axios({
+        url: "/ifi-personal/valueData/searchValueDataHistoryRecords",
+        method: "post",
+        headers: {
+          token: store.state.token,
+        },
+        data: { year: this.year, month: this.month, deptId: this.deptId, name: this.name },
+      })
+        .then((res) => {
+          if (res.data.code == 0 && JSON.stringify(res.data.data) !== "{}") {
+            //重组数据
+            const tableData = Object.values(res.data.data);
+            // console.log(tableData);
+            this.tableData = tableData.map((item) => {
+              // console.log(item);
+              const list = item.map((item) => {
+                return {
+                  ...item,
+                };
+              });
+              return {
+                name: item[0].name,
+                year: item[0].year,
+                month: item[0].month,
+                userId: item[0].userId,
+                list: list,
+              };
+            });
+            // console.log(this.tableData);
+          } else if (res.data.code == 0 && JSON.stringify(res.data.data) == "{}") {
+            this.tableData = [];
+            ElMessage.error("查询数据为空！");
+          }
+        })
+        .catch(() => {
+          ElMessage.error("请求失败");
+        });
+    },
+    // 嵌套表格相同内容合并,是点击详情箭头触发的，根据每一行的row来判断
+    objectSpanMethod({ row, columnIndex, rowIndex }) {
+      if (columnIndex === 1) {
+        // console.log(row);
+        const tableData = this.tableData.filter((item) => item.userId == row.userId);
+        // console.log(tableData);
+
+        //第一行进入，不是第一行的价值观不等于上一行的价值观
+        // console.log(row.valuDescription, tableData[0].list);
+        // console.log(rowIndex);
+        // console.log(tableData[0].list);
+        if (rowIndex === 0 || row.valuDescription != tableData[0].list[rowIndex - 1].valuDescription) {
+          let rowspan = 0;
+
+          //遇到相同，合并的行数增加
+          if (tableData.length > 0 && tableData[0].list.length > 0) {
+            tableData[0].list.forEach((element) => {
+              if (element.valuDescription === row.valuDescription) {
+                rowspan++;
+              }
+            });
+            // console.log(rowspan);
+          }
+
+          return [rowspan, 1];
+        } else {
+          return [0, 0];
+        }
+      }
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.valuesTable {
+  padding: 1rem;
+  background-color: #fff;
+  height: 95%;
+  border-radius: 10px;
+}
+.valuesTableTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  padding: 1rem;
+}
+.formStyle {
+  display: flex;
+  justify-content: space-between;
+}
+
+.myNote {
+  display: -webkit-box;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+</style>

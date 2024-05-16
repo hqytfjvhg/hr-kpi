@@ -1,0 +1,365 @@
+<template>
+  <div class="values">
+    <div class="imgStyle"></div>
+    <!-- <div class="values-title">您正在填写{{ month }}月份价值观</div> -->
+    <!-- <el-progress
+      style="width: 60%; margin: auto"
+      :text-inside="true"
+      :stroke-width="15"
+      :percentage="currentIndex * (100 / valuesData.length)"
+    /> -->
+    <div class="tableStyle">
+      <table
+        v-for="(item, index) in valuesData"
+        :key="index"
+        style="width: 70%; margin: auto"
+        cellspacing="0"
+        cellpadding="0"
+        class="scroll-table"
+      >
+        <tr style="height: 160px; text-align: center" v-if="index == 0">
+          <td colspan="2">
+            <div style="font-weight: bolder; font-size: 1.3rem; padding-bottom: 15px; color: #698db5">
+              <span v-if="$store.state.role == 'ROOT'">【{{ $store.state.currentName }}】</span>
+              <span v-else>【{{ $store.state.name }}】</span> {{ $store.state.criticalMonth }}月份价值观
+            </div>
+            <div style="font-size: 1rem; color: #f56c6c">提交后不可修改，请谨慎填写。</div>
+          </td>
+        </tr>
+        <tr>
+          <td
+            style="
+              text-align: left;
+              padding: 1rem 1rem;
+              border-top: 1px double #ebeef5;
+              border-left: 1px double #ebeef5;
+            "
+          >
+            {{ index + 1 }}、{{ item.valueDescription }}
+          </td>
+          <td style="width: 30%; border-top: 1px double #ebeef5; border-right: 1px double #ebeef5">自评得分</td>
+        </tr>
+        <tr v-for="(item1, index1) in item['actionList']" :key="index1" style="font-size: 15px">
+          <td
+            :style="{
+              borderBottom:
+                index === valuesData.length - 1 && index1 === item['actionList'].length - 1 ? '1px solid #ebeef5' : '',
+            }"
+            style="border-top: 1px solid #ebeef5; border-right: 1px solid #ebeef5; border-left: 1px double #ebeef5"
+          >
+            <div style="text-align: left; padding: 0.5rem 3rem">
+              ({{ index1 + 1 }})、{{ item1.actionDescription }}
+
+              <div v-if="item1.needExample == false" style="padding: 0.5rem 2rem" class="ai-tab-change">
+                <el-radio-group v-model="item1.selfScore">
+                  <el-radio-button :label="1">是</el-radio-button>
+                  <el-radio-button :label="0">否</el-radio-button>
+                </el-radio-group>
+                <!-- <el-radio-group v-model="item1.selfScore">
+                  <el-radio border :label="1">是</el-radio>
+                  <el-radio border :label="0">否</el-radio>
+                </el-radio-group> -->
+              </div>
+              <div v-if="item1.needExample == true" style="padding: 0.5rem 2rem">
+                <el-input
+                  type="textarea"
+                  placeholder="请输入案例"
+                  style="width: 25rem"
+                  @blur="changeExampleScore(index, index1)"
+                  v-model="item1.enActionDescription"
+                ></el-input>
+              </div>
+            </div>
+          </td>
+          <td
+            :style="{
+              borderBottom:
+                index === valuesData.length - 1 && index1 === item['actionList'].length - 1 ? '1px solid #ebeef5' : '',
+            }"
+            style="border-top: 1px solid #ebeef5; border-right: 1px double #ebeef5"
+          >
+            {{ item1.selfScore }}
+          </td>
+          <!-- <td>
+            {{ item1.selfScore }}
+          </td> -->
+        </tr>
+      </table>
+      <div style="text-align: right; width: 70%; margin: auto; background-color: #fff">
+        <el-button type="primary" plain @click="sendValuesForm" style="margin: 15px">提交</el-button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import { getValues, sendValuesData, getOneUserValue, sendOneUserValue } from "@/api/values/index";
+import { ElMessage, ElMessageBox } from "element-plus";
+import axios from "axios";
+import router from "@/router";
+import store from "../../store";
+// import emitter from "@/utils/eventbus.js";
+export default {
+  data() {
+    return {
+      valuesData: [],
+      currentIndex: 1,
+      updatedValues: {},
+      leaderScore: "",
+      month: "",
+    };
+  },
+  created() {
+    this.month = new Date().getMonth() + 1;
+    if (this.$store.state.role == "ROOT") {
+      this.getOneUserValuesData();
+      // console.log(this.$store.state.currentUserId);
+    } else {
+      this.getValuesData();
+    }
+  },
+  methods: {
+    getValuesData() {
+      getValues()
+        .then((res) => {
+          if (res.data.code == 0) {
+            this.valuesData = res.data.data;
+            // for (let i = 0; i < res.data.data.length; i++) {
+            //   this.valuesData.push(res.data.data[i]);
+
+            // }
+            // console.log(this.valuesData);
+          }
+        })
+        .catch(() => {
+          ElMessage.error("请求失败") + 33.5;
+        });
+    },
+    getOneUserValuesData() {
+      getOneUserValue(this.$store.state.currentUserId)
+        .then((res) => {
+          if (res.data.code == 0) {
+            this.valuesData = res.data.data;
+            // for (let i = 0; i < res.data.data.length; i++) {
+            //   this.valuesData.push(res.data.data[i]);
+
+            // }
+            // console.log(this.valuesData);
+          }
+        })
+        .catch(() => {
+          ElMessage.error("请求失败");
+        });
+    },
+    changeExampleScore(index, index1) {
+      //判断案例是否得分
+      if (
+        this.valuesData[index].actionList[index1].enActionDescription != null &&
+        this.valuesData[index].actionList[index1].enActionDescription.split(" ").join("").length !== 0
+      ) {
+        this.valuesData[index].actionList[index1].selfScore = 1;
+      } else {
+        this.valuesData[index].actionList[index1].selfScore = 0;
+      }
+    },
+    sendValuesForm() {
+      try {
+        const updatedValuesData = this.valuesData.map((item) => {
+          const actionList = item.actionList.map((action) => {
+            if (action.needExample == true && action.selfScore == null) {
+              action.selfScore = 0;
+            }
+            if (action.selfScore != null) {
+              return {
+                actionDescription: action.actionDescription,
+                enActionDescription: action.enActionDescription,
+                selfScore: action.selfScore,
+                leaderScore: action.leaderScore,
+              };
+            }
+          });
+          return {
+            valueDescription: item.valueDescription,
+            actionList,
+          };
+        });
+
+        // console.log(updatedValuesData);
+        let newArray = [];
+        updatedValuesData.map((item) => {
+          const valueDescription = item.valueDescription;
+          delete item.valueDescription;
+          const action = item.actionList.map((action) => {
+            const example = action.enActionDescription;
+            delete action.enActionDescription;
+            action.example = example;
+            action.valueDescription = valueDescription;
+            return action;
+          });
+          action.forEach((action) => {
+            let actionItem = {
+              actionDescription: action.actionDescription,
+              selfScore: action.selfScore,
+              leaderScore: action.leaderScore,
+              valueDescription: action.valueDescription,
+              example: action.example,
+              deptId: this.$store.state.deptId,
+            };
+            newArray.push(actionItem);
+
+            return item;
+          });
+        });
+        // console.log(newArray);
+        let selfTotalScore = 0;
+        newArray.map((item) => {
+          selfTotalScore += item.selfScore;
+        });
+        // console.log(selfTotalScore);
+        ElMessageBox.confirm(`提交分数: 【${selfTotalScore}分】`, "警告", {
+          confirmButtonText: "是",
+          cancelButtonText: "否",
+          type: "warning",
+        })
+          .then(() => {
+            // console.log("提交成功");
+            if (store.state.role == "ROOT") {
+              sendOneUserValue(newArray)
+                .then((res) => {
+                  if (res.data.code == 0) {
+                    ElMessage.success("提交成功");
+                    router.replace({ name: "kpiScore" });
+                    // emitter.on("callBPageMethod", (func) => {
+                    //   func();
+                    // });
+                  }
+                })
+                .catch(() => {
+                  ElMessage.error("提交失败");
+                });
+            } else {
+              sendValuesData(newArray)
+                .then((res) => {
+                  if (res.data.code == 0) {
+                    ElMessage.success("提交成功");
+                    router.replace({ name: "aboutInfo" });
+                    // emitter.on("callBPageMethod", (func) => {
+                    //   func();
+                    // });
+                  }
+                })
+                .catch(() => {
+                  ElMessage.error("提交失败");
+                });
+            }
+          })
+          .catch((e) => {
+            ElMessage.info("取消提交");
+            console.log(e);
+          });
+      } catch (err) {
+        ElMessage.error("价值观未填写完成");
+      }
+    },
+    handleChange(index) {
+      this.currentIndex = index + 1;
+    },
+    deleteForm() {
+      axios
+        .delete("http://192.168.60.108:8989/ifi-personal/valueData/deleteValueDataByUserId")
+        .then((res) => {
+          // console.log(res);
+          if (res.data.code == 0) {
+            ElMessage.success("删除成功");
+          }
+        })
+        .catch(() => {});
+    },
+  },
+};
+</script>
+
+<style lang="scss">
+.values {
+  padding: 17px;
+  // background: linear-gradient(#dfdbd7, #d7d3d3);
+  // background-color: #fff;
+  // background-image: url(@/assets/bgi2.jpg);
+  background-color: #eef3ff;
+  break-inside: auto;
+  background-size: cover;
+  // height: 95%;
+  border-radius: 10px;
+  position: relative;
+  z-index: 1;
+}
+.imgStyle {
+  background-image: url(../../assets/bgi.png);
+  height: 30vh;
+  background-size: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: -1;
+}
+.tableStyle {
+  padding-top: 10vh;
+  border-radius: 15px;
+  padding-bottom: 20px;
+}
+.values-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  padding: 1rem;
+  color: #f56c6c;
+}
+
+.scroll {
+  height: 100%;
+  // display: block;
+  overflow-y: auto;
+}
+.scroll-table {
+  background-color: rgb(255, 255, 255);
+  padding: 0 60px;
+  // box-shadow: 0 2px 3px rgba(0, 0, 0, 0.07);
+  backdrop-filter: blur(6px);
+}
+.valuesTitle {
+  height: 4rem;
+  line-height: 4rem;
+  font-weight: 700;
+}
+
+.valuesAction .el-col:nth-child(2) {
+  line-height: 3rem;
+}
+//el-radio-button样式
+.ai-tab-change {
+  .el-radio-button {
+    margin-right: 20px;
+    border-radius: 4px;
+
+    .el-radio-button__inner {
+      width: 60px;
+      height: 36px;
+      border-radius: 4px 4px 4px 4px !important;
+      border: 1px solid #d8dce6 !important;
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 18px;
+      outline: none;
+      box-shadow: none;
+      // background-color: #475669 !important;
+    }
+    .el-radio-button__orig-radio:checked + .el-radio-button__inner {
+      background-color: #f63 !important;
+      border-color: #f63 !important;
+      box-shadow: -1px 0 0 0 #f63 !important;
+    }
+  }
+}
+</style>

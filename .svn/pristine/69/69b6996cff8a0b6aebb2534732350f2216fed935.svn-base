@@ -1,0 +1,680 @@
+<template>
+  <div class="reviewValues">
+    <SuperBox :selfScore="selfTotalScore" :managerScore="managerScore" :isShow="isManagerApproval"></SuperBox>
+
+    <div class="reviewTableStyle">
+      <div style="font-size: 1.5rem; color: black; height: 120px; line-height: 120px" v-if="valuesData.length > 0">
+        {{ valuesData[0].name }}{{ $store.state.year }}年{{ valuesData[0].month }}月价值观
+      </div>
+      <el-collapse v-model="activeNames">
+        <el-collapse-item
+          v-for="(item, index) in valuesData"
+          :key="item"
+          :title="index + 1 + '、' + item.valueDescription"
+          :name="index"
+        >
+          <el-table :data="item.actionList" border stripe>
+            <el-table-column label="行为名称"
+              ><template #default="scope"
+                ><div v-html="scope.row.actionDescription" style="text-align: left"></div></template
+            ></el-table-column>
+            <el-table-column label="案例">
+              <template #default="scope">
+                <div style="font-size: 0.8rem; color: gray; overflow-wrap: break-word; text-align: left">
+                  <span v-if="scope.row.example !== '未填写' && scope.row.example !== '该行为无需填写案例'">
+                    <span style="color: #e6a23c">{{ scope.row.example }}</span></span
+                  >
+                </div></template
+              >
+            </el-table-column>
+
+            <el-table-column prop="selfScore" label="自评"></el-table-column>
+            <el-table-column prop="leaderScore" label="上级" v-if="!state">
+              <template #default="scope"
+                >{{ scope.row.leaderScore }}
+                <el-tooltip
+                  effect="light"
+                  placement="top"
+                  v-if="
+                    scope.row.deptremark !== null &&
+                    scope.row.deptremark.some((item) => item.split('：')[1] !== '未备注')
+                  "
+                >
+                  <template #content
+                    ><div
+                      v-for="(remark, index) in scope.row.deptremark"
+                      :key="index"
+                      style="color: gray; width: 15vw; margin: auto; text-align: left"
+                    >
+                      <span v-if="remark.split('：')[1] !== '未备注'" style="font-size: 14px">{{ remark }}。</span>
+                      <br v-if="index !== scope.row.deptremark.length - 1" /></div
+                  ></template>
+                  <el-icon style="color: #e6a23c" v-if="scope.row.deptremark"><InfoFilled /></el-icon>
+                </el-tooltip>
+              </template>
+            </el-table-column>
+            <el-table-column label="部门" prop="currentLeaderScore" v-if="state"></el-table-column>
+            <el-table-column label="人事" prop="currentHrScore" v-if="!state">
+              <template #default="scope">
+                {{ scope.row.currentHrScore }}
+                <el-tooltip
+                  effect="light"
+                  placement="top"
+                  v-if="scope.row.remark && scope.row.remark.some((item) => item.split('：')[1] !== '未备注')"
+                >
+                  <template #content
+                    ><div
+                      v-for="(remark, index) in scope.row.remark"
+                      :key="index"
+                      style="color: gray; width: 15vw; margin: auto; text-align: left"
+                    >
+                      <span v-if="remark.split('：')[1] !== '未备注'" style="font-size: 14px">
+                        <span v-if="remark.split(':')[1] !== '未备注'">{{ remark }}</span></span
+                      >
+                      <br v-if="index !== scope.row.remark.length - 1" /></div
+                  ></template>
+                  <el-icon style="color: #e6a23c"><InfoFilled /></el-icon>
+                </el-tooltip> </template
+            ></el-table-column>
+            <el-table-column label="得分" min-width="120">
+              <template #default="scope">
+                <!-- 修改评分 -->
+                <!-- <div style="padding: 0 2rem"> -->
+                <span
+                  v-if="
+                    $store.state.role == 'DEPTMANAGER' || $store.state.role == 'HRMANAGER' || $store.state.role == 'HR'
+                  "
+                  ><el-radio-group
+                    v-model="scope.row.currentLeaderScore"
+                    v-if="state"
+                    size="large"
+                    @change="changeButton"
+                  >
+                    <el-radio-button :label="1">是</el-radio-button>
+                    <el-radio-button :label="0">否</el-radio-button>
+                  </el-radio-group>
+                  <el-radio-group v-model="scope.row.currentHrScore" v-if="!state" size="large" @change="changeButton">
+                    <el-radio-button :label="1">是</el-radio-button>
+                    <el-radio-button :label="0">否</el-radio-button>
+                  </el-radio-group>
+                </span>
+                <!-- </div> -->
+              </template>
+            </el-table-column>
+            <el-table-column label="备注" min-width="120">
+              <template #default="scope">
+                <el-input
+                  type="textarea"
+                  placeholder="请备注未得分原因"
+                  v-model="scope.row.deptRemark"
+                  @input="removeSpaces(scope.row)"
+                  v-if="state"
+                  id="input"
+                  :autosize="{ minRows: 2, maxRows: 5 }"
+                ></el-input>
+                <el-input
+                  type="textarea"
+                  placeholder="请备注未得分原因"
+                  @input="removeSpaces(scope.row)"
+                  v-model="scope.row.hrRemark"
+                  v-else
+                  id="input"
+                  :autosize="{ minRows: 2, maxRows: 5 }"
+                ></el-input>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-collapse-item>
+      </el-collapse>
+
+      <!-- <table
+        v-for="(item, index) in valuesData"
+        :key="index"
+        style="width: 100%; margin: auto"
+        cellspacing="0"
+        cellpadding="0"
+        id="myTable"
+        class="scroll-table"
+      >
+        <tr class="tableTrStyle" v-if="index == 0">
+          <td :colspan="tableColumnCount">
+            <div style="font-weight: 700; font-size: 1.3rem; color: #698db5">
+              正在审批【{{ valuesData[0].name }}】{{ valuesData[0].month }}月价值观
+            </div>
+            <div style="font-size: 1rem; color: #f56c6c">提交后不可修改，请谨慎填写。</div>
+          </td>
+        </tr>
+        <tr>
+          <td
+            colspan="1"
+            style="
+              text-align: left;
+              padding: 1rem 1rem;
+              font-size: 18px;
+              font-weight: 700;
+              border-top: 1px double #ebeef5;
+              border-left: 1px double #ebeef5;
+            "
+          >
+            {{ index + 1 }}、{{ item.valueDescription }}
+          </td>
+          <td
+            colspan="1"
+            style="
+              width: 15%;
+              font-size: 18px;
+              font-weight: 700;
+              border-top: 1px double #ebeef5;
+              border-left: 1px solid #ebeef5;
+              border-right: 1px double #ebeef5;
+            "
+          >
+            自评得分
+          </td>
+          <td
+            colspan="1"
+            v-if="!state"
+            style="
+              width: 15%;
+              font-size: 18px;
+              font-weight: 700;
+              border-top: 1px double #ebeef5;
+              border-right: 1px double #ebeef5;
+            "
+          >
+            部门审批
+          </td>
+          <td
+            colspan="1"
+            v-if="state"
+            style="
+              width: 15%;
+              font-size: 18px;
+              font-weight: 700;
+              border-top: 1px double #ebeef5;
+              border-right: 1px double #ebeef5;
+            "
+          >
+            部门审批
+          </td>
+          <td
+            colspan="1"
+            v-if="!state"
+            style="
+              width: 15%;
+              font-size: 18px;
+              font-weight: 700;
+              border-top: 1px double #ebeef5;
+              border-right: 1px double #ebeef5;
+            "
+          >
+            人事行政部
+          </td>
+        </tr>
+        <tr v-for="(item1, index1) in item['actionList']" :key="index1">
+          <td
+            :style="{
+              borderBottom:
+                index === valuesData.length - 1 && index1 === item['actionList'].length - 1 ? '1px solid #ebeef5' : '',
+            }"
+            style="border-top: 1px solid #ebeef5; border-left: 1px double #ebeef5"
+          >
+            <div style="text-align: left; padding: 0.5rem 3rem; font-size: 16px">
+              <div v-html="item1.actionDescription"></div>
+              <div style="margin: 0.5rem 2rem; font-size: 0.8rem; color: gray; width: 20vw; overflow-wrap: break-word">
+                <span v-if="item1.example !== '未填写' && item1.example !== '该行为无需填写案例'">
+                  案例：<span style="color: #e6a23c">{{ item1.example }}。</span></span
+                >
+              </div>
+              <div style="padding: 0 2rem" class="ai-tab-change">
+                <span v-if="$store.state.role == 'DEPTMANAGER' || $store.state.role == 'HRMANAGER'"
+                  ><el-radio-group v-model="item1.currentLeaderScore" v-if="state">
+                    <el-radio-button :label="1">是</el-radio-button>
+                    <el-radio-button :label="0">否</el-radio-button>
+                  </el-radio-group>
+                  <el-radio-group v-model="item1.currentHrScore" v-if="!state">
+                    <el-radio-button :label="1">是</el-radio-button>
+                    <el-radio-button :label="0">否</el-radio-button>
+                  </el-radio-group>
+                </span>
+              </div>
+              <div style="padding: 0.5rem 2rem">
+                <el-input
+                  type="textarea"
+                  placeholder="请备注未得分原因"
+                  style="width: 20vw"
+                  v-model="item1.deptRemark"
+                  v-if="state == true"
+                  id="input"
+                ></el-input>
+                <el-input
+                  type="textarea"
+                  placeholder="请备注未得分原因"
+                  style="width: 20vw"
+                  v-model="item1.hrRemark"
+                  v-else
+                  id="input"
+                ></el-input>
+              </div>
+            </div>
+          </td>
+          <td
+            :style="{
+              borderBottom:
+                index === valuesData.length - 1 && index1 === item['actionList'].length - 1 ? '1px solid #ebeef5' : '',
+            }"
+            style="border-top: 1px solid #ebeef5; border-left: 1px double #ebeef5"
+          >
+            {{ item1.selfScore }}
+          </td>
+          <td
+            v-if="!state"
+            :style="{
+              borderBottom:
+                index === valuesData.length - 1 && index1 === item['actionList'].length - 1 ? '1px solid #ebeef5' : '',
+            }"
+            style="border-top: 1px solid #ebeef5; border-left: 1px double #ebeef5"
+          >
+            {{ item1.leaderScore }}
+            <div
+              v-for="(remark, index) in item1.deptremark"
+              :key="index"
+              style="color: gray; width: 15vw; margin: auto; text-align: left"
+            >
+              <span v-if="remark.split('：')[1] !== '未备注'" style="font-size: 14px">{{ remark }}。</span>
+              <br v-if="index !== item1.deptremark.length - 1" />
+            </div>
+          </td>
+          <td
+            v-if="state"
+            :style="{
+              borderBottom:
+                index === valuesData.length - 1 && index1 === item['actionList'].length - 1 ? '1px solid #ebeef5' : '',
+            }"
+            style="border-top: 1px solid #ebeef5; border-left: 1px double #ebeef5; border-right: 1px double #ebeef5"
+          >
+            {{ item1.currentLeaderScore }}
+          </td>
+          <td
+            v-if="!state"
+            :style="{
+              borderBottom:
+                index === valuesData.length - 1 && index1 === item['actionList'].length - 1 ? '1px solid #ebeef5' : '',
+            }"
+            style="border-top: 1px solid #ebeef5; border-right: 1px solid #ebeef5; border-left: 1px double #ebeef5"
+          >
+            {{ item1.currentHrScore }}
+            <div
+              v-for="(remark, index) in item1.remark"
+              :key="index"
+              style="width: 15vw; color: gray; text-align: left"
+            >              <span v-if="remark.split('：')[1] !== '未备注'" style="font-size: 14px">{{ remark }}。</span>
+              <br v-if="index !== item1.remark.length - 1" />
+            </div>
+          </td>
+        </tr>
+      </table> -->
+      <div style="text-align: right" v-if="valuesData.length > 0">
+        <el-button type="primary" @click="sendValuesForm" style="margin: 15px 0">提交</el-button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import { getValueByUserId, sendLeaderScore } from "@/api/about/index";
+import store from "@/store";
+import router from "@/router";
+// import emitter from "@/utils/eventbus.js";
+
+import { ElMessage, ElMessageBox } from "element-plus";
+import { InfoFilled } from "@element-plus/icons-vue";
+import SuperBox from "@/components/drag/SuperBox.vue";
+// import axios from "axios";
+export default {
+  components: { InfoFilled, SuperBox },
+  data() {
+    return {
+      valuesData: {},
+      currentIndex: 1,
+      updatedValues: {},
+      leaderScore: 0, //部门评分
+      hrScore: 0, //人事评分
+      valueList: [],
+      state: "", //是否是部门审批
+      userId: store.state.currentUserId,
+      remark: [], //展示前面审批人的备注
+      allRemark: "", //暂存所有的备注
+      isDeptFirst: false,
+      month: null, //月份
+      selfTotalScore: 0, //当前自评总分
+      managerScore: 0,
+      activeNames: [0, 1, 2, 3, 4],
+      isManagerApproval: true, //判断拖拽组件是否是部门审批
+    };
+  },
+  mounted() {
+    this.userId = store.state.currentUserId;
+    // console.log(typeof this.userId);
+    this.month = new Date().getMonth() + 1;
+    this.$nextTick(() => {
+      this.getValuesData();
+    });
+  },
+  // activated() {
+  //   this.getValuesData();
+  //   this.month = new Date().getMonth() + 1;
+  // },
+  computed: {
+    tableColumnCount() {
+      // console.log(this.state && this.isDeptFirst);
+      if (this.state) {
+        return 3;
+      } else {
+        return 4;
+      }
+
+      // return document.getElementById("myTable").rows[1].cells.length;
+    },
+  },
+  methods: {
+    // 根据不同身份获取价值观数据
+    getValuesData() {
+      // console.log(this.userId);
+      // console.log(Number(store.state.currentUserId));
+      getValueByUserId(this.userId)
+        .then((res) => {
+          // const tableData = Object.values(res.data.data);
+          // this.valuesData = tableData[0];
+          // console.log(res.data.data);
+          this.selfTotalScore = 0;
+          if (res.data.code == 0) {
+            this.valuesData = res.data.data.result;
+            this.state = res.data.data.isDeptFlow;
+            this.valuesData.map((item) => {
+              item.actionList.map((action) => {
+                this.selfTotalScore += action.selfScore;
+                // if (action.actionDescription.indexOf("*") !== -1) {
+                //   action.needExample = true;
+                // } else {
+                //   action.needExample = false;
+                // }
+                if (action.example == null || action.example.length == 0) {
+                  action.example = "未填写";
+                }
+                //  else if (action.example == null && action.actionDescription.indexOf("*") == -1) {
+                //   action.example = "该行为无需填写案例";
+                // }
+                // console.log(action.actionDescription.indexOf("*") !== -1, action.example == null);
+                //部门进入
+                if (this.state) {
+                  //如果是第一位
+                  if (action.deptRemark == null || action.deptRemark == "") {
+                    this.isDeptFirst = true;
+                    action.currentLeaderScore = action.selfScore;
+                    action.deptRemark = "";
+                    action.hrRemark = "";
+                    // action.leaderScore = action.selfScore;
+                  } else {
+                    action.currentLeaderScore = action.leaderScore;
+                    let remarkArr = action.deptRemark.split("$");
+                    remarkArr.pop();
+                    // console.log(remarkArr, 1111);
+                    action.remark = remarkArr;
+                    // action.remark = remarkArr.join("。");
+                    // console.log(action.remark);
+                    action.deptRemark = "";
+                    action.hrRemark = "";
+                  }
+                  //人事进入
+                } else {
+                  let remarkArr = [];
+                  if (action.hrRemark == null || action.hrRemark == "") {
+                    //人事第一位审批上一位审批人的分数是部门的最终分数
+                    action.hrScore = action.leaderScore;
+                    //定位上一位的分数
+                    action.currentHrScore = action.hrScore;
+
+                    let deptremark = action.deptRemark.split("$");
+                    deptremark.pop();
+                    action.deptremark = deptremark;
+                    action.hrRemark = "";
+                  } else {
+                    //不是第一位审批人就直接等于上一位的分数
+                    action.currentHrScore = action.hrScore;
+                    remarkArr = action.hrRemark.split("$");
+                    remarkArr.pop();
+                    let deptremark = action.deptRemark.split("$");
+                    deptremark.pop();
+                    // remarkArr = remarkArr.concat();
+                    action.deptremark = deptremark;
+                    // console.log(remarkArr, 1111);
+                    action.remark = remarkArr;
+                    action.hrRemark = "";
+                  }
+                }
+                return action;
+              });
+              return item;
+            });
+          }
+          this.changeButton();
+          // console.log(this.allRemark);
+          // console.log(this.selfTotalScore);
+          // console.log(this.valuesData);
+        })
+        .catch(() => {
+          ElMessage.error("请求失败");
+        });
+    },
+    changeButton() {
+      this.managerScore = 0;
+      this.valuesData.map((item) => {
+        item.actionList.map((item1) => {
+          if (this.state) {
+            this.managerScore += item1.currentLeaderScore;
+          } else {
+            this.managerScore += item1.currentHrScore;
+          }
+        });
+      });
+      console.log(this.selfTotalScore, this.managerScore);
+    },
+    handleChange(index) {
+      this.currentIndex = index + 1;
+    },
+    removeSpaces(row) {
+      row.deptRemark = row.deptRemark.replace(/\s/g, "");
+      row.hrRemark = row.hrRemark.replace(/\s/g, "");
+    },
+    sendValuesForm() {
+      let newArray = [];
+      const leaderData = this.valuesData.map((item) => {
+        const list = item.actionList.map((action) => {
+          let remark = action.remark ? action.remark + "$" : "";
+          let deptRemark = action.deptRemark.replace(" ", "") == "" ? "未备注" : action.deptRemark;
+          let hrRemark = action.hrRemark.replace(" ", "") == "" ? "未备注" : action.hrRemark;
+          if (this.state) {
+            return {
+              dataId: action.dataId,
+              deptRemark: remark + store.state.name + "：" + deptRemark + "$",
+              // deptRemark: remark + ":" + deptRemark + "$",
+              leaderScore: action.currentLeaderScore,
+            };
+          } else {
+            return {
+              dataId: action.dataId,
+              hrRemark: remark + store.state.name + "：" + hrRemark + "$",
+              // hrRemark: remark + ":" + hrRemark + "$",
+              hrScore: action.currentHrScore,
+            };
+          }
+        });
+        list.forEach((action) => {
+          newArray.push(action);
+        });
+
+        return {
+          month: item.month,
+          userId: store.state.currentUserId,
+          year: item.year,
+          list: newArray,
+          deptFlowState: store.state.currentState,
+        };
+      });
+      let leaderTotalScore = 0;
+      if (this.state) {
+        leaderData[0].list.map((item) => {
+          leaderTotalScore += item.leaderScore;
+        });
+      } else {
+        leaderData[0].list.map((item) => {
+          leaderTotalScore += item.hrScore;
+        });
+      }
+
+      // console.log("提交数据", leaderData[0]);
+      // ElMessageBox.confirm(
+      //   `${this.valuesData[0].name}自评总分：【${this.selfTotalScore}分】，您为其评分：【${leaderTotalScore}分】，是否确定提交？`,
+      //   "提示",
+      //   {
+      //     confirmButtonText: "确定",
+      //     cancelButtonText: "取消",
+      //     type: "warning",
+      //   },
+      // )
+      ElMessageBox.confirm(
+        `
+  <div>
+    ${this.valuesData[0].name}<br>
+    自评得分：【${this.selfTotalScore}分】<br>
+    管理评分：【${leaderTotalScore}分】
+  </div>`,
+        "提示",
+        {
+          dangerouslyUseHTMLString: true, // 开启 HTML 字符串模式
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning",
+        },
+      )
+        .then(() => {
+          // leaderData.map((item, index) => {
+          //   leaderScore[index] = item;
+          // });
+
+          sendLeaderScore(leaderData[0])
+            .then((res) => {
+              if (res.data.code == 0) {
+                //提交完后刷新个人信息的函数
+
+                // console.log("提交了");
+                ElMessage.success("提交成功");
+                router.replace({ name: "aboutInfo" });
+                // emitter.on("callBPageMethod", (func) => {
+                //   func();
+                //   console.log("执行了");
+                // });
+              }
+            })
+            .catch((err) => {
+              console.log(err);
+              ElMessage.error("提交失败");
+            });
+        })
+        .catch(() => {
+          ElMessage.info("取消提交");
+        });
+    },
+  },
+};
+</script>
+<style lang="scss" scoped>
+.reviewValues {
+  background-color: #fff;
+  min-height: 100%;
+  width: 100%;
+  border-radius: 10px;
+}
+.reviewTableStyle {
+  padding: 0 20px;
+}
+
+// .scroll {
+//   height: 100%;
+//   display: block;
+//   overflow-y: auto;
+
+//   /* padding-bottom: 1rem; */
+// }
+// .scroll-table {
+//   color: black;
+//   background-color: rgb(255, 255, 255);
+//   padding: 0 60px;
+
+//   .tableTrStyle {
+//     height: 160px;
+//     text-align: center;
+//     // background-color: #f6f9ff;
+//     // background-color: rgba(255, 255, 255, 0.8) !important;
+//     // backdrop-filter: blur(5px);
+//   }
+//   // box-shadow: 0 2px 3px rgba(0, 0, 0, 0.07);
+//   // backdrop-filter: blur(6px);
+// }
+// .valuesTitle {
+//   /* height: 4rem; */
+//   line-height: 4rem;
+//   font-weight: 700;
+// }
+// .valuesAction {
+//   margin-top: 0.5rem;
+//   border-bottom: rgba(234, 234, 239, 0.5) solid 1px;
+// }
+// .valuesAction .el-col:nth-child(2),
+// .valuesAction .el-col:nth-child(3),
+// .valuesAction .el-col:nth-child(4),
+// .valuesAction .el-col:nth-child(5) {
+//   line-height: 2rem;
+// }
+// .remarkStyle {
+//   height: 21px;
+// }
+
+// .ai-tab-change {
+//   .el-radio-button {
+//     margin-right: 20px;
+//     border-radius: 4px;
+//     .el-radio-button__inner {
+//       width: 60px;
+//       height: 36px;
+//       border-radius: 4px 4px 4px 4px;
+//       border: 1px solid #d8dce6;
+//       font-size: 14px;
+//       font-weight: 400;
+//       line-height: 18px;
+//       outline: none;
+//       box-shadow: none;
+//       // background-color: #475669 !important;
+//     }
+//     .el-radio-button__orig-radio:checked + .el-radio-button__inner {
+//       background-color: #f63 !important;
+//       border-color: #f63 !important;
+//       box-shadow: -1px 0 0 0 #f63 !important;
+//     }
+//   }
+// }
+
+:deep(.el-collapse-item__header) {
+  padding-left: 10px;
+  font-weight: 700;
+  border-left: 1px solid #ebeef5;
+  border-right: 1px solid #ebeef5;
+}
+:deep(.el-collapse-item__content) {
+  padding-bottom: 0;
+}
+:deep(.el-table td.el-table__cell div) {
+  font-size: 15px;
+}
+</style>

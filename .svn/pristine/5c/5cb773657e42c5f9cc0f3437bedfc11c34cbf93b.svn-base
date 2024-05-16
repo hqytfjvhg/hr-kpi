@@ -1,0 +1,54 @@
+import axios from "@/utils/http";
+import { ElMessage } from "element-plus";
+
+export function getKpiList(data) {
+  return axios({
+    url: "/api/ifi-personal/performance/searchPerformanceFinalData",
+    method: "post",
+    data,
+  });
+}
+export function saveKPIData(data, _this) {
+  return axios({
+    url: "/api/ifi-personal/performance/synchronizationKPisnapshotData/" + data,
+  })
+    .then((res) => {
+      if (res.data.code == 0) {
+        ElMessage.success("保存成功");
+        _this.selectKpiHistory();
+      }
+    })
+    .catch();
+}
+//查询kpi历史
+export function selectKpiHistory(data) {
+  return axios({
+    url: "/api/ifi-personal/performance/searchKpiHistorySnapshotData",
+    method: "post",
+    data,
+  });
+}
+//预览
+export function previewKpiHistory(data) {
+  return axios({
+    url: "/api/ifi-personal/performance/searchMonthlyPerformanceEvaluationForm",
+    method: "post",
+    data,
+  });
+}
+//计算最新月的kpi数据
+export function calculateNewestKpi(data) {
+  return axios({
+    url: "/api/ifi-personal/performance/searchPerformanceFinalData",
+    method: "post",
+    data,
+  });
+}
+//移除user
+export function removeUser(data) {
+  return axios({
+    url: "/api/ifi-personal/performance/removeUserComouteCompletionProgress",
+    method: "post",
+    data,
+  });
+}

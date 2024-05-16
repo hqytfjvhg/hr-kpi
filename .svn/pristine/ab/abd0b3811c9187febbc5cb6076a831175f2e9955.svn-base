@@ -1,0 +1,476 @@
+<template>
+  <div class="tableVisual">
+    <el-form class="form-style">
+      <el-form-item label="年份" prop="year">
+        <el-select placeholder="请选择" v-model="year">
+          <el-option v-for="item in $store.state.yearOptions" :key="item" :label="item" :value="item" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="月份" prop="month">
+        <el-select placeholder="请选择" v-model="month">
+          <el-option
+            v-for="item in $store.state.monthOptions"
+            :key="item.monthId"
+            :label="item.month"
+            :value="item.monthId"
+          />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="部门" prop="deptId" min-width="224">
+        <el-select
+          min-width="184"
+          style="min-width: 184px"
+          clearable
+          collapse-tags
+          multiple
+          placeholder="请选择"
+          v-model="deptId"
+        >
+          <el-option v-for="item in relatedDept" :key="item.deptId" :label="item.deptName" :value="item.deptId" />
+        </el-select>
+      </el-form-item>
+
+      <el-button @click="getDeptKPIAllInfo" type="primary">查询</el-button>
+    </el-form>
+    <!-- 部门考核汇总表 -->
+
+    <!-- <div style="display: flex" v-if="basicInfoMaxLength.length > 0" class="table-container" :style="{ width: width }">
+      <table class="table-style" id="printMe" border="1" color="black" align="center" cellpadding="0" cellspacing="0">
+        <thead>
+          <tr style="height: 6vh; font-size: 20px; width: auto">
+            <th :colspan="9 + basicInfoMaxLength.length * 4">
+              <span v-for="(item, index) in deptNameList" :key="item"
+                >{{ item.deptName }}<span v-if="index != deptNameList.length - 1">-</span></span
+              >绩效考核汇总表
+            </th>
+          </tr>
+
+          <tr style="font-size: 16px; height: 5vh; background-color: #a6a6a6; font-weight: 700">
+            <th rowspan="2" colspan="3" style="background-color: #a6a6a6; width: 220px">
+              {{ year }}年（{{ month }}）月<br />
+            </th>
+
+            <th colspan="4" v-for="(item, index) in basicInfoMaxLength" :key="item" class="targetStyle">
+              指标{{ index + 1 }}
+            </th>
+
+            <th rowspan="2" colspan="3" style="background-color: #ffc000">价值观 <br />（16分）</th>
+            <th rowspan="2" colspan="2" style="background-color: #a6a6a6">绩效核算</th>
+            <th rowspan="3" style="background-color: #00b0f0" class="KPIStyke">奖金系数</th>
+        
+          </tr>
+          <tr style="height: 5vh">
+            <td colspan="4" v-for="(item, index) in basicInfoMaxLength" :key="index" style="text-align: center">
+              {{ item.targetName }}
+            </td>
+          </tr>
+
+          <tr style="height: 5vh">
+            <td>序号</td>
+            <td>姓名</td>
+            <td>职务</td>
+
+            <td
+              colspan="4"
+              v-for="item in basicInfoMaxLength"
+              :key="item"
+              style="text-align: center"
+              class="targetStyle"
+            >
+              <el-row>
+                <el-col :span="6" style="border-right: 1px solid black; background-color: #ffff00; line-height: 5vh"
+                  >权重</el-col
+                >
+                <el-col :span="6" style="border-right: 1px solid black; line-height: 5vh">实现值</el-col>
+                <el-col :span="6" style="border-right: 1px solid black; line-height: 5vh">指标得分</el-col>
+                <el-col :span="6" style="background-color: #92d050; line-height: 5vh">实际得分</el-col>
+              </el-row>
+            </td>
+
+            <td style="background-color: #ffff00">权重</td>
+            <td>
+              指标<br />
+              得分
+            </td>
+            <td style="background-color: #92d050">
+              实际<br />
+              得分
+            </td>
+            <td>总权重</td>
+            <td style="background-color: #92d050">
+              实际<br />
+              总得分
+            </td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(item, index) in oneDeptAllKPIInfo" :key="index" style="height: 5vh">
+            <td>{{ index + 1 }}</td>
+            <td>{{ item.name }}</td>
+            <td>
+              {{ item.position }}
+            </td>
+            <td colspan="4" v-for="(item1, index) in item.basicInfoContentList" :key="index" class="targetStyle">
+              <el-row>
+                <el-col
+                  :span="6"
+                  style="border-right: 1px solid black; line-height: 3vw"
+                  :style="{ backgroundColor: item1['weight_' + item1.targetId] == '' ? '' : '#ffff00' }"
+                  >{{ item1["weight_" + item1.targetId]
+                  }}<span v-if="item1['weight_' + item1.targetId] != ''">%</span></el-col
+                >
+                <el-col :span="6" style="border-right: 1px solid black; line-height: 3vw">{{
+                  item1["finalActualAchievementRate_" + item1.targetId]
+                }}</el-col>
+                <el-col :span="6" style="border-right: 1px solid black; line-height: 3vw">{{
+                  item1["targetBasicScore_" + item1.targetId]
+                }}</el-col>
+                <el-col :span="6" style="line-height: 3vw">{{ item1["targetScore_" + item1.targetId] }}</el-col>
+              </el-row>
+            </td>
+
+            <td>{{ item.valueWeight }}%</td>
+            <td>{{ item.valueSumScore }}</td>
+            <td>{{ item.valueResultScore }}</td>
+            <td>100%</td>
+            <td>{{ item.resultTotalScore }}</td>
+            <td style="font-weight: 700">{{ item.bnousCoefficient }}%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div> -->
+    <el-table
+      border
+      :data="oneDeptAllKPIInfo"
+      :span-method="objectSpanMethod"
+      :height="tableHeight"
+      :header-cell-style="{ backgroundColor: '#F5F7FA' }"
+      id="printMe"
+      v-if="basicInfoMaxLength.length > 0"
+    >
+      <el-table-column :label="`${year}年（${month}）月`">
+        <el-table-column fixed label="序号" type="index" prop="index" width="50" align="center"></el-table-column>
+        <el-table-column fixed label="姓名" prop="name"></el-table-column>
+        <el-table-column fixed label="职位" prop="position"></el-table-column
+      ></el-table-column>
+      <el-table-column v-for="(item, index) in basicInfoMaxLength" :key="index" :label="'指标' + Number(index + 1)">
+        <el-table-column prop="targetName">
+          <template #header>{{ item.targetName }}</template>
+          <el-table-column label="权重"
+            ><template #default="scope">
+              <span
+                v-if="
+                  scope.row.basicInfoContentList[index]['weight_' + scope.row.basicInfoContentList[index].targetId] !=
+                  ''
+                "
+                >{{
+                  scope.row.basicInfoContentList[index]["weight_" + scope.row.basicInfoContentList[index].targetId] +
+                  "%"
+                }}</span
+              >
+            </template></el-table-column
+          >
+          <el-table-column label="实现值" prop="actualAchievementRate" align="center" min-width="100">
+            <template #default="scope"
+              >{{
+                scope.row.basicInfoContentList[index][
+                  "finalActualAchievementRate_" + scope.row.basicInfoContentList[index].targetId
+                ]
+              }}
+            </template>
+          </el-table-column>
+          <el-table-column label="指标得分" prop="targetScore" width="90"
+            ><template #default="scope">{{
+              scope.row.basicInfoContentList[index][
+                "targetBasicScore_" + scope.row.basicInfoContentList[index].targetId
+              ]
+            }}</template></el-table-column
+          >
+          <el-table-column label="实际得分" width="90"
+            ><template #default="scope">{{
+              scope.row.basicInfoContentList[index]["targetScore_" + scope.row.basicInfoContentList[index].targetId]
+            }}</template></el-table-column
+          >
+        </el-table-column>
+      </el-table-column>
+      <el-table-column label="价值观">
+        <el-table-column label="权重" prop="valueWeight"
+          ><template #default="scope">{{ scope.row.valueWeight + "%" }}</template>
+        </el-table-column>
+        <el-table-column label="指标得分" prop="valueSumScore"></el-table-column>
+        <el-table-column label="实际得分" prop="valueResultScore"></el-table-column
+      ></el-table-column>
+      <el-table-column label="绩效核算">
+        <el-table-column label="总权重">100%</el-table-column>
+        <el-table-column label="实际总得分" prop="resultTotalScore"></el-table-column
+      ></el-table-column>
+      <el-table-column label="奖金系数" prop="bnousCoefficient"
+        ><template #default="scope">{{ scope.row.bnousCoefficient + "%" }}</template>
+      </el-table-column>
+    </el-table>
+    <div style="text-align: right; margin-top: 20px" v-if="oneDeptAllKPIInfo.length > 0 && !isRootRead">
+      <el-button type="primary" v-print="'#printMe'">打印</el-button>
+      <el-button type="primary" @click="downPdf()">下载PDF</el-button>
+      <el-button type="primary" @click="downExcel()">下载Excel</el-button>
+    </div>
+    <div v-if="oneDeptAllKPIInfo.length == 0" style="font-size: 20px; margin-top: 10%">暂无数据</div>
+    <!-- <el-dialog v-model="isShowImg" width="600px" height="400px">
+      <img :src="src" alt="" style="width: 500px; height: 300px"
+    /></el-dialog> -->
+  </div>
+</template>
+
+<script>
+import { getDeptKPIAllInfo } from "@/api/visualization/index";
+import store from "@/store";
+import { ElMessage } from "element-plus";
+// import { nextTick } from "vue";
+import print from "vue3-print-nb";
+import { downPdf } from "@/utils/exportPdf.js";
+import "jspdf-autotable";
+import rootPermission from "@/utils/common.js";
+import FileSaver from "file-saver"; //下载excel，测试
+import * as XLSX from "xlsx"; //下载excel，测试
+
+export default {
+  directives: {
+    print,
+  },
+  data() {
+    return {
+      deptId: [],
+      oneDeptAllKPIInfo: [],
+      basicInfoMaxLength: [], //指标名称最长的一条数据
+      isShowImg: false, //查看图片放大
+      src: "", //弹窗放大的图片地址
+      year: store.state.year,
+      day: new Date().getDate(),
+      month: store.state.criticalMonth,
+      relatedDept: [], //筛选部门
+      deptNameList: [], //部门名称
+      isRootRead: null, //判断管理员是否只读
+      tableHeight: null,
+    };
+  },
+  // computed: {
+  //   relatedDept() {
+  //     if (store.state.role == "ROOT") {
+  //       return store.state.deptOptions;
+  //     } else {
+  //       store.state.userInfo.clerkAssociatedDepartmentList.push(store.state.deptId);
+  //       return store.state.deptOptions.filter((item) =>
+  //         store.state.userInfo.clerkAssociatedDepartmentList.includes(item.deptId),
+  //       );
+  //     }
+  //   },
+  // },
+  mounted() {
+    setTimeout(() => {}, 300);
+    this.isRootRead = rootPermission.isRootRead();
+
+    if (store.state.role !== "ROOT") {
+      this.deptId.push(store.state.deptId);
+    } else {
+      this.deptId.push(2);
+    }
+    if (store.state.role == "ROOT") {
+      this.relatedDept = store.state.deptOptions;
+    } else if (store.state.role == "DEPTMANAGER" || store.state.role == "HRMANAGER") {
+      this.relatedDept = [];
+      store.state.userInfo.clerkAssociatedDepartmentList.push(store.state.deptId);
+      this.relatedDept = store.state.deptOptions.filter((item) =>
+        store.state.userInfo.clerkAssociatedDepartmentList.includes(item.deptId),
+      );
+      // store.state.userInfo.clerkAssociatedDepartmentList.push(store.state.deptId);
+      // store.state.deptOptions.map(
+      //   (item) => {
+      //     store.state.userInfo.clerkAssociatedDepartmentList.map((item1) => {
+      //       if (item1 == item.deptId) {
+      //         this.relatedDept.push(item);
+      //       }
+      //     });
+      //   },
+      //   // store.state.userInfo.clerkAssociatedDepartmentList.includes(item.deptId),
+      // );
+    }
+    // console.log(this.relatedDept);
+    this.$nextTick(() => {
+      // 根据浏览器高度设置初始高度
+      this.tableHeight = window.innerHeight - 250;
+      // 监听浏览器高度变化，改变表格高度
+      window.onresize = () => {
+        this.tableHeight = window.innerHeight - 250;
+      };
+    });
+    this.getDeptKPIAllInfo();
+  },
+
+  methods: {
+    getDeptKPIAllInfo() {
+      this.oneDeptAllKPIInfo = [];
+      this.basicInfoMaxLength = [];
+      const data = { year: this.year, month: this.month, deptIdList: this.deptId };
+      this.deptNameList = this.relatedDept.filter((item) => this.deptId.includes(item.deptId));
+      getDeptKPIAllInfo(data).then((res) => {
+        if (res.data.code == 0 && res.data.data.length > 0) {
+          // this.oneDeptAllKPIInfo = res.data.data;
+
+          this.oneDeptAllKPIInfo = res.data.data.map((item) => {
+            // item.basicInfoContentList.sort(function (a, b) {
+            //   return a.targetId - b.targetId;
+            // });
+
+            item.basicInfoContentList = item.basicInfoContentList.map((item1) => {
+              //获取所有不同的指标，用于表头显示，找index，等于-1就是新的数据
+              let index = this.basicInfoMaxLength.findIndex((item) => item.targetId == item1.targetId);
+              if (index == -1) {
+                this.basicInfoMaxLength.push(item1);
+              }
+              //每个数据加标识
+              return {
+                ["weight_" + item1.targetId]: item1.weight,
+                ["targetName_" + item1.targetId]: item1.targetName,
+                ["finalActualAchievementRate_" + item1.targetId]: item1.finalActualAchievementRate,
+                ["targetScore_" + item1.targetId]: item1.targetScore,
+                ["targetBasicScore_" + item1.targetId]: item1.targetBasicScore,
+                targetId: item1.targetId,
+              };
+            });
+
+            return item;
+          });
+
+          this.basicInfoMaxLength.sort(function (a, b) {
+            return a.targetId - b.targetId;
+          });
+          //统一长度，添加空数据
+          this.basicInfoMaxLength.forEach((item) => {
+            this.oneDeptAllKPIInfo.forEach((item1) => {
+              let found = false;
+              item1.basicInfoContentList.forEach((item2) => {
+                if (item2.targetId === item.targetId) {
+                  found = true;
+                }
+              });
+              //当不参与这个指标时添加空数据
+              if (!found) {
+                item1.basicInfoContentList.push({
+                  ["weight_" + item.targetId]: "",
+                  ["targetName_" + item.targetId]: "",
+                  ["finalActualAchievementRate_" + item.targetId]: "",
+                  ["targetScore_" + item.targetId]: (0.0).toFixed(2),
+                  ["targetBasicScore_" + item.targetId]: "",
+                  targetId: item.targetId,
+                });
+              }
+            });
+          });
+          this.oneDeptAllKPIInfo.forEach((item) => {
+            item.basicInfoContentList.sort((a, b) => a.targetId - b.targetId);
+          });
+
+          // console.log("所有指标", this.basicInfoMaxLength);
+          console.log(this.oneDeptAllKPIInfo);
+        } else if (res.data.data && res.data.data.length == 0) {
+          ElMessage.error("查询数据为空");
+        }
+      });
+    },
+    // showImg(url) {
+    //   this.isShowImg = true;
+    //   this.src =
+    //     url +
+    //     "&userId=" +
+    //     store.state.userId +
+    //     "&token=" +
+    //     store.state.token +
+    //     "&year=" +
+    //     this.year +
+    //     "&month=" +
+    //     this.month;
+    //   // console.log(this.src);
+    // },
+    downPdf() {
+      // const deptName = store.state.deptOptions.find((item) => item.deptId == this.deptId).deptName;
+      // console.log(deptName);
+      downPdf(document.querySelector("#printMe"), this.year + "年" + this.month + "月" + "部门考核汇总表");
+    },
+    downExcel() {
+      // 1.生成Excel工作簿对象
+      var wb = XLSX.utils.table_to_book(document.querySelector("#printMe"));
+      // 2.手机号，身份证号等会默认使用科学计数法表示，则需要这样设置
+      // var wb = XLSX.utils.table_to_book(
+      //   document.querySelector("#educe-table"),
+      //   { raw: true }
+      // );
+      // 获取二进制字符串作为输出
+      var wbout = XLSX.write(wb, {
+        bookType: "xlsx",
+        book: true,
+        type: "array",
+      });
+      try {
+        FileSaver.saveAs(
+          // Blob: 对象表示一个不可变 原始数据的类文件对象,不一定是JS原生格式的数据。
+          // File: 基于Blob，继承了blob的功能并将其扩展使其支持用户系统上的文件。
+          new Blob([wbout], { type: "appliction/octet-stream" }),
+          // 设置导出的文件名称可随意
+          "result.xlsx",
+        );
+      } catch (e) {
+        if (typeof console != "undefined") console.log(e, wbout);
+      }
+      // 返回一个新创建的Blob对象，其内容由参数中给定的数组串联组成。
+      return wbout;
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.tableVisual {
+  padding: 1rem;
+  background-color: #fff;
+  border-radius: 10px;
+  height: 94%;
+}
+.table-container {
+  text-align: center;
+  overflow: auto;
+  // width: 95%;
+  position: relative;
+}
+
+table {
+  text-align: center;
+  table-layout: fixed;
+  width: 100%;
+  font-family: Microsoft Yahei;
+  color: black;
+  border-collapse: collapse;
+  border: 1px solid black;
+  font-size: 12px;
+}
+
+// th {
+//   width: 180px;
+// }
+.targetStyle {
+  width: 200px;
+}
+.KPIStyke {
+  width: 50px;
+}
+
+.form-style {
+  display: flex;
+  justify-content: space-between;
+  width: 50vw;
+  margin-left: auto;
+}
+.signTableStyle td,
+.signTableStyle th {
+  border-left: none;
+  border-color: black;
+}
+</style>

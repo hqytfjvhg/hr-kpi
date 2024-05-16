@@ -1,0 +1,416 @@
+<template>
+  <div class="performance">
+    <!-- 此页面没有被使用 -->
+    <div class="performance-title">
+      正在审批【{{ $store.state.currentName }}】{{ $store.state.criticalMonth }}月份的业绩审批
+    </div>
+    <el-table
+      :data="performanceList"
+      :header-cell-style="{ fontSize: '15px', color: '#606260', fontWeight: 'normal' }"
+      stripe
+      border
+    >
+      <el-table-column label="序号" type="index" width="60"></el-table-column>
+      <el-table-column label="指标名称" prop="targetName"></el-table-column>
+      <el-table-column label="维度" align="center">
+        <template #default="scope">
+          <span v-if="scope.row.targetIsNumber" style="color: #e6a23c">数量</span>
+          <span v-else style="color: #409eff">百分比</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="应达成数/应达成率" prop="deliverableRate" align="center"></el-table-column>
+      <el-table-column label="审批结果" prop="actualAchievementRate" v-if="state == true">
+        <template #default="scope">
+          <span v-for="(item, index) in scope.row.actualAchievementRate" :key="index">
+            {{ item }}
+            <br v-if="index !== scope.row.actualAchievementRate.length - 1" />
+          </span>
+        </template>
+      </el-table-column>
+      <el-table-column label="审批描述" v-if="state == true">
+        <template #default="scope">
+          <el-popover placement="top" :width="220" trigger="hover">
+            <span v-for="(item, index) in scope.row.explain" :key="index">{{ item }}。</span>
+            <template #reference>
+              <div>
+                <span v-for="(item, index) in scope.row.explain" :key="index">
+                  {{ item }}
+                  <br v-if="index !== scope.row.explain.length - 1" />
+                </span>
+              </div>
+            </template>
+          </el-popover>
+        </template>
+      </el-table-column>
+      <el-table-column label="填写实达成数/率(不带百分号)" width="250">
+        <template #default="scope">
+          <el-input
+            v-if="showState == false"
+            v-model="scope.row.currentActualAchievementRate"
+            placeholder="请输入保留一位小数的数字"
+            style="width: 200px"
+          ></el-input>
+          <span v-else>{{ scope.row.actualAchievementRate }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="状态" align="center">
+        <template #default="scope">
+          <span style="color: red" v-if="scope.row.currentActualAchievementRate < scope.row.deliverableRate">
+            未达标
+          </span>
+          <span style="color: green" v-if="scope.row.currentActualAchievementRate >= scope.row.deliverableRate">
+            已达标
+          </span>
+        </template>
+      </el-table-column>
+      <el-table-column label="填写实际达成率描述">
+        <template #default="scope">
+          <el-input
+            type="textarea"
+            v-if="showState == false"
+            v-model="scope.row.currentExplain"
+            placeholder="请输入描述"
+          ></el-input>
+        </template>
+      </el-table-column>
+    </el-table>
+    <div style="margin-top: 10px; text-align: center; display: flex">
+      <!-- <el-button @click="showState = true">保存</el-button> -->
+      <el-popover
+        content="如若要上传附件，请先下载上一位审批人的附件，在附件中追加您要填写的内容。"
+        placement="top"
+        :width="300"
+        v-if="!file == null || !file == ''"
+      >
+        <template #reference>
+          <el-upload
+            class="upload-demo"
+            action="#"
+            accept=".xlsx,.xls"
+            :on-preview="handlePreview"
+            :on-remove="handleRemove"
+            :before-remove="beforeRemove"
+            :limit="1"
+            :on-exceed="handleExceed"
+            :on-change="loadFile"
+            :http-request="uploadHttpRequest"
+          >
+            <el-button style="margin: 0 10px" type="warning" plain>上传附件</el-button>
+          </el-upload>
+        </template>
+      </el-popover>
+      <el-upload
+        class="upload-demo"
+        action="#"
+        accept=".xlsx,.xls"
+        :on-preview="handlePreview"
+        :on-remove="handleRemove"
+        :before-remove="beforeRemove"
+        :limit="1"
+        :on-exceed="handleExceed"
+        :on-change="loadFile"
+        :http-request="uploadHttpRequest"
+        v-else
+      >
+        <el-button style="margin: 0 10px" type="warning" plain>上传附件</el-button>
+      </el-upload>
+      <el-tooltip content="暂无可下载文件" placement="top" effect="light" v-if="file == null || file == ''">
+        <el-button type="info">下载</el-button>
+      </el-tooltip>
+      <el-button v-else type="primary" plain @click="previewExcel(true)">下载</el-button>
+      <el-tooltip content="暂无可预览文件" placement="top" effect="light" v-if="file == null || file == ''">
+        <el-button type="info">预览</el-button>
+      </el-tooltip>
+      <el-button v-else @click="previewExcel(false)" type="primary" plain>预览</el-button>
+      <el-button @click="sendFormData" type="success" plain>提交</el-button>
+    </div>
+
+    <el-dialog v-model="isShowExcel" title="预览文件" width="640">
+      <vue-office-excel :src="src" :options="options" />
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+import store from "@/store";
+import { getPerformanceData, preview } from "@/api/performance/index";
+import axios from "@/utils/http";
+import { ElMessage, ElMessageBox, ElTooltip } from "element-plus";
+import VueOfficeExcel from "@vue-office/excel";
+import "@vue-office/excel/lib/index.css";
+import emitter from "@/utils/eventbus.js";
+import router from "@/router";
+
+export default {
+  name: "reviewPerformance",
+  components: {
+    VueOfficeExcel,
+    ElTooltip,
+  },
+  data() {
+    return {
+      userId: store.state.currentUserId,
+
+      performanceList: [],
+      showState: false,
+      formData: null,
+      uploadFile: null,
+      isShowExcel: false,
+      file: null,
+      src: "",
+      options: {
+        minColLength: 7,
+        minRowLength: 10,
+        widthOffset: 0, //在默认渲染的列表宽度上再加10px宽
+        heightOffset: 0, //在默认渲染的列表高度上再加10px高
+        transformData: function (workbookData) {
+          //修改workbookData
+          return workbookData;
+        },
+      },
+      state: false,
+      month: null, //月份
+    };
+  },
+  created() {
+    this.getPerformanceData();
+
+    if (0 < new Date().getDate() && new Date().getDate() < 16) {
+      this.month = new Date().getMonth();
+    } else {
+      this.month = new Date().getMonth() + 1;
+    }
+  },
+
+  methods: {
+    getPerformanceData() {
+      getPerformanceData(this.userId).then((res) => {
+        if (res.data.code == 0) {
+          if (res.data.data[0].actualAchievementRate !== "" && res.data.data[0].actualAchievementRate !== null) {
+            res.data.data.map((item) => {
+              let actual = JSON.parse(item.actualAchievementRate);
+              const result = Object.keys(actual).map((key) => {
+                const value = actual[key];
+                item.currentActualAchievementRate = value;
+                const formattedKey = key.split("@")[0]; // 提取@前面的部分
+                return `${formattedKey}: ${value}`;
+              });
+              item.actualAchievementRate = result;
+
+              let actual2 = JSON.parse(item.explain);
+              const result2 = Object.keys(actual2).map((key) => {
+                let value = actual2[key];
+                const formattedKey = key.split("@")[0]; // 提取@前面的部分
+                return `${formattedKey}: ${value}`;
+              });
+              item.explain = result2;
+            });
+            this.state = true;
+          }
+          this.performanceList = res.data.data;
+          this.file = res.data.data[0].file;
+          console.log(this.file);
+        }
+      });
+    },
+    uploadHttpRequest(data) {
+      console.log(data);
+    },
+    handleRemove(file) {
+      console.log(file);
+      this.uploadFile = null;
+    },
+    loadFile(file) {
+      this.uploadFile = file.raw;
+      if (this.uploadFile.name.indexOf("@") != -1) {
+        // console.log("字符串中包含@符号");
+        ElMessageBox.alert("文件名中存在@符号，请重新上传", "提示", {
+          confirmButtonText: "确定",
+        });
+        file = null;
+      } else {
+        let formData = new FormData();
+        formData.append("file", this.uploadFile);
+
+        this.formData = formData;
+      }
+    },
+    sendFormData() {
+      if (!this.performanceList.every((item) => "currentActualAchievementRate" in item)) {
+        ElMessageBox.alert("必须填写所有指标的实际达成率", "警告", {
+          confirmButtonText: "确定",
+          type: "warning",
+        });
+      } else if (!this.performanceList.every((item) => item.currentActualAchievementRate !== "")) {
+        ElMessageBox.alert("必须填写所有指标的实际达成率", "警告", {
+          confirmButtonText: "确定",
+          type: "warning",
+        });
+      } else if (
+        !this.performanceList.every((item) => /^\d+(\.\d)$/.test(item.currentActualAchievementRate.replace(/\s+$/, "")))
+      ) {
+        ElMessageBox.alert("请输入指标实际达成率为数字且仅保留一位小数的数据", "警告", {
+          confirmButtonText: "确定",
+          type: "warning",
+        });
+      } else {
+        //没有附件
+        if (this.uploadFile == null) {
+          const data = this.performanceList.map((item) => {
+            //判断描述是不是空
+            if (
+              item.currentExplain == null ||
+              item.currentExplain == "" ||
+              item.currentExplain.split(" ").join("").length == 0
+            ) {
+              item.currentExplain = "未填写";
+            }
+            //判断指标率是否是数字
+
+            return {
+              userId: this.userId,
+              actualAchievementRate: item.currentActualAchievementRate.replace(/\s+$/, ""),
+              explain: item.currentExplain,
+              id: item.id,
+              targetId: item.targetId,
+              targetName: item.targetName,
+            };
+          });
+          console.log(data);
+          if (data.every((item) => item != undefined)) {
+            ElMessageBox.confirm("确定不提交附件吗？", "警告", {
+              confirmButtonText: "确定",
+              cancelButtonText: "取消",
+              type: "warning",
+            })
+              .then(() => {
+                axios.post("/api/ifi-personal/performance/upadateUserTargetDataNoFile", data).then((res) => {
+                  if (res.data.code == 0) {
+                    // console.log(true);
+                    ElMessage.success("提交成功");
+                    router.replace({ name: "aboutInfo", query: { activeName: "second" } });
+                    emitter.on("callAbout", (func) => {
+                      func();
+                      // console.log("无附件，刷新一次");
+                    });
+                  }
+                });
+              })
+              .catch(() => {
+                ElMessage.info("取消提交");
+              });
+          }
+          //上传附件，直接提交
+        } else {
+          if (this.formData != null) {
+            // console.log(this.performanceList);
+            const data = this.performanceList.map((item) => {
+              return {
+                userId: this.userId,
+                actualAchievementRate: item.currentActualAchievementRate,
+                explain: item.currentExplain,
+                id: item.id,
+                targetId: item.targetId,
+                targetName: item.targetName,
+              };
+            });
+            if (this.formData.has("jsonData")) {
+              this.formData.delete("jsonData");
+            }
+
+            this.formData.append("jsonData", JSON.stringify(data));
+
+            ElMessageBox.confirm("确定提交吗？", "警告", {
+              confirmButtonText: "确定",
+              cancelButtonText: "取消",
+              type: "warning",
+            })
+              .then(() => {
+                axios.post("/api/ifi-personal/performance/upadateUserTargetData", this.formData).then((res) => {
+                  if (res.data.code == 0) {
+                    // console.log(true);
+                    ElMessage.success("提交成功");
+                    router.replace({ name: "aboutInfo" });
+                    // emitter.on("callAbout", (func) => {
+                    //   func();
+                    // });
+                    // console.log("有附件，刷新一次");
+                  }
+                });
+              })
+              .catch(() => {
+                ElMessage.info("取消提交");
+              });
+          } else {
+            ElMessage.error("请重新上传文件");
+          }
+        }
+      }
+    },
+    previewExcel(state) {
+      // console.log(this.file);
+      //下载是true
+      if (state) {
+        preview(this.file, state);
+      } else {
+        //预览是false
+        preview(this.file, false)
+          .then((res) => {
+            if (res.status == 200) {
+              // console.log(res.data);
+              // console.log(res);
+              this.src = res.data;
+              this.isShowExcel = true;
+            }
+          })
+          .catch(() => {
+            ElMessage.error("预览失败");
+          });
+      }
+    },
+    changeHandle(event) {
+      // console.log(event);
+      this.file = event.target.files[0];
+      let file = event.target.files[0];
+      let fileReader = new FileReader();
+      fileReader.readAsArrayBuffer(file);
+      fileReader.onload = () => {
+        this.src = fileReader.result;
+        // console.log(this.src);
+      };
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.performance {
+  padding: 17px;
+  background-color: #fff;
+  height: 95%;
+  border-radius: 10px;
+}
+.performance-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  padding: 1rem;
+  color: #e6a23c;
+}
+.pload-demo {
+  display: inline-block;
+}
+.x-spreadsheet-sheet .x-spreadsheet-table {
+  height: 400px;
+}
+.element.style {
+  height: 400px;
+}
+.vue-office-excel {
+  height: 400px;
+}
+.el-upload-list__item {
+  width: 120% !important;
+}
+</style>
