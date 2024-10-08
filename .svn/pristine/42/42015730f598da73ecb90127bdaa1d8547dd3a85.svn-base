@@ -1,0 +1,62 @@
+import Layout from "@/system-views/logistics/LayoutIndex.vue";
+
+const Back = [
+  {
+    path: "/admin",
+    name: "Admin",
+    component: Layout,
+    meta: {
+      requireAuth: true,
+      visiable: true,
+      roles: ["ROOT", "HR"],
+      info: "菜单",
+      keepAlive: false,
+      icon: "ForkSpoon",
+    },
+    children: [
+      {
+        path: "/admin/menu",
+        name: "",
+        // component: () => import("@/system-views/logistics/menu/MenuIndex.vue"),
+        meta: {
+          requireAuth: true,
+          visiable: true,
+          roles: ["ROOT", "HR"],
+          info: "菜谱管理",
+          keepAlive: false,
+          icon: "ForkSpoon",
+        },
+        children: [
+          {
+            path: "/admin/menu/list",
+            name: "MenuList",
+            component: () => import("@/system-views/logistics/menu/MenuIndex.vue"),
+            meta: {
+              requireAuth: true,
+              visiable: true,
+              roles: ["ROOT", "HR"],
+              info: "菜谱列表",
+              keepAlive: false,
+              // icon: "ForkSpoon",
+            },
+          },
+          {
+            path: "/admin/menu/week",
+            name: "MenuWeek",
+            component: () => import("@/system-views/logistics/menu/WeeklyMenu.vue"),
+            meta: {
+              requireAuth: true,
+              visiable: true,
+              roles: ["ROOT", "HR"],
+              info: "生成菜谱",
+              keepAlive: false,
+              // icon: "ForkSpoon",
+            },
+          },
+        ],
+      },
+    ],
+  },
+];
+
+export default Back;

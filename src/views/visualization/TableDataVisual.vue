@@ -1,4 +1,5 @@
 <template>
+  <!-- 目前使用此版本 -->
   <div class="tableVisual">
     <el-form class="form-style">
       <el-form-item :label="$t('year')" prop="year">
@@ -34,8 +35,8 @@
     </el-form>
     <!-- 部门考核汇总表 -->
 
-    <div style="display: flex" v-if="basicInfoMaxLength.length > 0" class="table-container" :style="{ width: width }">
-      <table class="table-style" id="printMe" border="1" color="black" align="center" cellpadding="0" cellspacing="0">
+    <!-- <div style="display: flex" v-if="basicInfoMaxLength.length > 0" class="table-container" :style="{ width: width }"> -->
+    <!-- <table class="table-style" id="printMe" border="1" color="black" align="center" cellpadding="0" cellspacing="0">
         <thead>
           <tr style="height: 6vh; font-size: 20px; width: auto">
             <th :colspan="9 + basicInfoMaxLength.length * 4">
@@ -47,9 +48,6 @@
           <tr style="font-size: 16px; height: 5vh; background-color: #a6a6a6; font-weight: 700">
             <th rowspan="2" colspan="3" style="background-color: #a6a6a6; width: 220px">
               {{ year }}年（{{ month }}）月<br />
-              <!-- <span v-for="(item, index) in deptNameList" :key="item"
-                >{{ item.deptName }}<span v-if="index != deptNameList.length - 1">&</span></span
-              ><br />绩效考核汇总表 -->
             </th>
 
             <th colspan="4" v-for="(item, index) in basicInfoMaxLength" :key="item" class="targetStyle">
@@ -59,7 +57,6 @@
             <th rowspan="2" colspan="3" style="background-color: #ffc000; width: 150px">价值观 <br />（16分）</th>
             <th rowspan="2" colspan="2" style="background-color: #a6a6a6; width: 150px">绩效核算</th>
             <th rowspan="3" style="background-color: #00b0f0" class="KPIStyke">奖金系数</th>
-            <!-- <th rowspan="3" style="background-color: #00b0f0" class="KPIStyke">{{ month }}月系数调整</th> -->
           </tr>
           <tr style="height: 5vh">
             <td colspan="4" v-for="(item, index) in basicInfoMaxLength" :key="index" style="text-align: center">
@@ -135,11 +132,15 @@
             <td>100%</td>
             <td>{{ item.resultTotalScore }}</td>
             <td style="font-weight: 700">{{ item.bnousCoefficient }}%</td>
-            <!-- <td></td> -->
           </tr>
         </tbody>
-      </table>
-      <!-- <table
+      </table> -->
+    <Table
+      :basicInfoMaxLength="basicInfoMaxLength"
+      :deptNameList="deptNameList"
+      :oneDeptAllKPIInfo="oneDeptAllKPIInfo"
+    ></Table>
+    <!-- <table
         border="1"
         color="black"
         align="center"
@@ -182,7 +183,7 @@
           </tr>
         </tbody>
       </table> -->
-    </div>
+    <!-- </div> -->
     <div style="text-align: right; margin-top: 20px" v-if="oneDeptAllKPIInfo.length > 0 && !isRootRead">
       <el-button type="primary" v-print="'#printMe'">{{ $t("print") }}</el-button>
       <el-button type="primary" @click="downPdf()">{{ $t("downPDF") }}</el-button>
@@ -203,11 +204,13 @@ import print from "vue3-print-nb";
 import { downPdf } from "@/utils/exportPdf.js";
 import "jspdf-autotable";
 import rootPermission from "@/utils/common.js";
+import Table from "./TableTemplate.vue";
 
 export default {
   directives: {
     print,
   },
+  components: { Table },
   data() {
     return {
       deptId: [],
@@ -283,7 +286,6 @@ export default {
             // item.basicInfoContentList.sort(function (a, b) {
             //   return a.targetId - b.targetId;
             // });
-
             item.basicInfoContentList = item.basicInfoContentList.map((item1) => {
               //获取所有不同的指标，用于表头显示，找index，等于-1就是新的数据
               let index = this.basicInfoMaxLength.findIndex((item) => item.targetId == item1.targetId);
@@ -292,11 +294,11 @@ export default {
               }
               //每个数据加标识
               return {
-                ["weight_" + item1.targetId]: item1.weight,
-                ["targetName_" + item1.targetId]: item1.targetName,
-                ["finalActualAchievementRate_" + item1.targetId]: item1.finalActualAchievementRate,
-                ["targetScore_" + item1.targetId]: item1.targetScore,
-                ["targetBasicScore_" + item1.targetId]: item1.targetBasicScore,
+                weight: item1.weight,
+                targetName: item1.targetName,
+                finalActualAchievementRate: item1.finalActualAchievementRate,
+                targetScore: item1.targetScore,
+                targetBasicScore: item1.targetBasicScore,
                 targetId: item1.targetId,
               };
             });
@@ -319,11 +321,11 @@ export default {
               //当不参与这个指标时添加空数据
               if (!found) {
                 item1.basicInfoContentList.push({
-                  ["weight_" + item.targetId]: "",
-                  ["targetName_" + item.targetId]: "",
-                  ["finalActualAchievementRate_" + item.targetId]: "",
-                  ["targetScore_" + item.targetId]: (0.0).toFixed(2),
-                  ["targetBasicScore_" + item.targetId]: "",
+                  weight: "",
+                  targetName: "",
+                  finalActualAchievementRate: "",
+                  targetScore: (0.0).toFixed(2),
+                  targetBasicScore: "",
                   targetId: item.targetId,
                 });
               }

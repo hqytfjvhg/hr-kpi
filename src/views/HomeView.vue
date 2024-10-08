@@ -9,7 +9,7 @@
 
         <el-menu
           unique-opened
-          default-active="this.$route.path"
+          :default-active="this.$route.path"
           :collapse="isCollapse"
           :collapse-transition="false"
           :router="true"
@@ -164,6 +164,9 @@
           </el-sub-menu> -->
           <!-- <el-menu-item index="sign">{{ router[router.length - 1].meta.info }}</el-menu-item> -->
         </el-menu>
+        <!-- <div class="transfer-btn" :style="{ display: !isCollapse ? '' : 'none' }" v-if="$store.state.role == 'ROOT'">
+          <el-button @click="$router.push('/sys/transfer')">中转页</el-button>
+        </div> -->
       </el-aside>
       <el-container class="mainHeight">
         <el-header>
@@ -245,7 +248,7 @@ export default {
       title: "初始密码修改",
       isRootRead: null, //判断管理员是否只读
       isRootDown: null,
-      router: null,
+      router: [],
     };
   },
   created() {
@@ -258,8 +261,10 @@ export default {
     }
     this.isRootRead = rootPermission.isRootRead();
     this.isRootDown = rootPermission.isRootDown();
-    this.router = Router.options.routes[3].children;
+    this.router = JSON.parse(JSON.stringify(Router.options.routes[2].children));
+    // console.log(Router.options.routes[2].children, "路由1");
     this.router = this.recursiveFilter(this.router);
+    // console.log(this.router, "路由2");
   },
   methods: {
     // handleSelect(key, keyPath) {
@@ -298,21 +303,21 @@ export default {
     //过滤路由及子路由
     recursiveFilter(routes) {
       return routes.filter((route) => {
-        let hasAccess = route.meta?.roles?.includes(this.$store.state.role) && route.meta?.requireAuth;
+        let hasAccess = route.meta.roles?.includes(this.$store.state.role) && route.meta?.requireAuth;
         if (
           this.$store.state.role == "DEPTMANAGER" &&
           this.$store.state.name == "温上凯" &&
-          (route.path == "/kpi/kpi" || route.path == "/kpi/signatureVisual" || route.path == "/kpi/frontView")
+          (route.name == "kpi" || route.name == "signatureVisual" || route.name == "frontView")
         ) {
           hasAccess = false;
         } else if (
           this.$store.state.role == "DEPTMANAGER" &&
           this.$store.state.name !== "温上凯" &&
-          route.path == "/kpi/specialView"
+          route.name == "specialView"
         ) {
           hasAccess = false;
         } else if (
-          (route.path == "/kpi/searchLogDoc" || route.path == "/kpi/publishEvent") &&
+          (route.name == "SearchLogDoc" || route.name == "publishEvent") &&
           this.$store.state.role == "ROOT" &&
           (this.$store.state.userInfo.permissions.includes("ROOT:READ") ||
             this.$store.state.userInfo.permissions.includes("ROOT:DOWNLOAD"))
@@ -342,20 +347,19 @@ export default {
 .el-main {
   background-color: #f5f6f8;
   // width: 100%;
-  min-width: 1000px;
+  // min-width: 1000px;
   padding: 17px 17px 0 17px !important;
   // overflow-x: inherit;
 }
 
 .title {
-  margin-left: 35px;
-  font-size: 18px;
+  margin-left: 20px;
+  font-size: 22px;
 }
 
 .logo {
   display: flex;
-
-  padding-left: 25px;
+  padding: 0 30px;
   align-items: center;
   height: 3.75rem;
   line-height: 3.75rem;
@@ -375,6 +379,12 @@ export default {
   height: 100vh;
   background-color: #304156;
   color: rgb(191, 203, 217);
+  position: relative;
+}
+.transfer-btn {
+  position: absolute;
+  bottom: 5%;
+  left: 25%;
 }
 .mainHeight {
   height: 100vh;
@@ -386,6 +396,7 @@ export default {
   .el-menu-item .el-menu-tooltip__trigger {
     background-color: #304156;
     color: rgb(191, 203, 217);
+    font-size: 16px;
   }
   .el-menu-item:hover {
     background-color: rgb(38, 52, 69);

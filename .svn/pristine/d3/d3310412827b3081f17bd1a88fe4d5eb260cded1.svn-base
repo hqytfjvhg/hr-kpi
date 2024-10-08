@@ -1,0 +1,424 @@
+<template>
+  <div class="common-layout">
+    <el-container>
+      <el-aside :width="isCollapse == false ? '12rem' : '4rem'" class="aside">
+        <div class="logo">
+          <img src="@/assets/logo.png" alt="" :style="{ display: !isCollapse ? '' : 'none' }" />
+          <h4 class="title" :style="{ display: isCollapse == false ? '' : 'none' }">{{ $t("title") }}</h4>
+        </div>
+
+        <el-menu
+          unique-opened
+          default-active="this.$route.path"
+          :collapse="isCollapse"
+          :collapse-transition="false"
+          :router="true"
+        >
+          <template v-for="item in router" :key="item.path">
+            <el-menu-item :index="item.path" v-if="!item.children">
+              <el-icon> <component :is="item.meta.icon"></component> </el-icon>
+              <template #title>
+                <span>{{ item.meta?.info }}</span>
+              </template>
+            </el-menu-item>
+            <el-sub-menu :index="item.path" v-if="item.children">
+              <template #title>
+                <el-icon :style="{ color: item.meta.color }"> <component :is="item.meta.icon"></component> </el-icon>
+                <span>{{ item.meta?.info }}</span>
+              </template>
+              <el-menu-item v-for="child in item.children" :key="child.path" :index="child.path">
+                <template #title>
+                  <span>{{ child.meta.info }}</span>
+                </template>
+              </el-menu-item>
+            </el-sub-menu>
+          </template>
+
+          <!-- <el-menu-item index="/kpi/mainHome" v-if="$store.state.role == 'ROOT'">
+            <el-icon><Coordinate /></el-icon>
+            <template #title> <span>主页</span></template>
+          </el-menu-item>
+          <el-menu-item
+            index="/kpi/specialView"
+            v-else-if="
+              ($store.state.role == 'DEPTMANAGER' && Number($store.state.deptId) === 1) || $store.state.name == '温上凯'
+            "
+          >
+            <el-icon><Coordinate /></el-icon>
+            <template #title> <span>主页</span></template>
+          </el-menu-item>
+          <el-menu-item
+            index="/kpi/frontView"
+            v-else-if="$store.state.role == 'DEPTMANAGER' || $store.state.role == 'HRMANAGER'"
+          >
+            <el-icon><Coordinate /></el-icon>
+            <template #title> <span>主页</span></template>
+          </el-menu-item>
+          <el-menu-item index="/kpi/clerkView" v-else-if="$store.state.role == 'CLERK'">
+            <el-icon><Coordinate /></el-icon>
+            <template #title> <span>主页</span></template>
+          </el-menu-item>
+          <el-menu-item index="/kpi/hrView" v-else-if="$store.state.role == 'HR'">
+            <el-icon><Coordinate /></el-icon>
+            <template #title> <span>主页</span></template>
+          </el-menu-item>
+          <el-menu-item index="/kpi/employeeView" v-else>
+            <el-icon><Coordinate /></el-icon>
+            <template #title> <span>主页</span></template>
+          </el-menu-item>
+          <el-menu-item index="/kpi/aboutInfo" v-if="$store.state.role !== 'ROOT'">
+            <el-icon><Calendar /></el-icon>
+            <template #title> <span>待办事项</span></template>
+          </el-menu-item>
+          <el-menu-item
+            index="/kpi/signatureVisual"
+            v-if="$store.state.role !== 'ROOT' && $store.state.name !== '温上凯'"
+          >
+            <el-icon><CircleCheck /></el-icon><template #title><span>个人绩效确认</span> </template></el-menu-item
+          >
+          <el-sub-menu
+            index="kpi"
+            v-if="
+              ($store.state.role == 'DEPTMANAGER' && $store.state.name !== '温上凯') ||
+              $store.state.role == 'ROOT' ||
+              $store.state.role == 'HRMANAGER' ||
+              $store.state.role == 'HR'
+            "
+          >
+            <template #title>
+              <el-icon style="color: #e6a23c"><StarFilled /></el-icon>
+              <span>KPI管理</span>
+            </template>
+
+            <el-menu-item index="/kpi/kpiScore" v-if="$store.state.role == 'ROOT'">KPI得分</el-menu-item>
+            <el-menu-item index="/kpi/personalAssessment" v-if="$store.state.role == 'ROOT'"
+              >个人绩效月考评表</el-menu-item
+            >
+            <el-menu-item
+              index="/kpi/targetLibrary"
+              v-if="$store.state.role == 'DEPTMANAGER' || $store.state.role == 'HRMANAGER' || $store.state.role == 'HR'"
+              >部门指标库</el-menu-item
+            >
+            <el-menu-item
+              index="/kpi/tableDataVisual"
+              v-if="
+                $store.state.role == 'DEPTMANAGER' || $store.state.role == 'ROOT' || $store.state.role == 'HRMANAGER'
+              "
+              >部门考核汇总表</el-menu-item
+            >
+
+            <el-menu-item
+              index="/kpi/valueDeptDetails"
+              v-if="$store.state.role == 'DEPTMANAGER' || $store.state.role == 'HRMANAGER'"
+              >部门价值观详情</el-menu-item
+            >
+          </el-sub-menu>
+          <el-sub-menu index="event" v-if="$store.state.role == 'ROOT'">
+            <template #title>
+              <el-icon style="color: #e6a23c"><StarFilled /></el-icon>
+              <span>事件管理</span>
+            </template>
+            <el-menu-item index="/kpi/publishEvent" v-if="$store.state.role == 'ROOT' && !isRootRead && !isRootDown"
+              >事件发布</el-menu-item
+            >
+
+            <el-menu-item index="/kpi/publishHistory" v-if="$store.state.role == 'ROOT'"
+              >发布历史与流程详情</el-menu-item
+            >
+          </el-sub-menu>
+          <el-sub-menu index="value" v-if="$store.state.role == 'ROOT'">
+            <template #title>
+              <el-icon><SetUp /></el-icon>
+              <span>价值观管理</span>
+            </template>
+            <el-menu-item index="/kpi/valueManage">价值观列表</el-menu-item>
+            <el-menu-item index="/kpi/deptCommon">部门审批流程</el-menu-item>
+            <el-menu-item index="/kpi/hrCommon">人事审批流程</el-menu-item>
+
+            <el-menu-item index="/kpi/valueDeptDetails">部门价值观详情</el-menu-item>
+          </el-sub-menu>
+
+          <el-sub-menu index="performance" v-if="$store.state.role == 'ROOT'">
+            <template #title>
+              <el-icon><ScaleToOriginal /></el-icon>
+              <span>业绩管理</span>
+            </template>
+            <el-menu-item index="/kpi/targetList">指标列表</el-menu-item>
+            <el-menu-item index="/kpi/targetApproval">指标审批流程</el-menu-item>
+
+            <el-menu-item index="/kpi/performanceDeptDetails">部门业绩详情</el-menu-item>
+          </el-sub-menu>
+          <el-sub-menu index="user" v-if="$store.state.role == 'ROOT'">
+            <template #title>
+              <el-icon><User /></el-icon>
+              <span>用户管理</span>
+            </template>
+            <el-menu-item index="/kpi/userList">用户列表</el-menu-item>
+          </el-sub-menu>
+          <el-sub-menu index="log" v-if="$store.state.role == 'ROOT'">
+            <template #title>
+              <el-icon><Tickets /></el-icon><span>日志管理</span>
+            </template>
+            <el-menu-item index="/kpi/searchLog">操作日志</el-menu-item>
+            <el-menu-item index="/kpi/searchLogDoc" v-if="!isRootRead && !isRootDown">日志文件</el-menu-item>
+          </el-sub-menu> -->
+          <!-- <el-menu-item index="sign">{{ router[router.length - 1].meta.info }}</el-menu-item> -->
+        </el-menu>
+        <!-- <div class="transfer-btn" :style="{ display: !isCollapse ? '' : 'none' }" v-if="$store.state.role == 'ROOT'">
+          <el-button @click="$router.push('/sys/transfer')">中转页</el-button>
+        </div> -->
+      </el-aside>
+      <el-container class="mainHeight">
+        <el-header>
+          <div class="siderOpen">
+            <el-icon :size="20" v-if="isCollapse === false" @click="isCollapse = !isCollapse"><Expand /></el-icon>
+            <el-icon :size="20" v-if="isCollapse === true" @click="triggerSidebarOpened"><Fold /></el-icon>
+          </div>
+          <Header></Header>
+        </el-header>
+        <!-- <Tagview></Tagview> -->
+        <el-main>
+          <router-view v-slot="{ Component }">
+            <component :is="Component" v-if="!$route.meta.keepAlive" :key="$route.name" />
+
+            <keep-alive>
+              <component :is="Component" :key="$route.name" v-if="$route.meta.keepAlive" />
+            </keep-alive>
+          </router-view>
+        </el-main>
+      </el-container>
+    </el-container>
+    <Dialog v-if="dialogTableVisible" v-model:dialogTableVisible="dialogTableVisible" :form="form" :title="title" />
+  </div>
+</template>
+
+<script>
+import {
+  User,
+  Expand,
+  Fold,
+  Tickets,
+  List,
+  Coordinate,
+  Calendar,
+  StarFilled,
+  Stamp,
+  SetUp,
+  Orange,
+  ScaleToOriginal,
+  CircleCheck,
+} from "@element-plus/icons-vue";
+import Header from "@/components/header/HeaderView.vue";
+import Tagview from "@/components/header/HeaderTagview";
+import Dialog from "@/views/login/ChangePass";
+// import Main from "@/components/main/MainHome.vue";
+import store from "@/store";
+import rootPermission from "@/utils/common.js";
+import Router from "@/router/index";
+
+export default {
+  components: {
+    Header,
+    User,
+    Expand,
+    Fold,
+    Tickets,
+    List,
+    Coordinate,
+    Tagview,
+    Calendar,
+    StarFilled,
+    Stamp,
+    ScaleToOriginal,
+    SetUp,
+    Orange,
+    Dialog,
+    CircleCheck,
+  },
+  data() {
+    return {
+      isCollapse: false,
+      width: "200px",
+      currentRouteInfo: {},
+      collapsed: {
+        type: Boolean,
+      },
+      dialogTableVisible: false, //判断是否需要修改密码
+      form: {}, //修改密码的用户信息
+      title: "初始密码修改",
+      isRootRead: null, //判断管理员是否只读
+      isRootDown: null,
+      router: [],
+    };
+  },
+  created() {
+    const userInfo = store.state.userInfo;
+    if (!userInfo.updateInitPassword && store.state.role !== "ROOT" && store.state.name !== "温上凯") {
+      this.dialogTableVisible = true;
+      this.form.username = userInfo.username;
+    } else {
+      this.dialogTableVisible = false;
+    }
+    this.isRootRead = rootPermission.isRootRead();
+    this.isRootDown = rootPermission.isRootDown();
+    this.router = JSON.parse(JSON.stringify(Router.options.routes[2].children));
+    // console.log(Router.options.routes[2].children, "路由1");
+    this.router = this.recursiveFilter(this.router);
+    // console.log(this.router, "路由2");
+  },
+  methods: {
+    // handleSelect(key, keyPath) {
+    // console.log(keyPath);
+    // let currentPath = key;
+    // let routes = this.$router.options.routes[3].children;
+    // if (currentPath == "/frontView" || currentPath == "/mainHome") {
+    //   return;
+    // }
+    // for (let i = routes.length - 1; i >= 0; i--) {
+    //   if (routes[i].path === currentPath) {
+    //     // console.log(routes[i]);
+    //     const val = {
+    //       info: routes[i].meta.info,
+    //       path: routes[i].path,
+    //       name: routes[i].name,
+    //     };
+    //     this.$store.commit("pushtags", val);
+    //   }
+    // }
+    // },
+    triggerSidebarOpened() {
+      this.isCollapse = !this.isCollapse;
+    },
+
+    //点击把菜单的名字传出去
+    clickMenu(name, path) {
+      console.log((name, path));
+      const val = {
+        name: name,
+        path: path,
+      };
+      this.$store.commit("pushtags", val);
+    },
+
+    //过滤路由及子路由
+    recursiveFilter(routes) {
+      return routes.filter((route) => {
+        let hasAccess = route.meta.roles?.includes(this.$store.state.role) && route.meta?.requireAuth;
+        if (
+          this.$store.state.role == "DEPTMANAGER" &&
+          this.$store.state.name == "温上凯" &&
+          (route.name == "kpi" || route.name == "signatureVisual" || route.name == "frontView")
+        ) {
+          hasAccess = false;
+        } else if (
+          this.$store.state.role == "DEPTMANAGER" &&
+          this.$store.state.name !== "温上凯" &&
+          route.name == "specialView"
+        ) {
+          hasAccess = false;
+        } else if (
+          (route.name == "SearchLogDoc" || route.name == "publishEvent") &&
+          this.$store.state.role == "ROOT" &&
+          (this.$store.state.userInfo.permissions.includes("ROOT:READ") ||
+            this.$store.state.userInfo.permissions.includes("ROOT:DOWNLOAD"))
+        ) {
+          hasAccess = false;
+        }
+        // 如果当前路由有权限且包含子路由
+        if (hasAccess && route.children) {
+          // 对子路由进行同样的过滤
+          route.children = this.recursiveFilter(route.children);
+        }
+
+        return hasAccess;
+      });
+    },
+  },
+};
+</script>
+<style lang="scss">
+.common-layout {
+  height: 100vh;
+  font-family: "Microsoft Yahei";
+  width: 100%;
+  // overflow-y: hidden;
+  // overflow-x: auto;
+}
+.el-main {
+  background-color: #f5f6f8;
+  // width: 100%;
+  // min-width: 1000px;
+  padding: 17px 17px 0 17px !important;
+  // overflow-x: inherit;
+}
+
+.title {
+  margin-left: 20px;
+  font-size: 22px;
+}
+
+.logo {
+  display: flex;
+  padding: 0 30px;
+  align-items: center;
+  height: 3.75rem;
+  line-height: 3.75rem;
+
+  img {
+    width: 45px;
+    height: 18px;
+  }
+  h2 {
+    color: rgb(191, 203, 217);
+  }
+}
+.el-menu-vertical-demo:not(.el-menu--collapse) {
+  width: 12rem;
+}
+.aside {
+  height: 100vh;
+  background-color: #304156;
+  color: rgb(191, 203, 217);
+  position: relative;
+}
+.transfer-btn {
+  position: absolute;
+  bottom: 5%;
+  left: 25%;
+}
+.mainHeight {
+  height: 100vh;
+}
+.el-menu {
+  border-right: 0 !important;
+  .el-sub-menu__title,
+  .el-menu-item,
+  .el-menu-item .el-menu-tooltip__trigger {
+    background-color: #304156;
+    color: rgb(191, 203, 217);
+    font-size: 16px;
+  }
+  .el-menu-item:hover {
+    background-color: rgb(38, 52, 69);
+  }
+  .el-sub-menu__title:hover {
+    background-color: rgb(38, 52, 69);
+  }
+}
+
+.el-header {
+  background-color: #fff;
+  display: flex;
+  align-items: center;
+  .siderOpen {
+    margin-top: 0.25rem;
+    padding-right: 0.5rem;
+  }
+}
+.el-header {
+  --el-header-height: 52px;
+}
+.el-footer {
+  font-size: 0.5rem;
+}
+</style>

@@ -34,11 +34,7 @@
         <el-option value="cn" label="中文简体"></el-option>
       </el-select> -->
 
-      <el-badge
-        :value="$store.state.number2"
-        v-if="$store.state.role != 'ROOT'"
-        @click="$router.push({ name: 'aboutInfo' })"
-      >
+      <el-badge :value="$store.state.number2" v-if="$store.state.role != 'ROOT'">
         <el-icon :size="20">
           <BellFilled />
         </el-icon>
@@ -56,6 +52,9 @@
               修改密码
             </el-dropdown-item>
             <el-dropdown-item @click.prevent="doLogout">退出登录</el-dropdown-item>
+            <el-dropdown-item @click="$router.push('/sys/transfer')" v-if="$store.state.role == 'ROOT'"
+              >返回导航页</el-dropdown-item
+            >
           </el-dropdown-menu>
         </template>
       </el-dropdown>
@@ -119,17 +118,13 @@ export default {
     }
     store.commit("saveYearOptions", yearOptions);
     // this.callBPageMethod();
-    await deptList()
-      .then((res) => {
-        if (res.data.code == 0) {
-          store.commit("deptList", res.data.data);
-          // console.log("部门列表", store.state.deptList);
-          store.commit("saveDeptOptions", res.data.data);
-        }
-      })
-      .catch(() => {
-        ElMessage.error("请求失败");
-      });
+    await deptList().then((res) => {
+      if (res.data.code == 0) {
+        store.commit("deptList", res.data.data);
+        // console.log("部门列表", store.state.deptList);
+        store.commit("saveDeptOptions", res.data.data);
+      }
+    });
 
     // if (store.state.role !== "ROOT") {
     // await getEventNumber()
@@ -199,10 +194,10 @@ export default {
         type: "warning",
       })
         .then(() => {
-          localStorage.removeItem("userId");
-          localStorage.removeItem("token");
-          localStorage.clear();
-          window.location.reload();
+          // localStorage.removeItem("userId");
+          // localStorage.removeItem("token");
+          // localStorage.clear();
+          // window.location.reload();
           logout();
         })
         .catch(() => {
@@ -214,37 +209,51 @@ export default {
     },
     getBreadList() {
       let currentPath = this.$route.path;
-      let routes = this.$router.options.routes[3].children;
-      // console.log(currentPath, routes);
+      // console.log(this.$router);
+      // let routes = this.$router.options.routes[2].children;
+      let routes = this.$router.options.routes;
+      // console.log(currentPath, routes, "路由");
+
       return this.breadListSearch(routes, currentPath);
     },
-    breadListSearch(routes, currentPath, breadList) {
-      breadList = breadList || [];
-      breadList = [...breadList];
-      for (let i = routes.length - 1; i >= 0; i--) {
-        if (routes[i].path === currentPath) {
-          // console.log(routes[i]);
-          if (routes[i].meta && routes[i].meta.info)
-            breadList.push({ path: routes[i].path, info: routes[i].meta.info });
-          // console.log(breadList);
-          return breadList;
-        } else {
-          if (routes[i].children != undefined) {
-            const index = routes[i].children.filter((item) => item.path === currentPath);
-            // console.log(index);
-            if (index.meta && index.meta.info) {
-              breadList.push({ path: index.path, info: index.meta.info });
-              // console.log(breadList);
-              return breadList;
-            }
+    breadListSearch(routes, currentPath, breadList = []) {
+      for (let route of routes) {
+        if (route.path === currentPath) {
+          if (route.meta && route.meta.info) {
+            breadList.push({ path: route.path, info: route.meta.info });
           }
-
-          // if (routes[i].children != undefined && currentPath.indexOf(routes[i].children.path) === 0) {
-          //   breadList.push({ path: routes[i].path, info: routes[i].meta.info });
-          //   return this.breadListSearch(routes[i].children, currentPath, breadList);
-          // }
+          return breadList;
+        } else if (route.children) {
+          const result = this.breadListSearch(route.children, currentPath, breadList);
+          if (result && result.length > 0) {
+            return result;
+          }
         }
       }
+      return breadList;
+      // breadList = breadList || [];
+      // breadList = [...breadList];
+      // for (let i = routes.length - 1; i >= 0; i--) {
+      //   if (routes[i].path === currentPath) {
+      //     console.log(routes[i], 888);
+      //     if (routes[i].meta && routes[i].meta.info)
+      //       breadList.push({ path: routes[i].path, info: routes[i].meta.info });
+      //     // console.log(breadList);
+      //     return breadList;
+      //   } else {
+      //     if (routes[i].children != undefined) {
+      //       console.log(routes[i].children, 999);
+      //       const index = routes[i].children.filter((item) => item.path === currentPath);
+      //       console.log(index, 111);
+      //       if (index.length > 0) {
+      //         breadList.push({ path: index[0].path, info: index[0].meta.info });
+      //         return breadList;
+      //       } else {
+      //         return this.breadListSearch(routes[i].children, currentPath, breadList);
+      //       }
+      //     }
+      //   }
+      // }
     },
   },
   // removeTab(target) {

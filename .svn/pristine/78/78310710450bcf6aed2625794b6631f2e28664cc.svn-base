@@ -1,0 +1,245 @@
+<template>
+  <div class="transfer">
+    <!-- <TheHeader :title="title" :description="description" /> -->
+
+    <!-- <div class="header container">
+      <el-link><img v-if="!icon" src="@/assets/logo.png" alt="Logo" class="logo" /></el-link>
+      <h1 class="title">
+        {{ title }}
+      </h1>
+      <h2 class="subtitle">
+        {{ description }}
+      </h2>
+    </div> -->
+    <!-- <el-card class="card">
+      <template #header> <div class="title">模块选择</div> </template>
+      <div class="card-body">
+        <CategoryItemCopy
+          v-for="(category, index) in categories"
+          :key="index"
+          :path="category.path"
+          :name="category.name"
+          :icon="category.icon"
+          :text="category.text"
+        />
+      </div>
+    </el-card> -->
+    <div class="categories">
+      <CategoryItem
+        v-for="(category, index) in categories"
+        :key="index"
+        :path="category.path"
+        :name="category.name"
+        :icon="category.icon"
+        :text="category.text"
+      />
+    </div>
+
+    <!-- <section class="tools">
+      <div class="container">
+        <h2 class="section-title">
+          {{ sectionTitle }}
+        </h2>
+        <p class="section-description">
+          {{ sectionDescription }}
+        </p>
+        <div class="categories">
+          <CategoryItem
+            v-for="(category, index) in categories"
+            :key="index"
+            :path="category.path"
+            :name="category.name"
+            :icon="category.icon"
+          />
+        </div>
+      </div>
+    </section> -->
+  </div>
+</template>
+
+<script>
+// import TheHeader from "./TheHeader.vue";
+//   import TheSearch from './TheSearch.vue'
+import CategoryItem from "./CategoryItem.vue";
+// import CategoryItemCopy from "./CategoryItemCopy.vue";
+import Bonus from "@/assets/bonus.svg";
+import restaurant from "@/assets/restaurant.svg";
+
+export default {
+  components: {
+    // TheHeader,
+    CategoryItem,
+    // CategoryItemCopy,
+    //   TheSearch
+  },
+  data() {
+    return {
+      title: "OA管理平台中转站",
+      description: "此页面只有管理员/人事能进行访问，以下模块只对有相关权限的人员开放。",
+      sectionTitle: "选择模块",
+      sectionDescription: "禁用表示当前人员暂无此权限",
+      categories: [
+        { path: "mainHome", name: "绩效", icon: Bonus, text: "绩效模块，主要用于统计员工的奖金系数" },
+        { path: "MenuWeek", name: "后勤", icon: restaurant, text: "后勤模块，主要用于食谱的管理等" }, //MenuWeek
+        { path: "", name: "招聘", icon: restaurant, text: "招聘模块，暂未开发" },
+        // { path: "", name: "培训", icon: restaurant, text: "gvsergsrhgthstrhsrthrthrthrtht" },
+        // { path: "", name: "123", icon: restaurant, text: "gvsergsrhgthstrhsrthrthrthrtht" },
+        // { path: "", name: "456", icon: restaurant, text: "gvsergsrhgthstrhsrthrthrthrtht" },
+      ],
+    };
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.transfer {
+  height: 100vh;
+  position: relative;
+  // background: linear-gradient(180deg, #fff8ef, rgba(255, 255, 255, 0) 100%) !important;
+  // &::before {
+  //   content: "";
+  //   position: absolute;
+  //   top: -18%;
+  //   left: 0;
+  //   width: 100%;
+  //   height: 70%;
+  //   overflow-y: hidden;
+  //   // margin-bottom: -48%;
+  //   // background-image: url("@/assets/footer-bg.png");
+  //   background-image: url("@/assets/services-right-dec.png");
+  //   background-repeat: no-repeat;
+  //   background-position: 80%;
+  //   // background-size: auto 110%;
+  //   /* stylelint-disable-next-line media-query-no-invalid */
+  // }
+  &::after {
+    content: "";
+    position: absolute;
+    bottom: 0%;
+    left: -53%;
+    width: 80%;
+    height: 40%;
+    overflow-y: hidden;
+    // margin-bottom: -48%;
+    // background-image: url("@/assets/footer-bg.png");
+    background-image: url("@/assets/services-left-dec.png");
+    background-repeat: no-repeat;
+    background-position: 80%;
+  }
+}
+.header {
+  text-align: center;
+  padding-top: 150px !important;
+  padding-bottom: 40px !important;
+}
+
+.logo {
+  text-align: center;
+  // width: 75px;
+}
+.el-link {
+  text-decoration: underline;
+}
+.icon {
+  font-size: 48px;
+  margin: 0;
+}
+
+.title {
+  color: #4b8ef1;
+  font-weight: 900;
+  font-size: 28px;
+  margin-bottom: 0;
+  margin-top: 16px;
+}
+
+.subtitle {
+  font-size: 20px;
+  color: #908f9e;
+  font-weight: 400;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue",
+    sans-serif;
+  margin: 16px 0;
+}
+
+.home-search {
+  margin-top: -32px;
+  margin-bottom: 32px;
+}
+
+.tools {
+  background-color: #fff;
+  padding: 70px 0;
+}
+.container {
+  max-width: 1200px;
+  padding: 0 30px;
+  margin: auto;
+}
+.section-title {
+  color: #0960bd;
+  text-align: center;
+  margin: 20px 0;
+}
+.section-description {
+  text-align: center;
+  font-size: 16px;
+  color: #908f9e;
+  font-weight: 400;
+  max-width: 600px;
+  margin: auto auto 32px;
+}
+
+.card {
+  width: 55%;
+  margin: 0 auto;
+  border-radius: 10px;
+  .title {
+    text-align: left;
+  }
+}
+:deep(.el-card__body) {
+  padding: 0;
+}
+.card-body {
+  // display: flex;
+  // flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  padding: 0 !important;
+  margin-block-start: -1px;
+  margin-inline-start: -1px;
+  // &::before {
+  //   display: table;
+  //   content: "";
+  // }
+}
+
+.categories {
+  width: 60%;
+  height: 100%;
+  margin: auto;
+  display: grid;
+  align-items: center;
+  grid-template-columns: 1fr 1fr 1fr;
+  // grid-template-columns: 1fr 1fr 1fr;
+  grid-column-gap: 24px;
+  grid-row-gap: 24px;
+
+  @media (max-width: 1280px) {
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+  }
+
+  @media (max-width: 960px) {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  @media (max-width: 320px) {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

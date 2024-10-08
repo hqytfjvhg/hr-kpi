@@ -1,0 +1,116 @@
+<template>
+  <div class="login-bgc">
+    <!-- 手机正在使用 -->
+    <div class="login-container">
+      <div class="img">
+        <img src="@/assets/logo.png" alt="" style="height: 3rem" />
+      </div>
+
+      <div class="login-form">
+        <van-form @submit="onSubmit" class="form-style">
+          <!-- <van-cell-group inset> -->
+          <van-field
+            class="input-style"
+            v-model="username"
+            name="用户名"
+            placeholder="请输入账号"
+            right-icon="close"
+            input-align="center"
+          >
+            <template #right-icon>
+              <van-icon name="close" @click="username = ''" />
+            </template>
+          </van-field>
+          <van-field
+            v-model="password"
+            class="input-style"
+            :type="isShowPass ? 'text' : 'password'"
+            name="密码"
+            placeholder="请输入密码"
+            right-icon="eye-o"
+            input-align="center"
+          >
+            <template #right-icon>
+              <van-icon :name="isShowPass ? 'eye-o' : 'closed-eye'" @click="isShowPass = !isShowPass" />
+            </template>
+          </van-field>
+
+          <!-- </van-cell-group> -->
+          <div style="margin-top: 2rem">
+            <van-button block type="primary" native-type="submit">登 录</van-button>
+          </div>
+          <div style="margin-top: 1rem; color: #cdd0d6; font-size: 14px">找回密码</div>
+        </van-form>
+      </div>
+    </div>
+  </div>
+</template>
+<script>
+import { login } from "@/api/login/index";
+import { showFailToast } from "vant";
+
+export default {
+  data() {
+    return {
+      username: "",
+      password: "",
+      isRemeber: true,
+      isShowPass: false,
+      winHeight: 0,
+    };
+  },
+  // created() {
+  //   document.title = "绩效-OA";
+  // },
+  methods: {
+    onSubmit() {
+      if (this.username == "" || this.password == "") {
+        showFailToast("账号/密码不能为空");
+      } else {
+        const LoginForm = {
+          username: this.username,
+          password: this.password,
+          entryIdentification: "employee",
+        };
+        login(LoginForm);
+      }
+    },
+  },
+};
+</script>
+<style lang="scss" scoped>
+.login-bgc {
+  // background-color: #f3f2f7;
+  background-color: #f5f7fa;
+  width: 100vw;
+  height: 100vh;
+  font-family: "Microsoft Yahei";
+  // background: radial-gradient(#d7dcfa, #eee0f9);
+  .login-container {
+    padding-top: 10%;
+    .img {
+      height: 10rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+  .login-form {
+    margin-top: 10%;
+  }
+}
+
+.form-style {
+  width: 80%;
+  margin: auto;
+}
+.input-style {
+  height: 3.5rem;
+  line-height: 2.2rem;
+  margin-top: 1rem;
+  border-radius: 0.5rem;
+}
+:deep(.van-field__control--center) {
+  font-size: large;
+}
+</style>

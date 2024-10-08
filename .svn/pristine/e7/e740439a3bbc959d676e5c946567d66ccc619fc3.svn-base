@@ -1,0 +1,122 @@
+<template>
+  <!-- <div> -->
+  <VCalendar :attributes="attributes" :columns="columns" id="vcalendar" borderless :step="1" />
+  <!-- </div> -->
+</template>
+
+<script>
+import store from "../../store";
+
+export default {
+  data() {
+    return {
+      year: new Date().getFullYear(),
+
+      month: new Date().getMonth() + 1,
+      columns: 1,
+
+      attributes: [
+        {
+          key: "today",
+          highlight: true,
+          dates: new Date(),
+        },
+        {
+          dot: "red",
+          dates: new Date(store.state.userInfo.monthLastDay),
+          popover: { label: "价值观截止录入" },
+        },
+        {
+          highlight: { start: { fillMode: "outline" }, base: { fillMode: "light" }, end: { fillMode: "outline" } },
+          dates: {
+            start: new Date(store.state.userInfo.publishTime),
+            end: new Date(store.state.userInfo.monthLastDay),
+          },
+          popover: { label: "填写价值观" },
+        },
+      ],
+    };
+  },
+  mounted() {
+    //处理日历时间
+    // const nextMonthStart = new Date(this.year, this.month, 1);
+    if (store.state.role == "DEPTMANAGER" || store.state.role == "HRMANAGER" || store.state.role == "HR") {
+      const publishTime = new Date(store.state.userInfo.publishTime);
+      this.attributes.push({
+        highlight: { fillMode: "outline" },
+        dates: new Date(publishTime.getFullYear(), publishTime.getMonth() + 1, 1),
+        popover: { label: "价值观审批" },
+      });
+      this.attributes.push({
+        highlight: { fillMode: "outline" },
+        dates: new Date(publishTime.getFullYear(), publishTime.getMonth() + 1, 10),
+        popover: { label: "指标录入" },
+      });
+    }
+
+    // if (store.state.role == "DEPTMANAGER") {
+    //   this.attributes.push({
+    //     highlight: { start: { fillMode: "outline" }, base: { fillMode: "light" }, end: { fillMode: "outline" } },
+    //     dates: { start: "", end: "" },
+    //     popover: { label: "审批价值观及录入指标的时间范围" },
+    //   });
+    //   this.attributes[3].dates.start = new Date(publishTime.getFullYear(), publishTime.getMonth() + 1, 1);
+    //   this.attributes[3].dates.end = new Date(publishTime.getFullYear(), publishTime.getMonth() + 1, 12);
+    // } else if (store.state.role == "HRMANAGER" || store.state.role == "HR") {
+    //   this.attributes.push({
+    //     highlight: { start: { fillMode: "outline" }, base: { fillMode: "light" }, end: { fillMode: "outline" } },
+    //     dates: { start: "", end: "" },
+    //     popover: { label: "审批价值观及录入指标的时间范围" },
+    //   });
+    //   this.attributes[3].dates.start = new Date(publishTime.getFullYear(), publishTime.getMonth() + 1, 1);
+    //   this.attributes[3].dates.end = new Date(publishTime.getFullYear(), publishTime.getMonth() + 1, 15);
+    // }
+    // this.attributes[1].dates = new Date(nextMonthStart.setDate(nextMonthStart.getDate() - 1));
+    // this.attributes[2].dates.end = this.attributes[1].dates;
+    this.$nextTick(() => {
+      this.updateColumns();
+      window.addEventListener("resize", this.updateColumns);
+    });
+  },
+  methods: {
+    updateColumns() {
+      this.$nextTick(() => {
+        const vcalendar = document.getElementById("vcalendar");
+        if (vcalendar.offsetWidth < 500) {
+          this.columns = 1;
+        } else {
+          this.columns = 2;
+        }
+      });
+    },
+  },
+};
+</script>
+
+<style lang="scss">
+.vc-header {
+  margin-top: 0;
+  height: 50px;
+}
+.vc-weekday {
+  line-height: 20px;
+  font-size: 16px;
+}
+.vc-day {
+  min-height: 40px;
+}
+.vc-day-content {
+  font-size: 16px;
+  line-height: 34px;
+}
+.vc-arrow {
+  background: white;
+}
+.vc-header .vc-title {
+  background: white;
+}
+.vc-week:last-child {
+  height: 30px;
+  overflow: hidden;
+}
+</style>

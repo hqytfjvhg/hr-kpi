@@ -1,0 +1,865 @@
+<template>
+  <div>
+    <!-- 成品菜 -->
+    <!-- <Form :formItems="formItems" @search="handleSearch"></Form> -->
+    <div class="fun-btn">
+      <el-form :inline="true" class="form-inline">
+        <el-form-item label="名称">
+          <el-input v-model="data.name" clearable></el-input>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleSearch">查询</el-button>
+        </el-form-item>
+        <el-form-item label="">
+          <el-checkbox
+            v-model="data.newDish1"
+            label="包含新菜"
+            size="large"
+            @change="handleSearch([{ prop: 'newDish', value: data.newDish1 }])"
+          />
+          <!-- <el-radio-group v-model="data.newDish" @change="handleSearch([{ prop: 'newDish', value: data.newDish }])">
+            <el-radio :label="true" size="large">是</el-radio>
+            <el-radio :label="false" size="large">否</el-radio>
+            <el-radio label="" size="large">全部</el-radio>
+          </el-radio-group> -->
+        </el-form-item>
+        <!-- <el-form-item label="系统生成的菜">
+          <el-radio-group
+            v-model="data.systemGenerate"
+            @change="handleSearch([{ prop: 'systemGenerate', value: data.systemGenerate }])"
+          >
+            <el-radio :label="true" size="large">是</el-radio>
+            <el-radio :label="false" size="large">否</el-radio>
+            <el-radio label="" size="large">全部</el-radio>
+          </el-radio-group>
+        </el-form-item> -->
+      </el-form>
+    </div>
+    <div class="fun-btn">
+      <el-button type="success" @click="handleAdd">新增</el-button>
+      <el-button type="success" @click="handleGenerate">自动生成</el-button>
+      <el-button type="success" @click="handleDown">下载模板</el-button>
+      <el-upload
+        class="upload-demo"
+        action="#"
+        accept=".xlsx,.xls"
+        :on-change="handleExport"
+        :show-file-list="false"
+        :auto-upload="false"
+        style="margin: 0 12px"
+      >
+        <el-button type="primary">导入</el-button>
+      </el-upload>
+    </div>
+
+    <el-tabs v-model="activeName" class="demo-tabs" @tab-change="handleChange">
+      <!-- <el-tab-pane
+        v-for="item in Object.keys(tableData)"
+        :key="item"
+        :label="dishArr[item - 1]"
+        :name="dishArr[item - 1]"
+      >
+        <el-table :data="tableData[item]" border>
+          <el-table-column type="index" width="60" label="序号"> </el-table-column>
+          <el-table-column v-for="(item1, index1) in columns" :key="index1" :prop="item1.prop" :label="item1.label">
+            <template #default="scope">
+              <div v-if="item1.prop === 'base64'">
+                <img :src="'data:image/jpeg;base64,' + scope.row.base64" alt="" style="width: 50px; height: 50px" />
+              </div>
+              <div v-if="item1.prop === 'type'">
+                <span v-if="scope.row.type === 1">素菜</span>
+                <span v-if="scope.row.type === 2">荤菜</span>
+                <span v-if="scope.row.type === 3">汤类</span>
+                <span v-if="scope.row.type === 4">早餐套餐</span>
+                <span v-if="scope.row.type === 5">配菜</span>
+                <span v-if="scope.row.type === 6">水果</span>
+              </div>
+              <div v-if="item1.prop === 'newDish'">
+                <span v-if="scope.row.newDish">是</span>
+                <span v-if="!scope.row.newDish">否</span>
+              </div>
+              <div v-if="item1.prop === 'systemGenerate'">
+                <span v-if="scope.row.systemGenerate">是</span>
+                <span v-if="!scope.row.systemGenerate">否</span>
+              </div>
+            </template></el-table-column
+          >
+          <el-table-column prop="operation" label="操作">
+            <template #default="{ row }">
+              <div class="table-btn">
+                <span @click="handleEdit(row)">修改</span>
+
+                <el-popconfirm
+                  :title="`确定删除吗?`"
+                  confirm-button-text="确定"
+                  cancel-button-text="取消"
+                  @confirm="deleteRow(row, btn)"
+                >
+                  <template #reference>
+                    <span>删除</span>
+                  </template>
+                </el-popconfirm>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-tab-pane> -->
+      <el-tab-pane v-for="item in dishArr" :key="item" :label="item.name" :name="item.type">
+        <el-table :data="tableData" border :height="tableHeight">
+          <el-table-column type="index" width="60" label="序号"> </el-table-column>
+          <el-table-column prop="name" label="菜品名称"></el-table-column>
+          <el-table-column prop="base64" label="图片">
+            <template #default="scope">
+              <img
+                ref="imageRef"
+                v-if="scope.row.base64 !== null"
+                :src="'data:image/jpeg;base64,' + scope.row.base64"
+                alt=""
+                style="width: 50px; height: 50px"
+                @click="handleEnlargeImg()"
+                :data-original="'data:image/jpeg;base64,' + scope.row.base64"
+              />
+              <img src="@/assets/noimg.png" alt="" style="width: 50px" v-else />
+            </template>
+          </el-table-column>
+          <el-table-column prop="type" label="类型">
+            <template #default="scope">
+              <span v-if="scope.row.type === 1">素菜</span>
+              <span v-if="scope.row.type === 2">荤菜</span>
+              <span v-if="scope.row.type === 3">汤类</span>
+              <span v-if="scope.row.type === 4">早餐套餐</span>
+              <span v-if="scope.row.type === 5">小菜</span>
+              <span v-if="scope.row.type === 6">水果</span></template
+            >
+          </el-table-column>
+          <!-- <el-table-column prop="category" label="菜系" v-if="item.type === 1 || item.type === 2"></el-table-column>
+          <el-table-column
+            prop="pungencyDegree"
+            label="辣度"
+            v-if="item.type === 1 || item.type === 2"
+          ></el-table-column> -->
+          <el-table-column prop="newDish" label="新菜">
+            <template #default="scope">
+              {{ scope.row.newDish ? "是" : "否" }}
+            </template>
+          </el-table-column>
+
+          <el-table-column prop="systemGenerate" label="系统生成" v-if="item.type === 1 || item.type === 2">
+            <template #default="scope">
+              {{ scope.row.systemGenerate ? "是" : "否" }}
+            </template>
+          </el-table-column>
+
+          <!-- <template v-for="(item1, index1) in columns" :key="index1">
+            <el-table-column :prop="item1.prop" :label="item1.label">
+              <template #default="scope">
+                <div v-if="item1.prop === 'base64'">
+                  <img :src="'data:image/jpeg;base64,' + scope.row.base64" alt="" style="width: 50px; height: 50px" />
+                </div>
+                <div v-if="item1.prop === 'type'">
+                  <span v-if="scope.row.type === 1">素菜</span>
+                  <span v-if="scope.row.type === 2">荤菜</span>
+                  <span v-if="scope.row.type === 3">汤类</span>
+                  <span v-if="scope.row.type === 4">早餐套餐</span>
+                  <span v-if="scope.row.type === 5">配菜</span>
+                  <span v-if="scope.row.type === 6">水果</span>
+                </div>
+                <div v-if="item1.prop === 'newDish'">
+                  <span v-if="scope.row.newDish">是</span>
+                  <span v-if="!scope.row.newDish">否</span>
+                </div>
+                <div v-if="item1.prop === 'systemGenerate' && (item.type === 1 || item.type === 2)">
+                  {{ item.type }} {{ scope.row.type }}
+                  {{ scope.row.systemGenerate ? "是" : "否" }}
+                </div>
+              </template></el-table-column
+            ></template
+          > -->
+          <el-table-column prop="operation" label="操作" width="200">
+            <template #default="{ row }">
+              <div class="table-btn">
+                <span @click="handleEdit(row)">修改</span>
+
+                <el-popconfirm
+                  :title="`确定删除吗?`"
+                  confirm-button-text="确定"
+                  cancel-button-text="取消"
+                  @confirm="deleteRow(row)"
+                >
+                  <template #reference>
+                    <span>删除</span>
+                  </template>
+                </el-popconfirm>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-tab-pane>
+      <div class="pagination">
+        <el-pagination
+          v-model:currentPage="pagination.page"
+          v-model:page-size="pagination.length"
+          layout="total, prev, pager, next, jumper"
+          :total="pagination.total"
+          @current-change="handleChangePage"
+        />
+      </div>
+    </el-tabs>
+    <Dialog :title="title" :isShow="isShow" @confirm="handleSubmit" @close="isShow = false">
+      <el-form ref="formRef" :model="form" :rules="rules" :label-position="right">
+        <el-form-item prop="type" label="类型">
+          <el-radio-group v-model="form.type">
+            <el-radio-button v-for="item in dishArr" :key="item" :value="item.type" :label="item.type">{{
+              item.name
+            }}</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+
+        <!-- <el-form-item
+          prop="category"
+          label="菜系"
+          v-if="(title === '新增菜品' || title === '修改菜品') && (form.type === 1 || form.type === 2)"
+        >
+          <el-radio-group v-model="form.category">
+            <el-radio-button label="粤菜">粤菜</el-radio-button>
+            <el-radio-button label="湘菜">湘菜</el-radio-button>
+            <el-radio-button label="川菜">川菜</el-radio-button>
+            <el-radio-button label="鲁菜">鲁菜</el-radio-button>
+            <el-radio-button label="苏菜">苏菜</el-radio-button>
+            <el-radio-button label="浙菜">浙菜</el-radio-button>
+            <el-radio-button label="闽菜">闽菜</el-radio-button>
+            <el-radio-button label="通用菜系">通用菜系</el-radio-button>
+          </el-radio-group>
+        </el-form-item> -->
+
+        <!-- <el-form-item
+          prop="pungencyDegree"
+          label="辣度"
+          v-if="(title === '新增菜品' || title === '修改菜品') && (form.type === 1 || form.type === 2)"
+        >
+          <el-radio-group v-model="form.pungencyDegree">
+            <el-radio-button label="不辣">不辣</el-radio-button>
+            <el-radio-button label="微辣">微辣</el-radio-button>
+            <el-radio-button label="中辣">中辣</el-radio-button>
+            <el-radio-button label="重辣">重辣</el-radio-button>
+          </el-radio-group>
+        </el-form-item> -->
+        <el-form-item label="是否为新菜" prop="newDish">
+          <el-radio-group v-model="form.newDish">
+            <el-radio-button :label="true">是</el-radio-button>
+            <el-radio-button :label="false">否</el-radio-button></el-radio-group
+          >
+        </el-form-item>
+        <el-form-item prop="name" label="菜品名称">
+          <el-input type="textarea" v-model="form.name" style="width: 460px"></el-input>
+        </el-form-item>
+        <el-form-item
+          prop="materialArr"
+          label="原材料"
+          v-if="
+            (title === '新增菜品' && (form.type === 1 || form.type === 2)) ||
+            (title === '修改菜品' && (form.type === 1 || form.type === 2))
+          "
+        >
+          <el-select v-model="form.materialArr" filterable clearable multiple class="select-style">
+            <el-option v-for="op in materialList" :key="op" :label="op.name" :value="op.name" />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-model="form.path" label="图片">
+          <!-- <img
+            :src="'data:image/jpeg;base64,' + form.base64"
+            class="avatar"
+            style="width: 50px; height: 50px"
+            v-if="title === '修改菜品'"
+          /> -->
+          <!-- <el-upload
+            class="avatar-uploader"
+            action="https://jsonplaceholder.typicode.com/posts/"
+            :auto-upload="false"
+            :limit="1"
+            :on-change="handleUpload"
+          >
+            <el-button type="warning">上传</el-button>
+          </el-upload> -->
+          <el-upload
+            action="#"
+            ref="upload"
+            list-type="picture-card"
+            :auto-upload="false"
+            :on-change="handleUpload"
+            :limit="1"
+            :before-upload="beforeAvatarUpload"
+            :file-list="fileList"
+          >
+            <el-icon><Plus /></el-icon>
+            <template #file="{ file }">
+              <div>
+                <img
+                  class="el-upload-list__item-thumbnail"
+                  :src="file.url || 'data:image/jpeg;base64,' + form.base64"
+                  alt=""
+                />
+                <!-- <img class="el-upload-list__item-thumbnail" :src="'data:image/jpeg;base64,' + form.base64" alt="" /> -->
+                <span class="el-upload-list__item-actions">
+                  <span class="el-upload-list__item-delete" @click="handleRemove(file)">
+                    <el-icon><Delete /></el-icon>
+                  </span>
+                </span>
+              </div>
+            </template>
+          </el-upload>
+        </el-form-item>
+      </el-form>
+    </Dialog>
+    <Dialog :title="autoTitle" :isShow="autoShow" @confirm="handleAutoConfirm" @close="autoShow = false">
+      <!-- <div style="margin-bottom: 10px; text-align: left">
+        <el-button type="primary" @click="handleAuto" :disabled="autoForm.result && autoForm.result?.length > 0"
+          >生成</el-button
+        >
+      </div> -->
+      <el-form :model="autoForm" :rules="autoRules" ref="autoFormRef" :hide-required-asterisk="true">
+        <el-form-item label="选择生成菜品数量：" prop="resultCount">
+          <el-input
+            v-model="autoForm.resultCount"
+            style="width: 100px"
+            :disabled="autoForm.result?.length > 0"
+          ></el-input>
+        </el-form-item>
+        <el-form-item label="选择生成菜菜品类型：" prop="type">
+          <el-radio-group v-model="autoForm.type" @change="autoList = []">
+            <el-radio-button :label="1" :disabled="autoForm.result?.length > 0">素菜</el-radio-button>
+            <el-radio-button :label="2" :disabled="autoForm.result?.length > 0">荤菜</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="选择生成关键词：" prop="keyWord">
+          <el-radio-group v-model="autoForm.keyWord" class="radio-group">
+            <el-radio-button :label="''" :disabled="autoForm.result?.length > 0">随机</el-radio-button>
+            <el-radio-button
+              v-for="item in keyWordList"
+              :key="item"
+              :label="item"
+              :disabled="autoForm.result?.length > 0"
+              >{{ item }}</el-radio-button
+            >
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item style="text-align: right">
+          <el-button type="primary" @click="handleAuto" :disabled="autoForm.result && autoForm.result?.length > 0"
+            >生成</el-button
+          >
+        </el-form-item>
+        <!-- <el-form-item label="结果" v-if="autoList.length > 0"> -->
+        <div v-if="autoList.length > 0">
+          <div style="margin-bottom: 10px; font-size: 16px; text-align: left">结果</div>
+          <el-checkbox-group v-model="autoForm.result">
+            <el-scrollbar>
+              <el-checkbox v-for="item in autoList" :key="item" :label="item">{{ item.name }}</el-checkbox>
+            </el-scrollbar>
+          </el-checkbox-group>
+        </div>
+        <!-- </el-form-item> -->
+      </el-form>
+    </Dialog>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, computed } from "vue";
+import { addOrEdit, downloadFile } from "@/api/system/logistics/key";
+import Dialog from "@/components/dialog/DialogTemplate";
+// import Form from "@/components/form/formTemplate";
+import axios from "@/utils/http";
+import { ElMessage } from "element-plus";
+import Viewer from "viewerjs";
+import "viewerjs/dist/viewer.css";
+import * as XLSX from "xlsx/xlsx.mjs";
+
+const activeName = ref(1);
+const dishArr = ref([
+  { type: 1, name: "素菜" },
+  { type: 2, name: "荤菜" },
+  { type: 3, name: "汤类" },
+  { type: 4, name: "早餐套餐" },
+  { type: 5, name: "小菜" },
+  { type: 6, name: "水果" },
+]);
+
+const form = ref({ newDish: false });
+
+const pagination = ref({
+  page: 1,
+  total: 0,
+  length: 20,
+});
+
+//获取表格数据
+const tableData = ref([]);
+const data = ref({ type: activeName.value, newDish: "", newDish1: true, systemGenerate: "", ...pagination.value });
+const getData = () => {
+  if (data.value.newDish1) {
+    data.value.newDish = "";
+  } else {
+    data.value.newDish = false;
+  }
+  axios.post("/ifi-personal/dish/finished/pageFinishedDishList", data.value).then((res) => {
+    if (res.data.code == 0) {
+      res.data.data.list.map((it) => {
+        it.material = it.material === null ? it.material : it.material.split("@").filter((item) => item !== "");
+      });
+      tableData.value = res.data.data.list;
+      pagination.value.total = res.data.data.totalCount;
+    }
+  });
+};
+const handleChange = (val) => {
+  data.value.type = val;
+  getData();
+};
+
+//查询条件
+// const formItems = ref([
+//   {
+//     type: "input",
+//     label: "名称",
+//     prop: "name",
+//     value: "",
+//   },
+// {
+//   type: "select",
+//   label: "新菜",
+//   prop: "newDish",
+//   value: "",
+//   options: [
+//     { label: "是", value: true },
+//     { label: "否", value: false },
+//   ],
+// },
+// {
+//   type: "select",
+//   label: "系统生成",
+//   prop: "systemGenerate",
+//   value: "",
+//   options: [
+//     { label: "是", value: true },
+//     { label: "否", value: false },
+//   ],
+// },
+// ]);
+
+//图片上传的文件列表数据
+const fileList = ref([]);
+const upload = ref(null);
+//修改
+const isShow = ref(false);
+const title = ref("修改菜品");
+const handleEdit = (val) => {
+  form.value.base64 = "";
+  fileList.value = [];
+  // upload.value.clearFiles();
+  // upload.value.submit(base64ToFileStream(val.base64, "image/jpeg"));
+  if (val.base64 !== null) {
+    fileList.value.push(base64ToFileStream(val.base64, "image/jpeg"));
+  }
+
+  isShow.value = true;
+  title.value = "修改菜品";
+  form.value = { ...val };
+  form.value.materialArr = val.material;
+};
+//图片转file
+const base64ToFileStream = (base64Data, mimeType) => {
+  const byteCharacters = atob(base64Data);
+  const byteArrays = [];
+  for (let offset = 0; offset < byteCharacters.length; offset += 1024) {
+    const slice = byteCharacters.slice(offset, offset + 1024);
+    const byteNumbers = new Array(slice.length);
+    for (let i = 0; i < slice.length; i++) {
+      byteNumbers[i] = slice.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    byteArrays.push(byteArray);
+  }
+  const blob = new Blob(byteArrays, { type: mimeType });
+  return blob;
+};
+
+//新增
+const formRef = ref(null);
+const handleAdd = () => {
+  isShow.value = true;
+  title.value = "新增菜品";
+  form.value = { newDish: false };
+  fileList.value = [];
+  if (formRef.value) {
+    formRef.value.resetFields();
+  }
+};
+//校验
+const rules = ref({
+  name: [{ required: true, message: "请输入菜品名称", trigger: "blur" }],
+  type: [{ required: true, message: "请选择菜品类型", trigger: "change" }],
+  pungencyDegree: [{ required: true, message: "请选择辣度", trigger: "change" }],
+  // path: [{ required: true, message: "请上传图片", trigger: "blur" }],
+  category: [{ required: true, message: "请选择菜系", trigger: "change" }],
+  materialArr: [{ required: true, message: "请选择食材", trigger: "change" }],
+  newDish: [{ required: true, message: "请选择是否新菜", trigger: "change" }],
+});
+//获取原材料列表
+const materialList = ref([]);
+const getMaterialList = () => {
+  axios.get("/ifi-personal/dish/basic/getAllMaterialsList").then((res) => {
+    if (res.data.code == 0) {
+      materialList.value = res.data.data;
+    }
+  });
+};
+
+//提交
+const handleSubmit = () => {
+  formRef.value.validate((valid) => {
+    if (valid) {
+      if (form.value.materialArr && form.value.materialArr.length > 0) {
+        form.value.material = form.value.materialArr.join("@");
+      }
+
+      form.value.fileName = form.value.path;
+
+      if (title.value === "新增菜品") {
+        addOrEdit("/ifi-personal/dish/finished/addFinishedDish", form.value).then(() => {
+          isShow.value = false;
+          activeName.value = form.value.type;
+          getData();
+        });
+      } else {
+        addOrEdit("/ifi-personal/dish/finished/updateFinishedDish", form.value).then(() => {
+          isShow.value = false;
+          getData();
+        });
+      }
+    }
+  });
+};
+//删除
+const deleteRow = (val) => {
+  axios.post("/ifi-personal/dish/finished/delFinishedDish", {}, { params: { id: val.id } }).then((res) => {
+    if (res.data.code === 0) {
+      ElMessage.success("删除成功");
+      getData();
+    }
+  });
+};
+
+//查询条件
+const handleSearch = () => {
+  // console.log(val, 888);
+  // val.forEach((it) => {
+  //   data.value[it.prop] = it.value;
+  // });
+  getData();
+};
+
+//限制上传大小
+const beforeAvatarUpload = (rawFile) => {
+  if (rawFile.size / 1024 > 30) {
+    ElMessage.error("上传图片大小不超过30KB");
+    return false;
+  }
+  return true;
+};
+
+//上传图片
+const handleUpload = (val) => {
+  if (beforeAvatarUpload(val)) {
+    // console.log(val, "图片数据");
+    const formData = new FormData();
+    formData.append("file", val.raw); // 将文件添加到 FormData 中
+    axios.post("/ifi-personal/dish/finished/upDishImage", formData).then((res) => {
+      if (res.data.code == 0) {
+        ElMessage.success("上传成功");
+        form.value.path = res.data.data;
+      }
+    });
+  } else {
+    fileList.value = [];
+  }
+};
+//删除图片
+const handleRemove = (file) => {
+  upload.value.clearFiles();
+  fileList.value = [];
+  // console.log(file);
+  file.url = "";
+  form.value.base64 = "";
+  form.value.path = "";
+};
+
+//自动生成菜
+const autoShow = ref(false);
+const autoTitle = ref("自动生成菜品");
+const autoForm = ref({ resultCount: 20, keyWord: "" });
+const autoList = ref([]);
+const autoFormRef = ref(null);
+
+const autoRules = ref({
+  resultCount: [{ required: true, message: "请输入数量", trigger: "blur" }],
+  type: [{ required: true, message: "请选择类型", trigger: "change" }],
+});
+
+const handleGenerate = () => {
+  autoShow.value = true;
+  autoForm.value = { resultCount: 20, keyWord: "" };
+  getKeywords();
+  autoList.value = [];
+};
+//获取关键词
+const keyWordList = ref([]);
+const getKeywords = () => {
+  axios.get("/ifi-personal/dish/basic/getKeyWordList").then((res) => {
+    if (res.data.code == 0) {
+      keyWordList.value = res.data.data;
+    }
+  });
+};
+const handleAuto = () => {
+  autoFormRef.value.validate((valid) => {
+    if (valid) {
+      axios
+        .post("/ifi-personal/dish/finished/generateFinishedDish", {}, { params: { ...autoForm.value } })
+        .then((res) => {
+          if (res.data.code == 0) {
+            autoList.value = res.data.data;
+            // console.log(autoList.value, "系统生成");
+
+            // autoShow.value=false
+          }
+        });
+    }
+  });
+};
+//保存生成的菜
+const handleAutoConfirm = () => {
+  if (autoForm.value.result.length > 0) {
+    const result = autoForm.value.result.map((it) => ({
+      ...it,
+      type: autoForm.value.type,
+      newDish: true,
+      systemGenerate: true,
+      category: "通用菜系",
+      pungencyDegree: "不辣",
+      material: it.materialNmae,
+      fileName: null,
+    }));
+    activeName.value = autoForm.value.type;
+    addOrEdit("/ifi-personal/dish/finished/batchAddFinishedDish", result).then(() => {
+      autoShow.value = false;
+      getData();
+    });
+  }
+};
+
+//放大图片
+const imageRef = ref(null);
+const handleEnlargeImg = () => {
+  // console.log(imageRef.value, "放大图片");
+
+  const viewer = new Viewer(imageRef.value, {
+    url: "data-original",
+    show: function () {
+      viewer.update();
+    },
+    // 相关配置项,详情见下面
+  });
+};
+
+//分页
+const handleChangePage = (val) => {
+  pagination.value.page = val;
+  data.value.page = val;
+  getData();
+};
+
+const tableHeight = computed(() => {
+  return `${window.innerHeight - 350}px`;
+});
+
+//下载模板
+const handleDown = () => {
+  downloadFile("/ifi-personal/dish/finished/downloadExcel", "成品菜导入模板");
+};
+
+//导入数据
+const handleExport = (file) => {
+  const reader = new FileReader();
+  reader.readAsBinaryString(file.raw);
+  reader.onload = (ev) => {
+    const f = ev.target.result;
+    const workbook = XLSX.read(f, { type: "binary" });
+
+    let excelData = [];
+    for (let i = 0; i < workbook.SheetNames.length; i++) {
+      const worksheet = workbook.Sheets[workbook.SheetNames[i]];
+      // 将sheet转换为json数组
+      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      excelData.push(jsonData);
+    }
+    // XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+    // excelData.splice(0, 1);
+    console.log(excelData, "excelData");
+    let isTrue = true;
+    let data = excelData[0].map((it) => {
+      if (it["名称"].trim() !== "" && it["类型"] !== undefined && it["是否为新菜"] !== undefined) {
+        let material = "";
+
+        // 检查是否存在原材料1, 2, 3，并且不为undefined
+        if (it["原材料1"] !== undefined) {
+          material += it["原材料1"];
+        }
+        if (it["原材料2"] !== undefined) {
+          material += it["原材料2"];
+        }
+        if (it["原材料3"] !== undefined) {
+          material += it["原材料3"];
+        }
+        return {
+          name: it["名称"],
+          type:
+            it["类型"] === "素菜"
+              ? 1
+              : it["类型"] === "荤菜"
+              ? 2
+              : it["类型"] === "汤类"
+              ? 3
+              : it["类型"] === "早餐套餐"
+              ? 4
+              : it["类型"] === "小菜"
+              ? 5
+              : it["类型"] === "水果"
+              ? 6
+              : null,
+          material: material,
+          newDish: it["是否为新菜"],
+          systemGenerate: false,
+        };
+      } else {
+        // ElMessage.error("请检查导入的数据是否正确");
+        isTrue = false;
+        return null;
+      }
+    });
+
+    excelData[1].map((it) => {
+      if (it["名称"].trim() !== "" && it["类型"] !== undefined && it["是否为新菜"] !== undefined) {
+        data.push({
+          name: it["名称"],
+          type:
+            it["类型"] === "素菜"
+              ? 1
+              : it["类型"] === "荤菜"
+              ? 2
+              : it["类型"] === "汤类"
+              ? 3
+              : it["类型"] === "早餐套餐"
+              ? 4
+              : it["类型"] === "小菜"
+              ? 5
+              : it["类型"] === "水果"
+              ? 6
+              : null,
+          newDish: it["是否为新菜"],
+          systemGenerate: false,
+        });
+      } else {
+        // ElMessage.error("请检查导入的数据是否正确");
+        isTrue = false;
+        return null;
+      }
+    });
+    // console.log(data);
+    data = data.filter((it) => it !== null);
+    if (isTrue) {
+      addOrEdit("/ifi-personal/dish/finished/importFinishedDish", data).then(() => {
+        getData();
+      });
+    } else {
+      ElMessage.error("请检查导入的数据是否正确");
+    }
+  };
+};
+
+onMounted(() => {
+  getData();
+  getMaterialList();
+});
+</script>
+
+<style lang="scss" scoped>
+.demo-tabs {
+  padding: 10px;
+}
+.table-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  span {
+    cursor: pointer;
+    color: #409eff;
+  }
+}
+.pagination {
+  display: flex;
+  justify-content: right;
+  margin-top: 10px;
+}
+:deep(.avatar-uploader) {
+  text-align: left;
+}
+.fun-btn {
+  display: flex;
+  text-align: left;
+  margin: 10px 10px 0;
+}
+:deep(.el-checkbox-group) {
+  text-align: left;
+  height: 200px;
+}
+:deep(.radio-group .el-radio-button) {
+  border-left: 1px solid #dcdfe6;
+}
+//自动生成的菜品结果
+:deep(.el-scrollbar__view) {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-gap: 10px;
+  // min-width: 620px;
+  width: 100%;
+}
+
+// 新增菜的原材料的框
+.select-style {
+  display: flex;
+  flex-wrap: wrap;
+  max-width: 450px;
+  :deep(.el-input__wrapper) {
+    display: flex;
+    width: 450px;
+  }
+  // :deep(.el-select__input) {
+  //   display: none;
+  // }
+}
+
+:deep(.el-dialog) {
+  min-width: 620px !important;
+}
+
+// 条件框
+.form-inline {
+  display: flex;
+  align-items: center;
+  :deep(.el-form-item) {
+    margin-top: 5px;
+    margin-bottom: 5px;
+    align-items: center;
+  }
+}
+</style>

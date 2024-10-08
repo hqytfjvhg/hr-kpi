@@ -1,0 +1,197 @@
+<template>
+  <div class="page-style">
+    <div class="fun-btn">
+      <slot name="addButton"></slot>
+      <slot name="exportButton"></slot>
+      <slot name="refreshButton"></slot>
+    </div>
+    <el-table :data="tableData" border class="table-style" :height="tableHeight">
+      <el-table-column type="selection" v-if="isShowSelect" width="60"></el-table-column>
+      <el-table-column type="index" width="60" label="序号"></el-table-column>
+      <template v-for="(item, index) in columns" :key="index">
+        <el-table-column v-if="item.isMeat" :prop="item.prop" :label="item.label">
+          <!-- isTrue用来判断是否 -->
+          <template #default="{ row }">
+            {{ row.type === 1 ? "素菜" : "荤菜" }}
+          </template>
+        </el-table-column>
+        <el-table-column v-else :prop="item.prop" :label="item.label"> </el-table-column>
+        <!-- 二级table表头 -->
+        <el-table-column v-if="item.children" :label="item.label">
+          <template v-for="(child, childIndex) in item.children" :key="childIndex">
+            <el-table-column :prop="child.prop" :label="child.label"></el-table-column>
+          </template>
+        </el-table-column>
+      </template>
+      <!-- 操作栏 -->
+      <el-table-column prop="operation" label="操作" v-if="tableBtn.length > 0" width="200">
+        <template #default="{ row }">
+          <div class="table-btn">
+            <span v-for="btn in tableBtn" :key="btn">
+              <!-- 删除按钮 -->
+              <el-popconfirm
+                v-if="btn.txt === '删除'"
+                :title="`确定${btn.txt}吗?`"
+                confirm-button-text="确定"
+                cancel-button-text="取消"
+                @confirm="deleteRow(row, btn)"
+              >
+                <template #reference>
+                  <span>{{ btn.txt }}</span>
+                </template>
+              </el-popconfirm>
+              <!-- 其他按钮 -->
+              <span v-else>
+                <span @click="btn.onClick(row)">{{ btn.txt }}</span>
+              </span>
+            </span>
+          </div>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <!-- 分页 -->
+    <div class="pagination" v-if="isPage">
+      <el-pagination
+        v-model:currentPage="pagination.page"
+        v-model:page-size="pagination.length"
+        layout="total, prev, pager, next, jumper"
+        :total="pagination.total"
+        @current-change="handleCurrentChange"
+      />
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { computed } from "vue";
+import axios from "@/utils/http";
+import { onMounted, ref } from "vue";
+import { ElMessage } from "element-plus";
+const props = defineProps({
+  //表格数据
+  // tableData: {
+  //   type: Array,
+  //   default: () => [],
+  // },
+  //表头
+  columns: {
+    type: Array,
+    default: () => [],
+  },
+  //是否显示多选框
+  isShowSelect: {
+    type: Boolean,
+    default: false,
+  },
+  //表格操作栏
+  tableBtn: {
+    type: Array,
+    default: () => [],
+  },
+  //分页
+  isPage: {
+    type: Boolean,
+    default: false,
+  },
+  //请求地址及数据
+  propsData: {
+    type: Object,
+    default: () => {},
+  },
+});
+
+let pagination = ref({
+  page: 1,
+  total: 0,
+  length: 20,
+});
+
+//获取表格数据
+const tableData = ref([]);
+const getTableData = () => {
+  if (props.propsData.type === "get") {
+    axios.get(props.propsData.url).then((res) => {
+      if (res.code === 0) {
+        tableData.value = res.data;
+      }
+    });
+  } else {
+    axios
+      .post(props.propsData.url, {
+        page: props.isPage ? pagination.value.page : "",
+        length: props.isPage ? pagination.value.length : "",
+        ...props.propsData.data,
+      })
+      .then((res) => {
+        if (res.data.code === 0) {
+          tableData.value = props.isPage ? res.data.data.list : res.data.data;
+          pagination.value.total = res?.data?.data.totalCount || 0;
+          // console.log(tableData.value, "表格数据", pagination.value);
+        }
+      });
+  }
+};
+
+//分页
+const handleCurrentChange = (val) => {
+  pagination.value.page = val;
+  getTableData();
+};
+
+//删除
+const deleteRow = (row, btn) => {
+  // console.log(row, btn);
+  if (btn.isDelecteType) {
+    axios.delete(btn.url, { params: { id: row.id } }).then((res) => {
+      if (res.data.code === 0) {
+        ElMessage.success("删除成功");
+        getTableData();
+      }
+    });
+  } else {
+    axios.post(btn.url, {}, { params: { id: row.id } }).then((res) => {
+      if (res.data.code === 0) {
+        ElMessage.success("删除成功");
+        getTableData();
+      }
+    });
+  }
+};
+const tableHeight = computed(() => {
+  return `${window.innerHeight - 240}px`;
+});
+//初始化
+onMounted(() => {
+  getTableData();
+});
+defineExpose({
+  getTableData,
+});
+// console.log(props);
+</script>
+
+<style lang="scss" scoped>
+.page-style {
+  padding: 10px;
+}
+.pagination {
+  display: flex;
+  justify-content: right;
+  margin-top: 10px;
+}
+.table-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  span {
+    cursor: pointer;
+    color: #409eff;
+  }
+}
+.fun-btn {
+  display: flex;
+  text-align: left;
+  margin-bottom: 16px;
+}
+</style>

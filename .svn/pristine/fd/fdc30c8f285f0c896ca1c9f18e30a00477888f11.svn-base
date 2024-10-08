@@ -1,0 +1,185 @@
+<template>
+  <el-container class="layout-container">
+    <el-aside :width="isCollapse == false ? '12rem' : '4rem'" class="aside sidebar">
+      <div class="logo">
+        <img src="@/assets/logo.png" alt="" :style="{ display: !isCollapse ? '' : 'none' }" />
+        <h4 class="title" :style="{ display: isCollapse == false ? '' : 'none' }">后勤</h4>
+      </div>
+
+      <el-menu
+        unique-opened
+        default-active="this.$route.path"
+        :collapse="isCollapse"
+        :collapse-transition="false"
+        :router="true"
+      >
+        <template v-for="item in router" :key="item.path">
+          <!-- 一级 -->
+          <el-menu-item :index="item.path" v-if="!item.children">
+            <el-icon> <component :is="item.meta.icon"></component> </el-icon>
+            <template #title>
+              <span>{{ item.meta?.info }}</span>
+            </template>
+          </el-menu-item>
+          <!-- 一级 -->
+          <el-sub-menu :index="item.path" v-if="item.children">
+            <template #title>
+              <el-icon :style="{ color: item.meta.color }"> <component :is="item.meta.icon"></component> </el-icon>
+              <span>{{ item.meta?.info }}</span>
+            </template>
+
+            <template v-for="child in item.children" :key="child.path">
+              <!-- 二级 -->
+              <el-menu-item :index="child.path" v-if="!child.children">
+                <template #title>
+                  <span>{{ child.meta.info }}</span>
+                </template>
+              </el-menu-item>
+              <!-- 二级 -->
+              <el-sub-menu :index="child.path" v-if="child.children">
+                <template #title>
+                  <span>{{ child.meta.info }}</span>
+                </template>
+                <!-- 三级 -->
+                <template v-for="grandChild in child.children" :key="grandChild.path">
+                  <el-menu-item :index="grandChild.path" v-if="!grandChild.children">
+                    {{ grandChild.meta.info }}</el-menu-item
+                  >
+                  <el-sub-menu :index="grandChild.path" v-if="grandChild.children">
+                    <template #title>
+                      <span>{{ grandChild.meta.info }}</span></template
+                    >
+                    <el-menu-item v-for="op in grandChild.children" :key="op.path" :index="op.path">
+                      {{ op.meta.info }}</el-menu-item
+                    >
+                  </el-sub-menu>
+                </template>
+              </el-sub-menu>
+            </template>
+          </el-sub-menu>
+        </template>
+      </el-menu>
+      <!-- <div class="transfer-btn" :style="{ display: !isCollapse ? '' : 'none' }">
+        <el-button @click="$router.push('/sys/transfer')">中转页</el-button>
+      </div> -->
+    </el-aside>
+    <el-container>
+      <el-header class="header">
+        <div class="siderOpen">
+          <el-icon :size="20" v-if="isCollapse === false" @click="isCollapse = !isCollapse"><Expand /></el-icon>
+          <el-icon :size="20" v-if="isCollapse === true" @click="triggerSidebarOpened"><Fold /></el-icon>
+        </div>
+        <!-- <div><el-button @click="$router.push('/sys/transfer')">中转页</el-button></div> -->
+        <Header></Header>
+      </el-header>
+      <!-- <Tagview></Tagview> -->
+      <el-scrollbar class="main-scrollbar">
+        <el-main class="main">
+          <div class="layout-main">
+            <router-view v-slot="{ Component }">
+              <component :is="Component" v-if="!$route.meta.keepAlive" :key="$route.name" />
+
+              <keep-alive>
+                <component :is="Component" :key="$route.name" v-if="$route.meta.keepAlive" />
+              </keep-alive>
+            </router-view>
+          </div> </el-main
+      ></el-scrollbar>
+    </el-container>
+  </el-container>
+</template>
+
+<script>
+import Router from "@/router/index";
+import Header from "@/components/header/HeaderView.vue";
+export default {
+  components: { Header },
+  data() {
+    return {
+      isCollapse: false,
+      router: [],
+    };
+  },
+  created() {
+    this.router = Router.options.routes[7].children;
+    // console.log(Router.options);
+    this.router = this.recursiveFilter(this.router);
+    console.log(this.router, "lu999");
+  },
+  methods: {
+    triggerSidebarOpened() {
+      this.isCollapse = !this.isCollapse;
+    },
+    recursiveFilter(routes) {
+      return routes.filter((route) => {
+        let hasAccess = route.meta?.roles?.includes(this.$store.state.role) && route.meta?.requireAuth;
+        // 如果当前路由有权限且包含子路由
+        if (hasAccess && route.children) {
+          // 对子路由进行同样的过滤
+          route.children = this.recursiveFilter(route.children);
+        }
+
+        return hasAccess;
+      });
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.layout-main {
+  background-color: #fff;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.layout-container {
+  height: 100vh;
+  position: relative;
+}
+
+// .sidebar {
+//   // width: 200px;
+//   // background-color: #333;
+//   // color: white;
+//   position: fixed;
+//   top: 0;
+//   bottom: 0;
+//   transition: width 0.3s;
+//   z-index: 1000;
+// }
+
+.sidebar {
+  position: relative;
+}
+.transfer-btn {
+  position: absolute;
+  bottom: 5%;
+  left: 25%;
+}
+.header {
+  // background-color: #409eff;
+  // color: white;
+  // position: fixed;
+  // left: 0;
+  // right: 0;
+  // top: 0;
+  // z-index: 999;
+  // height: 60px;
+  display: flex;
+  justify-content: space-between;
+}
+
+// .main-scrollbar {
+//   margin-left: 200px;
+//   transition: margin-left 0.3s;
+//   padding-top: 60px;
+// }
+
+.main-scrollbar .el-main {
+  overflow-y: auto;
+  height: calc(100vh - 60px);
+}
+</style>

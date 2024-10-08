@@ -1,0 +1,440 @@
+<template>
+  <div class="login-bgc">
+    <!-- 正在使用 -->
+    <div class="login-body"></div>
+    <div class="login-container">
+      <div class="img">
+        <!-- <div class="logo">
+          <img src="../../assets/kyLogo.png" width="50" height="25" style="margin-right: 10px" /><span
+            style="height: 25px; line-height: 25px"
+            >绩效管理平台</span
+          >
+        </div> -->
+        <img src="@/assets/loginKPI1.png" alt="" class="img-style" />
+      </div>
+      <div class="login-box">
+        <div class="login-form">
+          <!-- <div class="login-logo">
+            <img src="../../assets/kyLogo.png" width="50" />
+          </div>
+          <div><h2>绩效管理平台</h2></div> -->
+          <div class="title">
+            <!-- <div class="form-title">
+              <span class="actual-text">欢迎回来 :)</span>
+              <span aria-hidden="true" class="hover-text">欢迎回来 :)</span>
+            </div> -->
+            <img src="@/assets/logo.png" alt="" style="width: 25%; height: 25%" />
+            <!-- <div> -->
+            <div class="form-title">
+              <span class="actual-text">&nbsp;绩效管理平台</span>
+              <span aria-hidden="true" class="hover-text">&nbsp;绩效管理平台</span>
+            </div>
+            <!-- </div> -->
+            <!-- <div class="bottom-text">
+              <span
+                >请使用您个人信息的账号和密码进行登录<i
+                  class="fa fa-bell"
+                  aria-hidden="true"
+                  style="color: #e6a23c; margin-left: 5px"
+                ></i
+              ></span>
+            </div> -->
+          </div>
+          <!-- <span class="form-title" data-text="Awesome">
+            <span class="actual-text">&nbsp;LOGIN&nbsp;FORM&nbsp;</span>
+            <span aria-hidden="true" class="hover-text"> &nbsp;LOGIN&nbsp;FORM&nbsp; </span>
+          </span> -->
+          <!-- <el-form class="formStyle"> -->
+          <!-- <el-form-item class="formStyle-item"> -->
+          <!-- <el-input
+                v-model="username"
+                placeholder="请输入账号"
+                clearable
+                :prefix-icon="User"
+                style="height: 40px; width: 100%"
+              >
+                <template #prefix>
+                  <el-icon class="el-input__icon"><User /></el-icon> </template
+              >
+            </el-input> -->
+          <div class="field-box">
+            <input
+              type="text"
+              class="account field"
+              required="required"
+              v-model="username"
+              @keyup.enter="loginSubmit"
+            />
+            <span class="holder">账号</span>
+            <span class="el-input__icon">
+              <el-icon><User /></el-icon
+            ></span>
+          </div>
+          <!-- </el-form-item> -->
+          <!-- <el-form-item> -->
+          <!-- <el-input
+                v-model="password"
+                type="password"
+                placeholder="请输入密码"
+                show-password
+                clearable
+                :prefix-icon="Lock"
+                style="height: 40px; width: 100%"
+              >
+                <template #prefix>
+                  <el-icon class="el-input__icon"><Lock /></el-icon
+                ></template>
+              </el-input> -->
+          <div class="field-box">
+            <input
+              class="account field"
+              :type="isShowPass ? 'text' : 'password'"
+              required="required"
+              v-model="password"
+              @keyup.enter="loginSubmit"
+              data="passworedtype"
+            />
+            <span class="holder">密码</span>
+            <span class="el-input__icon">
+              <el-icon><Lock /></el-icon
+            ></span>
+            <span class="icon-view" v-if="isShowPass" @click="isShowPass = false"
+              ><el-icon><View /></el-icon
+            ></span>
+            <span class="icon-view" v-else @click="isShowPass = true">
+              <el-icon><Hide /></el-icon>
+            </span>
+          </div>
+          <!-- <div class="radio-button"><el-checkbox v-model="isRemeber" size="large">记住我</el-checkbox></div> -->
+          <div><button class="submit" @click="loginSubmit" @keyup.enter="loginSubmit">登录</button></div>
+
+          <!-- </el-form-item> -->
+          <!-- <el-form-item> -->
+
+          <!-- </el-form-item> -->
+          <!-- </el-form> -->
+
+          <div>
+            <!-- <router-link to="register" @click="getUuid"><el-button type="primary" round>注册</el-button></router-link> -->
+          </div>
+          <!-- <div style="line-height: 1.3rem; font-size: 0.6rem; color: #606266; text-align: right">
+          <div>忘记密码</div>
+          <div><router-link to="register" class="registerLink" @click="getUuid">没有账号? 去注册</router-link></div>
+        </div> -->
+        </div>
+
+        <!-- <el-form-item label="角色" prop="role">
+          <el-radio-group v-model="LoginFrom.role">
+            <el-radio label="管理层人员" name="root"></el-radio>
+            <el-radio label="职工" name="root"></el-radio>
+          </el-radio-group>
+        </el-form-item> -->
+      </div>
+    </div>
+  </div>
+</template>
+<script>
+import { ElButton, ElMessage } from "element-plus";
+import { login, uuid } from "@/api/login/index";
+import { User, Lock, View, Hide } from "@element-plus/icons-vue";
+
+export default {
+  components: { User, Lock, View, Hide },
+  data() {
+    return {
+      username: "",
+      password: "",
+      isRemeber: true,
+      isShowPass: false,
+      // isLoading: false,
+    };
+  },
+  created() {
+    document.title = "绩效-OA";
+  },
+  methods: {
+    loginSubmit() {
+      if (this.username == "" || this.password == "") {
+        ElMessage.error("账号/密码不能为空");
+      } else {
+        const LoginForm = {
+          username: this.username,
+          password: this.password,
+        };
+        // this.isLoading = true;
+        login(LoginForm);
+      }
+    },
+    getUuid() {
+      uuid();
+    },
+    components: { ElButton },
+  },
+};
+</script>
+<style lang="scss" scoped>
+.login-bgc {
+  background-color: #f3f5f5;
+  width: 100vw;
+  height: 100vh;
+  font-family: "Microsoft Yahei";
+  // min-width: 800px;
+}
+.login-body {
+  width: 100vw;
+  height: 100vh;
+  min-width: 700px;
+  background-image: linear-gradient(#8feee5, #bdf8d2);
+  border-radius: 81% 39% 88% 43% / 46% 67% 33% 54%;
+  // animation: spin 10s linear -15s infinite;
+
+  // background: url(../../assets/bg.png);
+  // background-repeat: no-repeat;
+  // background-size: cover;
+  // background-size: 100%;
+  position: relative;
+  overflow: hidden;
+}
+.login-container {
+  position: absolute;
+  top: 8vh;
+  left: 8vw;
+  background-color: rgb(248, 250, 251);
+  border-radius: 15px;
+  box-shadow: 4px 4px 8px rgba(189, 188, 188, 0.5);
+  // gap: 5vw;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  height: 84vh;
+  // padding: 0px 2rem;
+  z-index: 3;
+  width: 84vw;
+  min-width: 600px;
+  overflow: auto;
+}
+.img {
+  grid-column: 1 / span 2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  .img-style {
+    height: 70%;
+    width: 70%;
+    object-fit: contain;
+  }
+  // position: relative;
+  //   display: grid;
+  // grid-template-rows: 100px 1fr;
+  // text-align: left;
+  // vertical-align: middle;
+
+  // padding-left: 3vw;
+
+  // div {
+  //   height: 25px;
+  //   line-height: 25px;
+  // }
+  .logo {
+    text-align: left;
+    position: absolute;
+    top: 20px;
+    left: 50px;
+    color: #46b2ef;
+    font-weight: 700;
+    font-size: 23px;
+  }
+}
+.login-box {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  padding-right: 3rem;
+  // flex-direction: column;
+  // position: relative;
+  // top: 30%;
+  // left: 33%;
+  // .login-form {
+  //   width: 25vw;
+  // }
+}
+
+.title {
+  // -webkit-text-stroke: 1px #fff;
+  text-align: left;
+  margin-bottom: 7vh;
+}
+.bottom-text {
+  text-align: center;
+}
+
+/* title styling */
+.form-title {
+  // -webkit-text-stroke: 1px #fff;
+  // text-align: center;
+  letter-spacing: 3px;
+  text-decoration: none;
+  // font-size: 2vw;
+  font-size: clamp(15px, 2vw, 36px);
+  font-family: "Arial";
+  position: relative;
+  text-transform: uppercase;
+  color: #5daff1;
+  font-weight: 700;
+  // color: transparent;
+  // -webkit-text-stroke: 1px #5daff1;
+  margin-top: 3.5vh;
+  width: 100%;
+}
+/* this is the text, when you hover on title */
+.hover-text {
+  position: absolute;
+  box-sizing: border-box;
+  content: attr(data-text);
+  color: #36a1f3;
+  width: 0%;
+  inset: 0;
+  border-right: 6px solid #36a1f3;
+  overflow: hidden;
+  transition: 0.5s;
+  -webkit-text-stroke: 1px #36a1f3;
+  margin-right: 10px;
+}
+/* hover */
+.form-title:hover .hover-text {
+  width: 100%;
+  filter: drop-shadow(0 0 23px #36a1f3);
+}
+
+// .active-border {
+//   content: "";
+//   position: absolute;
+//   left: 0;
+//   bottom: -1px;
+//   height: 1px;
+//   width: 100%;
+//   transform: scaleX(0);
+//   background-color: #7d2ae8;
+//   transition: all 0.5s;
+//   transform-origin: center;
+// }
+
+// .field:focus ~ .active-border {
+//   transform: scaleX(1);
+// }
+
+.field-box {
+  // border-bottom: 1px solid #b2b2b2;
+  position: relative;
+  font-size: 20px;
+  margin-top: 40px;
+  // margin: 10px 0;
+  height: 80px;
+  // line-height: 60px;
+  background-color: rgb(236, 243, 245, 0.5);
+  text-align: left;
+  border-radius: 10px;
+}
+// .field-box:nth-child(1) {
+//   border-radius: 10px 10px 0 0;
+// }
+// .field-box:first-child {
+//   border-radius: 10px 10px 0 0;
+// }
+
+.field-box:focus-within {
+  background-color: #fff;
+}
+.el-input__icon {
+  font-size: 30px;
+  // height: 60px;
+  // line-height: 60px;
+  // margin: 0 20px;
+  z-index: 20;
+  position: absolute;
+  top: 24px;
+  left: 20px;
+  color: #999;
+  // border-radius: 10%;
+}
+.icon-view {
+  font-size: 20px;
+  z-index: 20;
+  position: absolute;
+  top: 50px;
+  right: 20px;
+  color: #999;
+}
+
+.field {
+  border: none;
+  outline: none;
+  width: 80%;
+  height: 50px;
+  // line-height: 60px;
+  background: none;
+  transition: all 0.5s;
+  // caret-color: #fff; //光标的颜色
+  // color: #cfc4c4;
+  color: black;
+  font-size: 20px;
+  padding-left: 70px;
+  padding-top: 30px;
+  overflow: hidden;
+  // border-radius: 10%;
+  // text-align: left;
+  // z-index: 20;
+}
+
+.holder {
+  color: #999;
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  z-index: 1;
+  transition: all 0.5s;
+  font-size: 23px;
+  // background-color: #f5f8f8;// width: 100%;
+  height: 80px;
+  line-height: 80px;
+  // text-align: left;
+  // border-bottom: 1px #999;
+  padding-left: 70px;
+}
+
+.field:focus ~ .holder,
+.field:valid ~ .holder {
+  top: -15px;
+  font-size: 20px;
+  // color: black;
+  // font-size: 22px;
+  // background: #f5f8f8;
+  // border-bottom: 1px #999;
+}
+// .field:focus ~ .field-box {
+//   background-color: #fff;
+// }
+.radio-button {
+  text-align: left;
+  margin-left: 20px;
+  margin-top: 20px;
+  color: #999;
+}
+.submit {
+  position: relative;
+  display: block;
+  top: 15px;
+  width: 100%;
+  margin: 20px auto 0;
+  padding: 10px 22px;
+  border-radius: 6px;
+  border: none;
+  color: rgb(255, 255, 255);
+  font-size: 22px;
+  font-family: "Microsoft Yahei";
+  cursor: pointer;
+  background-color: #527bbd;
+  transition: all 0.2s ease;
+  z-index: 1;
+}
+</style>

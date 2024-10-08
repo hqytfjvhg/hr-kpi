@@ -1,0 +1,53 @@
+<template>
+  <div>
+    <van-tabbar v-model="active">
+      <van-tabbar-item
+        icon="records-o"
+        name="write"
+        @click="$router.push({ path: '/phone/write', query: { active: 'write' } })"
+        >填写</van-tabbar-item
+      >
+      <van-tabbar-item
+        icon="flag-o"
+        name="sign"
+        @click="$router.push({ path: '/phone/sign', query: { active: 'sign' } })"
+        >签名</van-tabbar-item
+      >
+      <!-- <van-tabbar-item icon="contact-o" @click="$router.push({ name: 'PhoneMy' })">我的</van-tabbar-item> -->
+    </van-tabbar>
+  </div>
+</template>
+
+<script>
+export default {
+  props: {
+    index: {
+      type: String,
+      default: "write",
+    },
+  },
+  data() {
+    return {
+      active: this.index,
+    };
+  },
+  //   created() {
+  //     if (this.$route.path === "/phone/home") {
+  //       this.$router.push("/phone/write");
+  //     }
+  //   },
+};
+</script>
+
+<style lang="scss" scoped>
+:deep(.van-tabbar) {
+  height: 4rem;
+}
+:deep(.van-tabbar-item__icon) {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+:deep(.van-tabbar-item__text) {
+  font-size: 1rem;
+}
+</style>

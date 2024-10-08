@@ -1,0 +1,242 @@
+<template>
+  <!-- 部门考核汇总表的公用组件 -->
+  <div
+    style="display: flex; max-height: 80vh"
+    v-if="basicInfoMaxLength.length > 0"
+    class="table-container"
+    :style="{ width: width }"
+  >
+    <table class="table-style" id="printMe" border="1" color="black" align="center" cellpadding="0" cellspacing="0">
+      <thead>
+        <tr style="height: 6vh; font-size: 20px; position: sticky; top: -1px; z-index: 1; background: #fff">
+          <th :colspan="9 + basicInfoMaxLength.length * 4">
+            <span v-for="(item, index) in deptNameList" :key="item"
+              >{{ item.deptName }}<span v-if="index != deptNameList.length - 1">&</span></span
+            >绩效考核汇总表
+          </th>
+        </tr>
+        <tr
+          style="
+            font-size: 16px;
+            height: 5vh;
+            background-color: #a6a6a6;
+            font-weight: 700;
+            position: sticky;
+            top: 5.8vh;
+            z-index: 1;
+          "
+        >
+          <th
+            rowspan="2"
+            colspan="3"
+            style="background-color: #a6a6a6; width: 220px; position: sticky; left: -1px; top: 5.8vh; z-index: 10"
+          >
+            {{ year }}年（{{ month }}）月<br />
+            <!-- <span v-for="(item, index) in deptNameList" :key="item"
+                >{{ item.deptName }}<span v-if="index != deptNameList.length - 1">&</span></span
+              ><br />绩效考核汇总表 -->
+          </th>
+
+          <th colspan="4" v-for="(item, index) in basicInfoMaxLength" :key="item" class="targetStyle">
+            指标{{ index + 1 }}
+          </th>
+
+          <th rowspan="2" colspan="3" style="background-color: #ffc000; width: 150px">价值观 <br />（16分）</th>
+          <th rowspan="2" colspan="2" style="background-color: #a6a6a6; width: 150px">绩效核算</th>
+          <th rowspan="3" style="background-color: #00b0f0" class="KPIStyke">奖金系数</th>
+          <!-- <th rowspan="3" style="background-color: #00b0f0" class="KPIStyke">{{ month }}月系数调整</th> -->
+        </tr>
+        <tr style="height: 5vh; position: sticky; top: 10.7vh; background: #fff">
+          <td colspan="4" v-for="(item, index) in basicInfoMaxLength" :key="index" style="text-align: center">
+            {{ item.targetName }}
+          </td>
+        </tr>
+
+        <tr style="height: 5vh; position: sticky; top: 15.6vh; z-index: 1; background: #fff">
+          <td style="min-width: 40px; position: sticky; left: -1px; z-index: 1; background: #fff" class="border">
+            序号
+          </td>
+          <td style="min-width: 60px; position: sticky; left: 39px; z-index: 1; background: #fff" class="border">
+            姓名
+          </td>
+          <td style="min-width: 80px; position: sticky; left: 99px; z-index: 1; background: #fff" class="border">
+            职务
+          </td>
+          <td colspan="4" v-for="item in basicInfoMaxLength" :key="item" style="text-align: center" class="targetStyle">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr">
+              <div style="border-right: 1px solid black; background-color: #ffff00; line-height: 5vh; min-width: 60px">
+                权重
+              </div>
+              <div style="border-right: 1px solid black; line-height: 5vh; min-width: 60px">实现值</div>
+              <div style="border-right: 1px solid black; line-height: 5vh; min-width: 60px">指标得分</div>
+              <div style="background-color: #92d050; line-height: 5vh; min-width: 60px">实际得分</div>
+            </div>
+            <!-- <el-row>
+              <el-col :span="6" style="border-right: 1px solid black; background-color: #ffff00; line-height: 5vh"
+                >权重</el-col
+              >
+              <el-col :span="6" style="border-right: 1px solid black; line-height: 5vh">实现值</el-col>
+              <el-col :span="6" style="border-right: 1px solid black; line-height: 5vh">指标得分</el-col>
+              <el-col :span="6" style="background-color: #92d050; line-height: 5vh">实际得分</el-col>
+            </el-row> -->
+          </td>
+          <td style="background-color: #ffff00">权重</td>
+          <td>
+            指标<br />
+            得分
+          </td>
+          <td style="background-color: #92d050">
+            实际<br />
+            得分
+          </td>
+          <td>总权重</td>
+          <td style="background-color: #92d050">
+            实际<br />
+            总得分
+          </td>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="(item, index) in oneDeptAllKPIInfo" :key="index">
+          <td
+            style="min-width: 40px; position: sticky; left: -1px; top: 20.7vh; z-index: 1; background: #fff"
+            class="border"
+          >
+            {{ index + 1 }}
+          </td>
+          <td
+            style="min-width: 40px; position: sticky; left: 39px; top: 20.7vh; z-index: 1; background: #fff"
+            class="border"
+          >
+            {{ item.name }}
+          </td>
+          <td
+            style="min-width: 40px; position: sticky; left: 99px; top: 20.7vh; z-index: 1; background: #fff"
+            class="border"
+          >
+            {{ item.position }}
+          </td>
+          <td
+            colspan="4"
+            v-for="(item1, index) in item.basicInfoContentList"
+            :key="index"
+            class="targetStyle"
+            style="height: 5vh"
+          >
+            <!-- <el-row style="height: 5vh">
+              <el-col
+                :span="6"
+                style="border-right: 1px solid black; line-height: 5vh"
+                :style="{ backgroundColor: item1.weight == '' ? '' : '#ffff00' }"
+                >{{ item1.weight }}<span v-if="item1.weight != ''">%</span></el-col
+              >
+              <el-col :span="6" style="border-right: 1px solid black; line-height: 5vh">{{
+                item1.finalActualAchievementRate
+              }}</el-col>
+              <el-col :span="6" style="border-right: 1px solid black; line-height: 5vh">{{
+                item1.targetBasicScore
+              }}</el-col>
+              <el-col :span="6" style="line-height: 5vh">{{ item1.targetScore }}</el-col>
+            </el-row> -->
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); height: 100%">
+              <div
+                style="border-right: 1px solid black; line-height: 5vh; min-width: 60px"
+                :style="{ backgroundColor: item1.weight == '' ? '' : '#ffff00' }"
+              >
+                {{ item1.weight }}
+              </div>
+              <div style="border-right: 1px solid black; line-height: 5vh; min-width: 60px">
+                {{ item1.finalActualAchievementRate }}
+              </div>
+              <div style="border-right: 1px solid black; line-height: 5vh; min-width: 60px">
+                {{ item1.targetBasicScore }}
+              </div>
+              <div style="line-height: 5vh; min-width: 60px">{{ item1.targetScore }}</div>
+            </div>
+          </td>
+
+          <td class="tdStyle">{{ item.valueWeight }}%</td>
+          <td class="tdStyle" :style="{ color: item.valueSumScore === '未完成' ? 'red' : '' }">
+            {{ item.valueSumScore }}
+          </td>
+          <td class="tdStyle" :style="{ color: item.valueResultScore === '未完成' ? 'red' : '' }">
+            {{ item.valueResultScore }}
+          </td>
+          <td class="tdStyle">100%</td>
+          <td class="tdStyle" :style="{ color: item.resultTotalScore === '未完成' ? 'red' : '' }">
+            {{ item.resultTotalScore }}
+          </td>
+          <td
+            class="tdStyle"
+            style="font-weight: 700"
+            :style="{ color: item.bnousCoefficient === '未完成' ? 'red' : '' }"
+          >
+            {{ item.bnousCoefficient }}<span v-if="item.bnousCoefficient">%</span>
+          </td>
+          <!-- <td></td> -->
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</template>
+
+<script>
+import store from "@/store";
+export default {
+  props: {
+    basicInfoMaxLength: [],
+    deptNameList: [],
+    oneDeptAllKPIInfo: [],
+  },
+  data() {
+    return {
+      year: store.state.year,
+      month: store.state.criticalMonth,
+    };
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.table-container {
+  text-align: center;
+  overflow: auto;
+  // min-width: 100%;
+  position: relative;
+}
+table {
+  text-align: center;
+  // table-layout: fixed;
+  // min-width: 100%;
+  width: 100%;
+  font-family: Microsoft Yahei;
+  color: black;
+  border-collapse: collapse;
+  border: 2px solid gray;
+  font-size: 12px;
+}
+table thead tr td {
+  outline-color: gray;
+  outline-style: solid;
+  outline-width: 1px;
+}
+.border {
+  border: none;
+  outline-color: gray;
+  outline-style: solid;
+  outline-width: 1px;
+}
+
+.tdStyle {
+  min-width: 60px;
+}
+// th {
+//   width: 180px;
+// }
+// .targetStyle {
+//   width: 250px;
+// }
+// .KPIStyke {
+//   width: 50px;
+// }
+</style>

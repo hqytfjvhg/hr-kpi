@@ -1,0 +1,406 @@
+<template>
+  <div class="menu-page">
+    <div class="layout-main-button">
+      <el-button @click="createMenu">生成菜谱</el-button>
+      <el-button @click="getTableData">刷新</el-button>
+      <el-button type="primary" :icon="Plus" @click="handleAdd">新增</el-button>
+      <el-popconfirm title="确定删除选中的数据吗？" @confirm="handleDel(chooseData)">
+        <template #reference>
+          <el-button type="danger" :icon="Delete" :disabled="chooseData.length === 0">删除</el-button>
+        </template>
+      </el-popconfirm>
+    </div>
+    <div class="layout-main-table">
+      <div class="system-table-box">
+        <el-table
+          border
+          height="100%"
+          class="system-table"
+          ref="table"
+          :data="tableData"
+          @selection-change="handleSelectionChange"
+        >
+          <el-table-column type="selection" align="center" width="50" />
+          <el-table-column label="序号" width="60" align="center">
+            <template #default="scope">
+              {{ (page.index - 1) * page.size + scope.$index + 1 }}
+            </template></el-table-column
+          >
+          <el-table-column prop="name" label="菜名" align="center" />
+          <el-table-column prop="img" label="图片" align="center" />
+
+          <el-table-column prop="isAdmin" label="时段" align="center">
+            <template #default="scope">
+              <span class="statusName">{{ scope.row.isAdmin === 1 ? "是" : "否" }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="role" label="标签" align="center" />
+          <!-- <el-table-column prop="status" label="状态" align="center">
+            <template #default="scope">
+              <span class="statusName">{{ scope.row.status === 1 ? "启用" : "禁用" }}</span>
+              <el-switch
+                v-model="scope.row.status"
+                active-color="#13ce66"
+                inactive-color="#ff4949"
+                :active-value="1"
+                :inactive-value="0"
+                :loading="scope.row.loading"
+                @change="handleUpdateStatus(scope.row)"
+              ></el-switch>
+            </template>
+          </el-table-column> -->
+          <el-table-column label="操作" align="center" fixed="right" width="200">
+            <template #default="scope">
+              <el-button @click="handleEdit(scope.row)" size="small">编辑</el-button>
+              <el-popconfirm title="确定删除选中的数据吗？" @confirm="handleDel([scope.row])">
+                <template #reference>
+                  <el-button type="danger" size="small">删除</el-button>
+                </template>
+              </el-popconfirm>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-pagination
+          v-model:current-page="page.index"
+          class="system-page"
+          background
+          :layout="pageLayout"
+          :total="page.total"
+          :page-size="page.size"
+          :page-sizes="pageSizes"
+          @current-change="handleCurrentChange"
+          @size-change="handleSizeChange"
+        >
+        </el-pagination>
+        <Layer :layer="layer" @getTableData="getTableData" @update:show="handleDialogUpdate" v-if="layer.show" />
+      </div>
+    </div>
+    <!-- <el-dialog v-model="showMenu" title="一周菜谱" align-center width="auto">
+      <el-table :data="weekMenu" :cell-class-name="addClass" width="auto">
+        <el-table-column label="" prop="time" width="60"></el-table-column>
+        <el-table-column v-for="item in Object.keys(labelText)" :key="item" :label="labelText[item]">
+          <template #default="scope">
+            <div class="menu-content">
+              <div v-for="item1 in scope.row[item]" :key="item1" class="menu">
+                <img :src="item1.src" alt="" style="width: 70px; height: 50px" />
+                <div>{{ item1.name }}</div>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog> -->
+  </div>
+</template>
+
+<script>
+import { ElMessage } from "element-plus";
+// import { Plus, Delete } from "@element-plus/icons";
+import { del, updateStatus } from "@/api/system/logistics/index";
+import Layer from "./MenuDialog.vue";
+export default {
+  components: {
+    // Plus,
+    // Delete,
+    Layer,
+  },
+  data() {
+    return {
+      layer: {
+        show: false,
+        title: "新增",
+        showButton: true,
+      },
+      page: {
+        index: 1,
+        size: 20,
+        total: 0,
+      },
+      tableData: [],
+      chooseData: [],
+      showMenu: false,
+      labelText: {
+        Monday: "星期一",
+        Tuesday: "星期二",
+        Wednesday: "星期三",
+        Thursday: "星期四",
+        Friday: "星期五",
+        Saturday: "星期六",
+      },
+      // weekMenu: [
+      //   {
+      //     time: "早餐",
+      //     Monday: [
+      //       { src: "./assets/KPI.svg", name: "叉烧包" },
+      //       { src: "@/assets/KPI.svg", name: "水煮蛋" },
+      //       { src: "@/assets/KPI.svg", name: "罗汉果菊花茶" },
+      //     ],
+      //     Tuesday: [
+      //       { src: "@/assets/KPI.svg", name: "咸骨粥" },
+      //       { src: "@/assets/KPI.svg", name: "流沙包" },
+      //       { src: "@/assets/KPI.svg", name: "茶叶蛋" },
+      //     ],
+      //     Wednesday: [
+      //       { src: "@/assets/KPI.svg", name: "肉丝鸡蛋炒河粉" },
+      //       { src: "@/assets/KPI.svg", name: "黑豆豆浆" },
+      //     ],
+      //     Thursday: [
+      //       { src: "@/assets/KPI.svg", name: "葱花卷" },
+      //       { src: "@/assets/KPI.svg", name: "卤蛋" },
+      //       { src: "@/assets/KPI.svg", name: "热狗" },
+      //       { src: "@/assets/KPI.svg", name: "玉米汁" },
+      //     ],
+      //     Friday: [
+      //       { src: "@/assets/KPI.svg", name: "肉汁卷粉" },
+      //       { src: "@/assets/KPI.svg", name: "水煮蛋" },
+      //       { src: "@/assets/KPI.svg", name: "豆浆" },
+      //     ],
+      //     Saturday: [
+      //       { src: "@/assets/KPI.svg", name: "烧麦" },
+      //       { src: "@/assets/KPI.svg", name: "炒蛋" },
+      //       { src: "@/assets/KPI.svg", name: "绿豆汤" },
+      //     ],
+      //   },
+      //   {
+      //     time: "午餐",
+      //     Monday: [
+      //       { src: "@/assets/KPI.svg", name: "峨眉豆炒腩肉" },
+      //       { src: "@/assets/KPI.svg", name: "蒜蓉上海青" },
+      //     ],
+      //     Tuesday: [
+      //       { src: "@/assets/KPI.svg", name: "油豆腐红烧肉" },
+      //       { src: "@/assets/KPI.svg", name: "蚝油炒菜心" },
+      //     ],
+      //     Wednesday: [
+      //       { src: "@/assets/KPI.svg", name: "西芹炒肉卷" },
+      //       { src: "@/assets/KPI.svg", name: "清炒娃娃菜" },
+      //     ],
+      //     Thursday: [
+      //       { src: "@/assets/KPI.svg", name: "五香卤鸡腿" },
+      //       { src: "@/assets/KPI.svg", name: "油渣炒苦麦菜" },
+      //     ],
+      //     Friday: [
+      //       { src: "@/assets/KPI.svg", name: "豆角回锅肉" },
+      //       { src: "@/assets/KPI.svg", name: "清炒小白菜" },
+      //     ],
+      //     Saturday: [
+      //       { src: "@/assets/KPI.svg", name: "酸菜焖鱼块" },
+      //       { src: "@/assets/KPI.svg", name: "蒜蓉炒长吊瓜" },
+      //     ],
+      //   },
+      //   {
+      //     time: "晚餐",
+      //     Monday: [
+      //       { src: "@/assets/KPI.svg", name: "梅菜蒸肉饼" },
+      //       { src: "@/assets/KPI.svg", name: "清炒绿豆芽" },
+      //     ],
+      //     Tuesday: [
+      //       { src: "@/assets/KPI.svg", name: "宫保鸡丁" },
+      //       { src: "@/assets/KPI.svg", name: "豉油王生菜" },
+      //     ],
+      //     Wednesday: [
+      //       { src: "@/assets/KPI.svg", name: "白灼五花肉" },
+      //       { src: "@/assets/KPI.svg", name: "手撕包菜" },
+      //     ],
+      //     Thursday: [
+      //       { src: "@/assets/KPI.svg", name: "莲藕炒五花肉" },
+      //       { src: "@/assets/KPI.svg", name: "上汤菠菜" },
+      //     ],
+      //     Friday: [
+      //       { src: "@/assets/KPI.svg", name: "土豆片炒上肉" },
+      //       { src: "@/assets/KPI.svg", name: "盐水芥菜" },
+      //     ],
+      //     Saturday: [
+      //       { src: "@/assets/KPI.svg", name: "洋葱炒猪肝" },
+      //       { src: "@/assets/KPI.svg", name: "爆炒苋菜" },
+      //     ],
+      //   },
+      //   {
+      //     time: "汤",
+      //     Monday: [{ src: "@/assets/KPI.svg", name: "赤小豆茯苓骨头汤" }],
+      //     Tuesday: [{ src: "@/assets/KPI.svg", name: "海带龙骨汤" }],
+      //     Wednesday: [{ src: "@/assets/KPI.svg", name: "番茄土豆骨头汤" }],
+      //     Thursday: [{ src: "@/assets/KPI.svg", name: "冬瓜薏米大骨汤" }],
+      //     Friday: [{ src: "@/assets/KPI.svg", name: "凉瓜黄豆骨头汤" }],
+      //     Saturday: [{ src: "@/assets/KPI.svg", name: "淮山龙骨汤" }],
+      //   },
+      // ],
+    };
+  },
+  mounted() {
+    this.getTableData();
+  },
+  methods: {
+    handleSelectionChange(val) {
+      this.chooseData = val;
+    },
+    handleDialogUpdate(newValue) {
+      this.layer.show = newValue;
+    },
+    // 获取表格数据
+    // params <init> Boolean ，默认为false，用于判断是否需要初始化分页
+    getTableData(init) {
+      // loading = true;
+      if (init) {
+        this.page.index = 1;
+      }
+      // let params = {
+      //   page: this.page.index,
+      //   pageSize: this.page.size,
+      // };
+
+      // getData(params).then((res) => {
+      //   let data = res.data.list;
+      //   // data.forEach((d) => {
+      //   //   d.loading = false;
+      //   // });
+
+      //   this.tableData = data;
+      //   this.page.total = Number(res.data.pager.total);
+      // });
+      // .catch((error) => {
+      //   this.tableData = [];
+      //   this.page.index = 1;
+      //   this.page.total = 0;
+      // });
+      // .finally(() => {
+      //   loading.value = false;
+      // });
+    },
+    // 删除功能
+    handleDel(data) {
+      let params = {
+        ids: data
+          .map((e) => {
+            return e.id;
+          })
+          .join(","),
+      };
+      del(params).then(() => {
+        ElMessage({
+          type: "success",
+          message: "删除成功",
+        });
+        this.getTableData(this.tableData.length === 1 ? true : false);
+      });
+    },
+    // 新增弹窗功能
+    handleAdd() {
+      this.layer.title = "新增数据";
+      this.layer.show = true;
+      delete this.layer.row;
+    },
+    // 编辑弹窗功能
+    handleEdit(row) {
+      this.layer.title = "编辑数据";
+      this.layer.row = row;
+      this.layer.show = true;
+    },
+    // 状态编辑功能
+    handleUpdateStatus(row) {
+      if (!row.id) {
+        return;
+      }
+      row.loading = true;
+      let params = {
+        id: row.id,
+        status: row.status,
+      };
+      updateStatus(params).then(() => {
+        ElMessage({
+          type: "success",
+          message: "状态变更成功",
+        });
+      });
+      // .catch((err) => {
+      //   ElMessage({
+      //     type: "error",
+      //     message: "状态变更失败",
+      //   });
+      // })
+      // .finally(() => {
+      //   row.loading = false;
+      // });
+    },
+    //生成菜谱
+    createMenu() {
+      // this.showMenu = true;
+      this.$route.push({ name: "MenuWeek" });
+    },
+    addClass({ row, column, rowIndex, columnIndex }) {
+      console.log(row, column, rowIndex, columnIndex);
+      if (columnIndex === 0) {
+        return "firstColumn";
+      } else if (columnIndex === 6) {
+        return "lastColumn otherColumn";
+      } else {
+        return "otherColumn";
+      }
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.menu-page {
+  height: 100%;
+}
+.layout-main-button {
+  padding: 15px 15px 0;
+  text-align: right;
+}
+.layout-main-table {
+  flex: 1;
+  padding: 15px;
+  height: 90%;
+}
+.system-table-box {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  height: 100%;
+  .system-table {
+    flex: 1;
+    height: 100%;
+  }
+  .system-page {
+    margin-top: 20px;
+    text-align: right;
+  }
+}
+.menu-content {
+  width: fit-content;
+  white-space: nowrap;
+  display: flex;
+  justify-content: flex-start;
+  .menu {
+    margin-right: 10px;
+    white-space: nowrap;
+    // color: #409eff;
+  }
+}
+:deep(.el-table__row) {
+  padding: 10px;
+  margin: 10px;
+  border: 5px solid #fff;
+}
+:deep(.firstColumn) {
+  border-right: 1px dashed white !important;
+  background-color: #d9ecff !important;
+  border-radius: 20px 0 0 20px;
+  margin: 10px;
+  border: 10px solid #fff;
+  color: #409eff;
+  font-size: 16px;
+  font-weight: 700;
+}
+:deep(.otherColumn) {
+  // background-color: #d9ecff !important;
+  border-top: 10px solid #fff;
+  border-bottom: 10px solid #fff;
+}
+:deep(.lastColumn) {
+  border-radius: 0 20px 20px 0;
+}
+</style>

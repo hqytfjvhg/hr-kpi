@@ -1,0 +1,61 @@
+<template>
+  <div>
+    <el-dialog :title="title" :model-value="props.isShow" @close="close" :width="width">
+      <slot></slot>
+
+      <template #footer>
+        <div>
+          <el-button @click="close">取消</el-button>
+          <el-button type="success" @click="confirm">确定</el-button>
+        </div>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<script setup>
+const props = defineProps({
+  title: {
+    type: String,
+    default: "",
+  },
+  // visible: {
+  //   type: Boolean,
+  //   default: false,
+  // },
+  //是否显示
+  isShow: {
+    type: Boolean,
+    default: false,
+  },
+  width: {
+    type: String,
+    default: "50%",
+  },
+  //表单数据
+  // form: {
+  //   type: Object,
+  //   default: () => {},
+  // },
+  // //展示的字段
+  // formItems: {
+  //   type: Array,
+  //   default: () => [],
+  // },
+  // //表单验证
+  // rules: {
+  //   type: Object,
+  //   default: () => {},
+  // },
+});
+const emit = defineEmits(["close", "confirm"]);
+const close = () => {
+  emit("close");
+};
+const confirm = () => {
+  emit("confirm");
+};
+// console.log(props, 888);
+</script>
+
+<style lang="scss" scoped></style>

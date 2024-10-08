@@ -1,0 +1,174 @@
+<template>
+  <div class="page-style">
+    <div class="btn-group">
+      <el-button type="primary" @click="handleExport">导出</el-button>
+      <el-button @click="isShowImg = true" type="primary">带图片</el-button>
+      <el-button @click="isShowImg = false" type="primary">不带图片</el-button>
+
+      <!-- <div style="margin-top: 15px; font-size: 19px">
+        {{ nextWeekName.split("@")[0] }}年{{ nextWeekName.split("@")[1] }}周菜谱
+      </div> -->
+    </div>
+    <el-table
+      :data="Object.values(oneWeekMenu)"
+      :cell-class-name="addClass"
+      border
+      id="table"
+      :span-method="arraySpanMethod"
+    >
+      <el-table-column :label="titleDate[0] + ' 至 ' + titleDate[1] + ' 菜谱'">
+        <el-table-column label="" prop="time" width="120"></el-table-column>
+        <el-table-column
+          v-for="(item, index) in Object.keys(labelText)"
+          :key="item"
+          :label="labelText[item]"
+          align="center"
+        >
+          <template #default="scope">
+            <div class="menu-content">
+              <div v-for="item1 in scope.row[index + 1]" :key="item1" class="menu">
+                <img
+                  :src="item1.base64 == null ? `@/assets/noimg.png` : 'data:image/png;base64,' + item1.base64"
+                  alt=""
+                  style="width: 50px; height: 50px"
+                  v-if="(item1.type === 1 || item1.type === 2) && isShowImg && item1.base64 !== null"
+                />
+                <img
+                  src="@/assets/noimg.png"
+                  alt=""
+                  style="width: 50px; height: 50px"
+                  v-if="(item1.type === 1 || item1.type === 2) && isShowImg && item1.base64 == null"
+                />
+
+                <div style="width: auto; white-space: break-spaces; line-height: 50px">
+                  {{ item1.name }}
+                </div>
+              </div>
+            </div>
+          </template>
+        </el-table-column></el-table-column
+      >
+    </el-table>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from "vue";
+import axios from "@/utils/http";
+import html2canvas from "html2canvas";
+
+const labelText = ref({
+  Monday: "星期一",
+  Tuesday: "星期二",
+  Wednesday: "星期三",
+  Thursday: "星期四",
+  Friday: "星期五",
+  Saturday: "星期六",
+});
+
+const nextWeekName = ref(""); //下周具体周数
+const titleDate = ref([]); //菜谱上面显示的日期
+const isShowImg = ref(false); //是否显示图片
+const oneWeekMenu = ref([]);
+const getThisWeekStartAndEnd = () => {
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 今天是一周中的第几天，0 表示周日，1 表示周一...
+  const weekStart = new Date(today);
+  weekStart.setDate(today.getDate() - dayOfWeek + 1);
+  //   weekStart.setHours(0, 0, 0, 0); // 设置时间为当天的开始
+
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  //   weekEnd.setHours(23, 59, 59, 999); // 设置时间为当天的结束
+
+  return {
+    startDate: weekStart.toISOString().split("T")[0],
+    endDate: weekEnd.toISOString().split("T")[0],
+  };
+};
+
+//获取本周菜谱
+const getOneWeekMenu = () => {
+  const { startDate, endDate } = getThisWeekStartAndEnd();
+  titleDate.value = [startDate, endDate];
+  axios
+    .post("/ifi-personal/dish/menu/getMenuListByDate", {
+      endDate: endDate,
+      startDate: startDate,
+      all: false,
+    })
+    .then((res) => {
+      if (res.data.code == 0) {
+        let data = {
+          早餐: { time: "早餐", 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] },
+          午餐: { time: "午餐", 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] },
+          晚餐: { time: "晚餐", 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] },
+          汤: { time: "汤", 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] },
+          // 配菜: { time: "配菜", 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] },
+          // 水果: { time: "水果", 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] },
+        };
+        oneWeekMenu.value = [];
+        if (Object.keys(res.data.data).length > 0) {
+          nextWeekName.value = Object.keys(res.data.data)[0];
+          Object.values(res.data.data)[0].forEach((it) => {
+            if (it.belong === 1) {
+              data["早餐"][it.dayOfWeek].push(it);
+            } else if (it.belong === 2) {
+              data["午餐"][it.dayOfWeek].push(it);
+            } else if (it.belong === 3) {
+              data["晚餐"][it.dayOfWeek].push(it);
+            } else if (it.belong === 0 && it.type === 3) {
+              data["汤"][it.dayOfWeek].push(it);
+            }
+            //  else if (it.belong === 0 && it.type === 5) {
+            //   data["配菜"][it.dayOfWeek].push(it);
+            // } else if (it.belong === 0 && it.type === 6) {
+            //   data["水果"][it.dayOfWeek].push(it);
+            // }
+          });
+          oneWeekMenu.value = data;
+          // console.log(this.oneWeekMenu, 999);
+        }
+      }
+    });
+};
+
+const handleExport = () => {
+  var node = document.getElementById("table");
+  html2canvas(node, { logging: true, scale: 2 }).then(function (canvas) {
+    var a = document.createElement("a");
+    a.href = canvas.toDataURL("image/png");
+    a.download = `${titleDate.value[0] + " 至 " + titleDate.value[1] + " 菜谱"}.png`;
+    a.click();
+  });
+};
+
+const addClass = ({ columnIndex }) => {
+  if (columnIndex === 0) {
+    return "firstColumn";
+  }
+};
+onMounted(() => {
+  getOneWeekMenu();
+});
+</script>
+
+<style lang="scss" scoped>
+.page-style {
+  padding: 10px;
+  height: auto;
+}
+.btn-group {
+  margin-bottom: 10px;
+  text-align: left;
+}
+:deep(.firstColumn) {
+  font-size: 19px;
+  //   font-weight: 700;
+}
+:deep(.el-table thead tr th) {
+  font-size: 19px;
+  font-weight: normal;
+  height: 50px;
+}
+</style>

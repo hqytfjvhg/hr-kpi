@@ -107,6 +107,46 @@ export default {
       }
     });
   },
+  //销毁自动保存,必填的没填给1分
+  beforeUnmount() {
+    const updatedValuesData = this.valuesData.map((item) => {
+      return {
+        valueDescription: item.valueDescription,
+        actionList: item.actionList
+          .map((action) => {
+            if (action.needExample && action.selfScore == null) {
+              action.selfScore = 0;
+            } else if (!action.needExample && action.selfScore == null) {
+              action.selfScore = 1;
+            }
+            return action.selfScore != null
+              ? {
+                  actionDescription: action.actionDescription,
+                  example: action.example,
+                  selfScore: action.selfScore,
+                  leaderScore: action.leaderScore,
+                }
+              : null;
+          })
+          .filter(Boolean), // 过滤掉 null 值
+      };
+    });
+
+    updatedValuesData.forEach((item) => {
+      const valueDescription = item.valueDescription;
+      item.actionList.forEach((action) => {
+        this.newValueArray.push({
+          actionDescription: action.actionDescription,
+          selfScore: action.selfScore,
+          leaderScore: action.leaderScore,
+          valueDescription,
+          example: action.example,
+          deptId: this.$store.state.deptId,
+        });
+      });
+    });
+    saveValueData(this.newValueArray);
+  },
   methods: {
     getValuesData() {
       getValues()
@@ -188,9 +228,11 @@ export default {
       try {
         const updatedValuesData = this.valuesData.map((item) => {
           const actionList = item.actionList.map((action) => {
+            //如果案例必填没有写案例 0分
             if (action.needExample == true && action.selfScore == null) {
               action.selfScore = 0;
             }
+            //分数不为空
             if (action.selfScore != null) {
               return {
                 actionDescription: action.actionDescription,

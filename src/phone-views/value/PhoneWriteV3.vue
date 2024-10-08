@@ -1,0 +1,354 @@
+<template>
+  <!-- 正在使用此版本 -->
+  <div class="writeValues">
+    <div class="writeTableStyle" v-if="valuesData.length > 0">
+      <van-cell :title="$store.state.name + this.valuesData[0]?.month + '月价值观自评'" class="name-title"></van-cell>
+      <van-collapse v-model="activeNames">
+        <van-collapse-item v-for="value in valuesData" :key="value" :title="value.valueDescription" size="large">
+          <!-- <van-cell-group> -->
+          <template v-for="(item, index) in value.actionList" :key="index">
+            <van-cell
+              :title="item.actionDescription"
+              :value="item.selfScore === null ? '' : item.selfScore + '分'"
+              size="large"
+            >
+              <template #title>
+                <div v-html="item.actionDescription" />
+              </template>
+            </van-cell>
+            <van-radio-group
+              v-model="item.selfScore"
+              v-if="!item.needExample"
+              direction="horizontal"
+              style="padding: 1rem"
+              @change="changeButton"
+            >
+              <van-radio :name="1">是</van-radio>
+              <van-radio :name="0">否</van-radio>
+            </van-radio-group>
+            <!-- <van-radio-group v-model="item.selfScore" v-if="!item.needExample" class="radio-style">
+                <van-cell-group inset>
+                  <van-cell title="是" clickable @click="item.selfScore = 1">
+                    <template #right-icon>
+                      <van-radio :name="1" />
+                    </template>
+                  </van-cell>
+                  <van-cell title="否" clickable @click="item.selfScore = 0">
+                    <template #right-icon>
+                      <van-radio :name="0" />
+                    </template>
+                  </van-cell>
+                </van-cell-group>
+              </van-radio-group> -->
+            <van-field
+              v-else
+              v-model="item.example"
+              maxlength="300"
+              rows="2"
+              autosize
+              type="textarea"
+              @input="handleChange(item.example, item)"
+              @blur="handleChange(item.example, item)"
+              placeholder="请输入案例"
+              show-word-limit
+            />
+            <!-- @update:model-value="changeScore" -->
+          </template>
+          <!-- </van-cell-group> -->
+        </van-collapse-item>
+      </van-collapse>
+      <!-- <van-cell
+        is-link
+        v-for="(item, index) in valuesData"
+        :key="item"
+        :title="index + 1 + '.' + item.valueDescription"
+        :to="'/phone/details?index=' + index"
+        size="large"
+      >
+        <template #icon>
+          <van-icon
+            name="passed"
+            color="#07c160"
+            size="1.5rem"
+            v-if="phoneStore.valuesStatus[index]"
+            style="margin: auto 8px auto 0"
+          />
+          <van-icon name="warning-o" color="#E6A23C" size="1.5rem" v-else style="margin: auto 8px auto 0" />
+        </template>
+        <template #title>
+          <span class="custom-title">{{ index + 1 + "." + item.valueDescription }}</span>
+        </template>
+      </van-cell> -->
+      <van-cell :title="'自评总分：' + selfTotalScore + '分'" style="font-size: large; font-weight: 500"></van-cell>
+      <div v-if="valuesData.length > 0" class="button-style">
+        <van-button type="success" block @click="sendValuesForm"> 提 交 </van-button>
+        <van-button type="success" block @click="saveValuesForm"> 保 存 </van-button>
+      </div>
+    </div>
+    <div v-if="valuesData.length == 0" class="noWrite-style">
+      <div>暂无需填写的价值观</div>
+    </div>
+    <TabBar index="write" />
+  </div>
+</template>
+
+<script>
+import { getValues, sendValuesData, saveValueData } from "@/api/values/index";
+import { showSuccessToast, showFailToast, showConfirmDialog } from "vant";
+import TabBar from "@/phone-views/home/PhoneLayout";
+import { phoneStore } from "@/store/phone/index";
+
+// import router from "@/router";
+// import store from "../../store";
+
+export default {
+  components: { TabBar },
+  data() {
+    return {
+      valuesData: null,
+      currentIndex: 1,
+      updatedValues: {},
+      leaderScore: "",
+      month: "",
+      activeNames: [],
+      selfTotalScore: 0, //价值观总得分
+      newValueArray: [], //整合后的价值观数据
+
+      selfScoreShow: true,
+      isManagerApproval: false, //判断拖拽组件是否是部门审批
+      phoneStore: {},
+      rowData: {}, //当前输入框点击的数据
+    };
+  },
+  created() {
+    this.month = new Date().getMonth() + 1;
+    this.getValuesData();
+  },
+  mounted() {
+    this.$nextTick(() => {
+      const textareaDom = this.$refs.textarea; // 假设你在el-input上绑定了ref="textarea"
+      if (textareaDom) {
+        textareaDom.resize();
+      }
+    });
+    this.phoneStore = phoneStore.state;
+  },
+  methods: {
+    async getValuesData() {
+      await getValues()
+        .then((res) => {
+          if (res.data.code == 0) {
+            this.valuesData = res.data.data;
+            this.valuesData.map((item) => {
+              item.actionList.map((item1) => {
+                this.selfTotalScore += item1.selfScore;
+              });
+            });
+            phoneStore.commit("addValue", this.valuesData);
+            //是否保存过
+            let valuesStatus = [];
+            this.valuesData.forEach((it) => {
+              valuesStatus.push(it.actionList[0].save);
+            });
+            if (this.valuesData.length > 0) {
+              document.title = this.$store.state.name + this.valuesData[0]?.month + "月价值观自评";
+            } else {
+              // document.title = this.$store.state.name + "价值观自评";
+              phoneStore.commit("addValue", []);
+              phoneStore.commit("addStatus", []);
+            }
+            phoneStore.commit("addStatus", valuesStatus);
+          } else {
+            this.valuesData = [];
+          }
+        })
+        .catch((e) => {
+          console.log(e);
+          // showFailToast("请求失败");
+        });
+    },
+    //校验价值观是否完成
+    valueData() {
+      try {
+        const updatedValuesData = this.valuesData.map((item) => {
+          const actionList = item.actionList.map((action) => {
+            if (action.needExample && action.selfScore == null) {
+              action.selfScore = 0;
+            }
+            if (action.needExample && action.example.trim().length > 0) {
+              action.selfScore = 1;
+            }
+            if (action.selfScore != null) {
+              return {
+                actionDescription: action.actionDescription,
+                example: action.example,
+                selfScore: action.selfScore,
+                leaderScore: action.leaderScore,
+              };
+            }
+          });
+          return {
+            valueDescription: item.valueDescription,
+            actionList,
+          };
+        });
+        updatedValuesData.map((item) => {
+          const valueDescription = item.valueDescription;
+          delete item.valueDescription;
+          const action = item.actionList.map((action) => {
+            const example = action.example;
+            delete action.example;
+            action.example = example;
+            action.valueDescription = valueDescription;
+            return action;
+          });
+          // this.newValueArray = [];
+          action.forEach((action) => {
+            let actionItem = {
+              actionDescription: action.actionDescription,
+              selfScore: action.selfScore,
+              leaderScore: action.leaderScore,
+              valueDescription: action.valueDescription,
+              example: action.example,
+              deptId: this.$store.state.deptId,
+            };
+            this.newValueArray.push(actionItem);
+
+            return item;
+          });
+        });
+        return true;
+      } catch (err) {
+        showFailToast("价值观未填写完成");
+        this.newValueArray = [];
+        return false;
+      }
+    },
+    sendValuesForm() {
+      if (this.valueData()) {
+        this.selfTotalScore = 0;
+        this.newValueArray.map((item) => {
+          this.selfTotalScore += item.selfScore;
+        });
+        showConfirmDialog({
+          closeOnClickOverlay: true,
+          allowHtml: true,
+          message: `${this.$store.state.name + this.valuesData[0]?.month + "月价值观"}<br>自评得分: 【${
+            this.selfTotalScore
+          }分】<br>提交后不可修改，请谨慎填写`,
+        })
+          .then(() => {
+            sendValuesData(this.newValueArray)
+              .then((res) => {
+                if (res.data.code == 0) {
+                  showSuccessToast("提交成功");
+                  this.getValuesData();
+                }
+                this.newValueArray = [];
+              })
+              .catch(() => {
+                showFailToast("提交失败");
+              });
+          })
+          .catch((e) => {
+            console.log(e);
+            this.newValueArray = [];
+          });
+      }
+    },
+    //输入案例
+    handleChange(val, item) {
+      if (val !== null && val.split(" ").join("").length !== 0) {
+        item.selfScore = 1;
+      } else {
+        item.selfScore = 0;
+      }
+      this.changeButton();
+    },
+    //改变按钮修改总得分
+    changeButton() {
+      this.selfTotalScore = 0;
+      this.valuesData.map((item) => {
+        item.actionList.map((item1) => {
+          this.selfTotalScore += item1.selfScore;
+        });
+      });
+    },
+    changeScore(val) {
+      // console.log(val);
+      this.handleChange(val, this.rowData);
+    },
+    handleFocus(item) {
+      this.rowData = item;
+    },
+    saveValuesForm() {
+      if (this.valueData()) {
+        // console.log(this.newValueArray);
+
+        saveValueData(this.newValueArray).then((res) => {
+          if (res.data.code == 0) {
+            showSuccessToast("保存成功");
+          }
+          this.newValueArray = [];
+        });
+      }
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.writeValues {
+  height: 96vh;
+  background-color: #f7f8fa;
+  text-align: left;
+  position: relative;
+  z-index: 1;
+}
+.noWrite-style {
+  height: 100%;
+  background-color: #fff;
+  font-size: 1.2rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.button-style {
+  padding: 2rem 4rem 4rem 4rem;
+  // width: 50%;
+  display: flex;
+  justify-content: space-around;
+  // width: max-content;
+  button {
+    width: 35% !important;
+  }
+}
+
+:deep(.van-radio__label) {
+  color: rgb(96, 98, 102);
+}
+:deep(.van-cell__title) {
+  flex: auto !important;
+  text-align: left;
+}
+:deep(.van-cell__value) {
+  min-width: 2.5rem;
+}
+:deep(.van-collapse-item__title) {
+  background: #f7f8fa;
+  font-size: 18px !important;
+  font-weight: 500;
+}
+.name-title {
+  text-align: center !important;
+  font-size: large;
+  width: 100%;
+  font-weight: 500;
+  :deep(.van-cell__title) {
+    text-align: center !important;
+  }
+}
+:deep(.van-field__body textarea) {
+  font-size: 17px !important;
+}
+</style>

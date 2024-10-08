@@ -1,0 +1,15 @@
+import axios from "@/utils/http";
+import { ElMessage } from "element-plus";
+
+export function addOrEdit(url, data) {
+  return axios({
+    url: url,
+    method: "post",
+    data: data,
+  }).then((res) => {
+    if (res.data.data.code === 0) {
+      ElMessage.success("操作成功");
+    }
+    return res.data.data;
+  });
+}

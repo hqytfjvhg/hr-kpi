@@ -1,0 +1,183 @@
+<template>
+  <div>
+    <el-table :data="weekMenu" :cell-class-name="addClass" table-layout="auto" style="width: auto" fit="false">
+      <el-table-column label="" prop="time" width="60"></el-table-column>
+      <el-table-column v-for="item in Object.keys(labelText)" :key="item" :label="labelText[item]">
+        <template #default="scope">
+          <div class="menu-content">
+            <div v-for="item1 in scope.row[item]" :key="item1" class="menu">
+              <img :src="item1.src" alt="" style="width: 57px; height: 47px" />
+              <div>{{ item1.name }}</div>
+            </div>
+          </div>
+        </template>
+      </el-table-column>
+    </el-table>
+  </div>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      labelText: {
+        Monday: "星期①",
+        Tuesday: "星期②",
+        Wednesday: "星期③",
+        Thursday: "星期④",
+        Friday: "星期⑤",
+        Saturday: "星期⑥",
+      },
+      weekMenu: [
+        {
+          time: "早餐",
+          Monday: [
+            { src: "./assets/KPI.svg", name: "叉烧包" },
+            { src: "@/assets/KPI.svg", name: "水煮蛋" },
+            { src: "@/assets/KPI.svg", name: "罗汉果菊花茶" },
+          ],
+          Tuesday: [
+            { src: "@/assets/KPI.svg", name: "咸骨粥" },
+            { src: "@/assets/KPI.svg", name: "流沙包" },
+            { src: "@/assets/KPI.svg", name: "茶叶蛋" },
+          ],
+          Wednesday: [
+            { src: "@/assets/KPI.svg", name: "肉丝鸡蛋炒河粉" },
+            { src: "@/assets/KPI.svg", name: "黑豆豆浆" },
+          ],
+          Thursday: [
+            { src: "@/assets/KPI.svg", name: "葱花卷" },
+            { src: "@/assets/KPI.svg", name: "卤蛋" },
+            { src: "@/assets/KPI.svg", name: "热狗" },
+            { src: "@/assets/KPI.svg", name: "玉米汁" },
+          ],
+          Friday: [
+            { src: "@/assets/KPI.svg", name: "肉汁卷粉" },
+            { src: "@/assets/KPI.svg", name: "水煮蛋" },
+            { src: "@/assets/KPI.svg", name: "豆浆" },
+          ],
+          Saturday: [
+            { src: "@/assets/KPI.svg", name: "烧麦" },
+            { src: "@/assets/KPI.svg", name: "炒蛋" },
+            { src: "@/assets/KPI.svg", name: "绿豆汤" },
+          ],
+        },
+        {
+          time: "午餐",
+          Monday: [
+            { src: "@/assets/KPI.svg", name: "峨眉豆炒腩肉" },
+            { src: "@/assets/KPI.svg", name: "蒜蓉上海青" },
+          ],
+          Tuesday: [
+            { src: "@/assets/KPI.svg", name: "油豆腐红烧肉" },
+            { src: "@/assets/KPI.svg", name: "蚝油炒菜心" },
+          ],
+          Wednesday: [
+            { src: "@/assets/KPI.svg", name: "西芹炒肉卷" },
+            { src: "@/assets/KPI.svg", name: "清炒娃娃菜" },
+          ],
+          Thursday: [
+            { src: "@/assets/KPI.svg", name: "五香卤鸡腿" },
+            { src: "@/assets/KPI.svg", name: "油渣炒苦麦菜" },
+          ],
+          Friday: [
+            { src: "@/assets/KPI.svg", name: "豆角回锅肉" },
+            { src: "@/assets/KPI.svg", name: "清炒小白菜" },
+          ],
+          Saturday: [
+            { src: "@/assets/KPI.svg", name: "酸菜焖鱼块" },
+            { src: "@/assets/KPI.svg", name: "蒜蓉炒长吊瓜" },
+          ],
+        },
+        {
+          time: "晚餐",
+          Monday: [
+            { src: "@/assets/KPI.svg", name: "梅菜蒸肉饼" },
+            { src: "@/assets/KPI.svg", name: "清炒绿豆芽" },
+          ],
+          Tuesday: [
+            { src: "@/assets/KPI.svg", name: "宫保鸡丁" },
+            { src: "@/assets/KPI.svg", name: "豉油王生菜" },
+          ],
+          Wednesday: [
+            { src: "@/assets/KPI.svg", name: "白灼五花肉" },
+            { src: "@/assets/KPI.svg", name: "手撕包菜" },
+          ],
+          Thursday: [
+            { src: "@/assets/KPI.svg", name: "莲藕炒五花肉" },
+            { src: "@/assets/KPI.svg", name: "上汤菠菜" },
+          ],
+          Friday: [
+            { src: "@/assets/KPI.svg", name: "土豆片炒上肉" },
+            { src: "@/assets/KPI.svg", name: "盐水芥菜" },
+          ],
+          Saturday: [
+            { src: "@/assets/KPI.svg", name: "洋葱炒猪肝" },
+            { src: "@/assets/KPI.svg", name: "爆炒苋菜" },
+          ],
+        },
+        {
+          time: "汤",
+          Monday: [{ src: "@/assets/KPI.svg", name: "赤小豆茯苓骨头汤" }],
+          Tuesday: [{ src: "@/assets/KPI.svg", name: "海带龙骨汤" }],
+          Wednesday: [{ src: "@/assets/KPI.svg", name: "番茄土豆骨头汤" }],
+          Thursday: [{ src: "@/assets/KPI.svg", name: "冬瓜薏米大骨汤" }],
+          Friday: [{ src: "@/assets/KPI.svg", name: "凉瓜黄豆骨头汤" }],
+          Saturday: [{ src: "@/assets/KPI.svg", name: "淮山龙骨汤" }],
+        },
+      ],
+    };
+  },
+  methods: {
+    addClass({ row, column, rowIndex, columnIndex }) {
+      console.log(row, column, rowIndex, columnIndex);
+      if (columnIndex === 0) {
+        return "firstColumn";
+      } else if (columnIndex === 6) {
+        return "lastColumn otherColumn";
+      } else {
+        return "otherColumn";
+      }
+    },
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+.menu-content {
+  width: fit-content;
+  white-space: nowrap;
+  display: flex;
+  justify-content: flex-start;
+  .menu {
+    margin-right: 10px;
+    white-space: nowrap;
+    // color: #409eff;
+  }
+}
+
+:deep(.el-table thead tr) {
+  font-weight: 700 !important;
+  color: #409eff !important;
+  font-style: 18px !important;
+}
+:deep(.firstColumn) {
+  border-right: 1px dashed white !important;
+  background-color: #d9ecff !important;
+  border-radius: 20px 0 0 20px;
+  margin: 10px;
+  border: 10px solid #fff;
+  color: #409eff;
+  font-size: 16px;
+  font-weight: 700;
+}
+:deep(.otherColumn) {
+  width: 100% !important;
+  // background-color: #d9ecff !important;
+  border-top: 10px solid #fff;
+  border-bottom: 10px solid #fff;
+}
+:deep(.lastColumn) {
+  border-radius: 0 20px 20px 0;
+}
+</style>

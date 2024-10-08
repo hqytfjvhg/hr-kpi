@@ -1,0 +1,356 @@
+<template>
+  <div>
+    <el-form :inline="true" :rules="rule" :model="formData" ref="form" class="form-style">
+      <el-form-item label="日期区间" prop="date">
+        <el-date-picker
+          v-model="formData.date"
+          type="daterange"
+          range-separator="To"
+          format="YYYY-MM-DD"
+          value-format="YYYY-MM-DD"
+        />
+      </el-form-item>
+      <el-form-item> <el-button type="primary" @click="getDishes">查询</el-button> </el-form-item>
+    </el-form>
+    <!-- <h4>菜品统计</h4> -->
+    <div id="one-bar" style="width: 100%; height: 400px"></div>
+    <div id="two-bar" style="width: 100%; height: 400px"></div>
+    <div id="three-bar" style="width: 100%; height: 400px"></div>
+    <div id="four-bar" style="width: 100%; height: 400px"></div>
+    <!-- <div id="five-bar" style="width: 100%; height: 400px"></div>
+    <div id="six-bar" style="width: 100%; height: 400px"></div> -->
+  </div>
+</template>
+
+<script setup>
+import axios from "@/utils/http";
+import * as echarts from "echarts";
+import { ref, nextTick, onMounted } from "vue";
+
+const transTime = (date) => {
+  let year = date.getFullYear();
+  let month = ("0" + (date.getMonth() + 1)).slice(-2); // 月份是从0开始的，所以需要加1；同时补零
+  let day = ("0" + date.getDate()).slice(-2); // 日期补零
+  return year + "-" + month + "-" + day;
+};
+
+const formData = ref({ date: [transTime(new Date(new Date().getFullYear() + "-01-01")), transTime(new Date())] });
+
+const rule = ref({ date: { required: true, message: "请选择日期", trigger: "change" } });
+const form = ref(null);
+
+const getDishes = () => {
+  form.value.validate((valid) => {
+    if (valid) {
+      axios
+        .post("/ifi-personal/dish/menu/getDishesRecordsCountByType", {
+          all: false,
+          startDate: formData.value.date[0],
+          endDate: formData.value.date[1],
+        })
+        .then((res) => {
+          if (res.data.code == 0) {
+            if (Object.keys(res.data.data).length > 0) {
+              const data = res.data.data;
+              // const data = Object.values(res.data.data).map((it) => {
+              //   return it.map((op) => {
+              //     return { value: op.count, name: op.name };
+              //   });
+              // });
+              // console.log(data);
+              nextTick(() => {
+                paintBar("早餐套餐", data["早餐套餐"], "one-bar");
+                paintBar("荤菜", data["荤菜"], "two-bar");
+                paintBar("素菜", data["素菜"], "three-bar");
+                paintBar("汤类", data["汤类"], "four-bar");
+                // paintBar("配菜", data["配菜"], "five-bar");
+                // paintBar("水果", data["水果"], "six-bar");
+              });
+            } else {
+              nextTick(() => {
+                paintBar("早餐套餐", [], "one-bar");
+                paintBar("荤菜", [], "two-bar");
+                paintBar("素菜", [], "three-bar");
+                paintBar("汤类", [], "four-bar");
+                // paintBar("配菜", [], "five-bar");
+                // paintBar("水果", [], "six-bar");
+              });
+            }
+          }
+        });
+    }
+  });
+};
+
+// const paint = (title1, data1, title2, data2, title3, data3, title4, data4, title5, data5, title6, data6) => {
+//   let myChart = echarts.init(document.getElementById("main"));
+//   myChart.clear();
+//   let option = {
+//     // title: {
+//     //   text: "菜品统计",
+//     // },
+//     tooltip: {},
+//     // legend: {
+//     //   data: ["菜品数量"],
+//     // },
+//     grid: {
+//       left: "3%",
+//       right: "4%",
+//       bottom: "5%",
+//       top: "5%",
+//       containLabel: true,
+//     },
+//     graphic: [
+//       {
+//         type: "text",
+//         left: "28%", // 与第一个饼图的中心对齐
+//         top: "1%",
+//         // rotation: Math.PI / -2,
+//         style: {
+//           text: title1,
+//           fill: "#000",
+//           font: "bold 16px sans-serif",
+//         },
+//       },
+//       {
+//         type: "text",
+//         left: "69%", // 与第二个饼图的中心对齐
+//         top: "1%",
+//         style: {
+//           text: title2,
+//           fill: "#000",
+//           font: "bold 16px sans-serif",
+//         },
+//       },
+//       {
+//         type: "text",
+//         left: "29%",
+//         top: "34%",
+//         style: {
+//           text: title3,
+//           fill: "#000",
+//           font: "bold 16px sans-serif",
+//         },
+//       },
+//       {
+//         type: "text",
+//         left: "69%",
+//         top: "34%",
+//         style: {
+//           text: title4,
+//           fill: "#000",
+//           font: "bold 16px sans-serif",
+//         },
+//       },
+//       {
+//         type: "text",
+//         left: "29%",
+//         top: "68%",
+//         style: {
+//           text: title5,
+//           fill: "#000",
+//           font: "bold 16px sans-serif",
+//         },
+//       },
+//       {
+//         type: "text",
+//         left: "69%",
+//         top: "68%",
+//         style: {
+//           text: title6,
+//           fill: "#000",
+//           font: "bold 16px sans-serif",
+//         },
+//       },
+//     ],
+//     series: [
+//       {
+//         name: "",
+//         type: "pie",
+//         radius: "30%",
+//         center: ["30%", "18%"],
+//         label: {
+//           show: true,
+//           position: "outside",
+//           distance: 10,
+//           color: "inherit",
+//           fontWeight: "bold",
+//           fontSize: 14,
+//           formatter: "{b}: {c}次",
+//         },
+//         data: data1,
+//       },
+//       {
+//         name: "",
+//         type: "pie",
+//         radius: "30%",
+//         center: ["70%", "18%"],
+//         label: {
+//           show: true,
+//           position: "outside",
+//           distance: 10,
+//           color: "inherit",
+//           fontWeight: "bold",
+//           fontSize: 14,
+//           formatter: "{b}: {c}次",
+//         },
+//         data: data2,
+//       },
+//       {
+//         name: "",
+//         type: "pie",
+//         radius: "30%",
+//         center: ["30%", "51%"],
+//         label: {
+//           show: true,
+//           position: "outside",
+//           distance: 10,
+//           color: "inherit",
+//           fontWeight: "bold",
+//           fontSize: 14,
+//           formatter: "{b}: {c}次",
+//         },
+//         data: data3,
+//       },
+//       {
+//         name: "",
+//         type: "pie",
+//         radius: "30%",
+//         center: ["70%", "51%"],
+//         label: {
+//           show: true,
+//           position: "outside",
+//           distance: 10,
+//           color: "inherit",
+//           fontWeight: "bold",
+//           fontSize: 14,
+//           formatter: "{b}: {c}次",
+//         },
+//         data: data4,
+//       },
+//       {
+//         name: "",
+//         type: "pie",
+//         radius: "27%",
+//         center: ["30%", "83%"],
+//         label: {
+//           show: true,
+//           position: "outside",
+//           distance: 10,
+//           color: "inherit",
+//           fontWeight: "bold",
+//           fontSize: 14,
+//           formatter: "{b}: {c}次",
+//         },
+//         data: data5,
+//       },
+//       {
+//         name: "",
+//         type: "pie",
+//         radius: "27%",
+//         center: ["70%", "83%"],
+//         label: {
+//           show: true,
+//           position: "outside",
+//           distance: 10,
+//           color: "inherit",
+//           fontWeight: "bold",
+//           fontSize: 14,
+//           formatter: "{b}: {c}次",
+//         },
+//         data: data6,
+//       },
+//     ],
+//   };
+//   myChart.setOption(option);
+// };
+
+const paintBar = (title, data, id) => {
+  let myChart = echarts.init(document.getElementById(id));
+  myChart.clear();
+  document.getElementById(id).removeAttribute("_echarts_instance_");
+  let xAxis = [];
+  let yAxis = [];
+  data.forEach((it) => {
+    xAxis.push(it.name);
+    yAxis.push(it.count);
+  });
+
+  myChart.setOption({
+    title: {
+      text: title,
+      left: "center",
+    },
+    tooltip: {},
+    grid: {
+      // left: "4%",
+      // right: "4%",
+      bottom: "20%",
+    },
+    xAxis: {
+      type: "category",
+      axisLabel: {
+        interval: 0,
+        rotate: 45,
+        formatter: function (val) {
+          if (val.length > 7) {
+            return val.slice(0, 7) + "...";
+          }
+          return val;
+        },
+      },
+      data: xAxis,
+    },
+    yAxis: {
+      type: "value",
+    },
+    series: [
+      {
+        data: yAxis,
+        type: "bar",
+        label: { show: true, position: "top" },
+        // showBackground:true,
+        // backgroundStyle:{
+        //     color:'rgba(180, 180, 180, 0.2)'
+        // }
+      },
+    ],
+    dataZoom: [
+      {
+        show: true,
+        type: "slider",
+        shartValue: 0,
+        endValue: 30,
+        filterable: "empty",
+        width: "80%",
+        left: "center",
+        height: 0,
+        zoomLoxk: true,
+        handleSize: 0,
+        bottom: 0,
+      },
+      {
+        type: "inside",
+        zoomOnMouseWheel: false,
+        moveOnMouseMove: true,
+        moveOnMouseWheel: true,
+      },
+    ],
+  });
+};
+
+onMounted(() => {
+  getDishes();
+});
+</script>
+
+<style lang="scss" scoped>
+.form-style {
+  text-align: left;
+  padding: 10px 10px 0;
+}
+h4 {
+  padding-bottom: 10px;
+  text-align: left;
+}
+</style>
